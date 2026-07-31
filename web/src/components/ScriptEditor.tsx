@@ -13,6 +13,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [content, setContent] = useState('大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。');
   const [cpm, setCpm] = useState(220);
+  const [currentTip, setCurrentTip] = useState('');
   
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -43,16 +44,19 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
       setLang('en');
       setCpm(150); // standard WPM
       setContent("Hello everyone, welcome to RhythmCoach.\n\nHere you can practice your pacing and maintain a steady speaking rate. Try looking at the screen; when you stop speaking, the prompter will detect your pause and stop scrolling automatically.");
+      setCurrentTip('');
     } else {
       setLang('zh');
       setCpm(220);
       setContent("大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。");
+      setCurrentTip('');
     }
   };
   
-  const handleImport = (matTitle: string, matContent: string) => {
+  const handleImport = (matTitle: string, matContent: string, matTip?: string) => {
     setTitle(matTitle);
     setContent(matContent);
+    setCurrentTip(matTip || '');
     setLang('zh'); // Most templates are Chinese
     setCpm(220);
     setIsDrawerOpen(false);
@@ -162,7 +166,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                               borderRadius: '12px', padding: '16px', cursor: 'pointer',
                               display: 'flex', flexDirection: 'column', gap: '8px'
                             }}
-                            onClick={() => handleImport(mat.title, mat.content)}
+                            onClick={() => handleImport(mat.title, mat.content, mat.tip)}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
@@ -201,7 +205,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                             borderRadius: '12px', padding: '16px', cursor: 'pointer',
                             display: 'flex', flexDirection: 'column', gap: '8px'
                           }}
-                          onClick={() => handleImport(mat.title, mat.content)}
+                          onClick={() => handleImport(mat.title, mat.content, mat.tip)}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
@@ -271,6 +275,21 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               style={{ minHeight: '260px', resize: 'vertical' }}
               placeholder={lang === 'zh' ? "输入或粘贴你的口播稿件..." : "Type or paste your script..."}
             />
+            {currentTip && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ 
+                  marginTop: '12px', padding: '12px 16px', 
+                  background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.2)', 
+                  borderRadius: '12px', color: '#38bdf8', fontSize: '0.9rem',
+                  display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: 1.5
+                }}
+              >
+                <div style={{ marginTop: '2px' }}>💡</div>
+                <div>{currentTip}</div>
+              </motion.div>
+            )}
           </div>
 
           <div style={{ 
