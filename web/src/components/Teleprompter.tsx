@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, X, CheckCircle2, Settings2, Activity } from 'lucide-react';
+import { Play, Pause, X, CheckCircle2, Settings2, Activity, FlipHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Recording } from '../types';
 
@@ -17,6 +17,7 @@ type VoiceState = 'SPEAKING' | 'SILENCE';
 export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, setRecordings }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
+  const [isMirrored, setIsMirrored] = useState(false);
   
   // Local CPM allows adjusting speed during reading
   const [localTargetCpm, setLocalTargetCpm] = useState(targetCpm);
@@ -309,12 +310,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
       mediaRecorderRef.current.stop();
     }
     
-    // Calculate final stats
-    const totalSecs = Math.round(totalTimeMsRef.current / 1000);
-    const speakSecs = Math.round(speakingTimeMsRef.current / 1000);
-    const avg = speakSecs > 0 ? Math.round(wordCountRef.current / (speakSecs / 60)) : 0;
-    
-    setStats({ totalTime: totalSecs, speakingTime: speakSecs, avgCpm: avg });
     setShowSummary(true);
   };
 
@@ -341,6 +336,34 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     }
     onClose();
   };
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is interacting with some input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        if (showSummary) onClose();
+        else handleFinish();
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        if (scrollRef.current) scrollRef.current.scrollTop -= 60;
+        handleManualScroll();
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        if (scrollRef.current) scrollRef.current.scrollTop += 60;
+        handleManualScroll();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay, handleFinish, handleClose, handleManualScroll, showSummary, onClose]);
 
 
 
@@ -561,7 +584,10 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
-          <button className="btn-icon" onClick={handleFinish} title="Finish Session" style={{ background: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80' }}>
+          <button className="btn-icon" onClick={() => setIsMirrored(!isMirrored)} title="Mirror Mode" style={{ background: isMirrored ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)', borderColor: isMirrored ? 'rgba(99, 102, 241, 0.5)' : 'rgba(255,255,255,0.1)', color: isMirrored ? '#818cf8' : 'rgba(255,255,255,0.6)' }}>
+            <FlipHorizontal size={22} />
+          </button>
+          <button className="btn-icon" onClick={handleFinish} title="Finish Session (ESC)" style={{ background: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80' }}>
             <CheckCircle2 size={22} />
           </button>
           <button className="btn-icon" onClick={handleClose} style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}>
@@ -609,7 +635,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             lineHeight: '1.6',
             fontWeight: 700,
             color: 'rgba(255,255,255,0.95)',
-            scrollBehavior: 'auto'
+            scrollBehavior: 'auto',
+            transform: isMirrored ? 'scaleX(-1)' : 'none'
           }}
         >
           <div style={{ position: 'relative', padding: '50vh 40px' }}>
