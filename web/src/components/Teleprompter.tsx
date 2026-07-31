@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Play, Pause, Activity, Maximize2, Minimize2, Download } from 'lucide-react';
+import { X, Play, Pause, Activity, Maximize2, Minimize2, Download, Trash2, Mic, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TeleprompterProps {
@@ -11,13 +11,26 @@ interface TeleprompterProps {
 
 type VoiceState = 'SPEAKING' | 'SILENCE';
 
+interface Recording {
+  id: string;
+  url: string;
+  name: string;
+}
+
 export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
+  
+  // Local CPM allows adjusting speed during reading
+  const [localTargetCpm, setLocalTargetCpm] = useState(targetCpm);
   const [currentCpm, setCurrentCpm] = useState(0);
+  
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  
+  // Recordings
   const [isRecording, setIsRecording] = useState(false);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+  
   const [manualScrollTimeout, setManualScrollTimeout] = useState<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,7 +53,6 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
   };
 
   const handleManualScroll = useCallback(() => {
-    // If user interacts with scroll, pause auto-scroll for 1.5 seconds
     if (manualScrollTimeout) clearTimeout(manualScrollTimeout);
     const timeout = window.setTimeout(() => {
       setManualScrollTimeout(null);
@@ -72,7 +84,12 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
         mediaRecorder.onstop = () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const url = URL.createObjectURL(audioBlob);
-          setAudioUrl(url);
+          const newRec = {
+            id: Math.random().toString(36).substring(7),
+            url,
+            name: `Rec_${new Date().toLocaleTimeString().replace(/:/g,'-')}`
+          };
+          setRecordings(prev => [...prev, newRec]);
         };
 
         if (isPlaying) {
@@ -114,7 +131,10 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
             setVoiceState('SPEAKING');
             silenceStart = 0;
             setCurrentCpm(prev => {
-              if (prev === 0) return targetCpm;
+              // Ensure we read the latest localTargetCpm inside the interval by just referencing state?
+              // Actually, React state in requestAnimationFrame can be stale if not careful.
+              // But localTargetCpm changes are rare. We use a functional update here.
+              if (prev === 0) return 0; // We will fix this in a ref or just rely on localTargetCpm
               const vary = Math.random() > 0.8 ? (Math.random() > 0.5 ? 2 : -2) : 0;
               return Math.max(0, prev + vary);
             });
@@ -143,7 +163,16 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [isPlaying, targetCpm]);
+  }, [isPlaying]); // Don't put localTargetCpm here to avoid restarting audio
+
+  // Update currentCpm when speaking based on localTargetCpm
+  useEffect(() => {
+    if (voiceState === 'SPEAKING') {
+      setCurrentCpm(localTargetCpm);
+    } else {
+      setCurrentCpm(0);
+    }
+  }, [voiceState, localTargetCpm]);
 
   // Handle Play/Pause for Recording
   const togglePlay = () => {
@@ -151,7 +180,9 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
       audioChunksRef.current = [];
       mediaRecorderRef.current.start(1000);
       setIsRecording(true);
-      setAudioUrl(null);
+    } else if (isPlaying && isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
     setIsPlaying(!isPlaying);
   };
@@ -169,6 +200,10 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
     onClose();
   };
 
+  const removeRecording = (id: string) => {
+    setRecordings(prev => prev.filter(r => r.id !== id));
+  };
+
   // Scrolling logic
   useEffect(() => {
     let scrollRequest: number;
@@ -178,15 +213,11 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
       const delta = time - lastTime;
       lastTime = time;
       
-      // Auto-scroll ONLY if playing, speaking, and NOT manually scrolling
       if (isPlaying && voiceState === 'SPEAKING' && scrollRef.current && !manualScrollTimeout) {
-        // Different mapping for English (WPM) vs Chinese (CPM)
-        // English words take more horizontal space per unit.
         const speedFactor = lang === 'en' ? 20 : 15;
-        const pixelsPerSecond = (targetCpm / 60) * speedFactor; 
+        const pixelsPerSecond = (localTargetCpm / 60) * speedFactor; 
         const scrollAmount = (pixelsPerSecond * delta) / 1000;
         
-        // Add scroll directly without resetting scroll pos
         scrollRef.current.scrollTop += scrollAmount;
       }
       
@@ -195,7 +226,7 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
     
     scrollRequest = requestAnimationFrame(scroll);
     return () => cancelAnimationFrame(scrollRequest);
-  }, [isPlaying, voiceState, targetCpm, manualScrollTimeout, lang]);
+  }, [isPlaying, voiceState, localTargetCpm, manualScrollTimeout, lang]);
 
   return (
     <motion.div 
@@ -209,14 +240,64 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
         overflow: 'hidden'
       }}
     >
-      {/* Draggable Rhythm Widget */}
+      {/* Recording List Sidebar (Left) */}
+      <div style={{ position: 'absolute', top: '100px', left: '40px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <AnimatePresence>
+          {recordings.map((rec) => (
+            <motion.div
+              key={rec.id}
+              initial={{ opacity: 0, x: -20, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -50, scale: 0.8 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -100) removeRecording(rec.id);
+              }}
+              className="glass-panel"
+              style={{
+                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '16px',
+                background: 'rgba(24, 24, 27, 0.7)', border: '1px solid var(--glass-border)',
+                cursor: 'grab'
+              }}
+              whileDrag={{ scale: 1.05, cursor: 'grabbing', opacity: 0.8 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                <Mic size={16} color="var(--accent-primary)" />
+                {rec.name}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a 
+                  href={rec.url} 
+                  download={`${rec.name}.webm`}
+                  className="btn-icon" 
+                  style={{ width: '32px', height: '32px', background: 'rgba(99,102,241,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(99,102,241,0.2)' }}
+                  title="Download"
+                >
+                  <Download size={16} />
+                </a>
+                <button 
+                  onClick={() => removeRecording(rec.id)}
+                  className="btn-icon" 
+                  style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
+                  title="Delete (or swipe left)"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Draggable Rhythm Widget (Right) */}
       <motion.div 
         drag
         dragMomentum={false}
         className="glass-panel" 
         style={{ 
           position: 'absolute', top: '80px', right: '40px', zIndex: 100, 
-          width: '280px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px',
+          width: '320px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px',
           cursor: 'grab', border: '1px solid var(--glass-highlight)',
           backgroundColor: 'rgba(24, 24, 27, 0.85)'
         }}
@@ -245,10 +326,27 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
         </div>
         
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-          <span style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-2px' }}>
+          <span style={{ fontSize: '3.5rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-2px', color: 'var(--text-primary)' }}>
             {currentCpm}
           </span>
           <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{lang === 'zh' ? 'CPM' : 'WPM'}</span>
+        </div>
+
+        {/* Speed Adjustment Slider */}
+        <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px', pointerEvents: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Settings2 size={14} /> {lang === 'zh' ? '当前目标语速' : 'Target Speed'}
+            </span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{localTargetCpm}</span>
+          </div>
+          <input 
+            type="range" 
+            min="80" max="350" 
+            value={localTargetCpm} 
+            onChange={(e) => setLocalTargetCpm(parseInt(e.target.value))}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
         </div>
 
         {/* Audio Visualizer */}
@@ -256,7 +354,7 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
           display: 'flex', justifyContent: 'space-between', height: '40px', 
           alignItems: 'flex-end', opacity: voiceState === 'SPEAKING' ? 1 : 0.2,
           transition: 'opacity 0.3s ease',
-          gap: '4px'
+          gap: '4px', marginTop: '8px'
         }}>
           {audioData.map((val, i) => (
             <motion.div key={i} 
@@ -285,20 +383,6 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
           <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>
             {isRecording ? 'REC' : 'LIVE PROMPTER'}
           </h3>
-          {/* Audio Download Button */}
-          <AnimatePresence>
-            {audioUrl && !isPlaying && (
-              <motion.a 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                href={audioUrl} 
-                download={`rhythm_coach_recording_${new Date().getTime()}.webm`}
-                style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary)', textDecoration: 'none', background: 'rgba(99,102,241,0.1)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)' }}
-              >
-                <Download size={16} /> {lang === 'zh' ? '下载录音' : 'Download Audio'}
-              </motion.a>
-            )}
-          </AnimatePresence>
         </div>
         <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
           <button className="btn-icon" onClick={toggleFullscreen} title="Toggle Fullscreen">
@@ -335,7 +419,9 @@ export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterP
               marginBottom: '1.2em', 
               textShadow: '0 4px 24px rgba(0,0,0,0.5)',
               letterSpacing: lang === 'zh' ? '2px' : 'normal',
-              wordBreak: lang === 'zh' ? 'keep-all' : 'normal'
+              // Use break-word so long continuous texts don't overflow the container on the right
+              overflowWrap: 'break-word',
+              wordBreak: 'normal'
             }}>
               {line || ' '}
             </p>
