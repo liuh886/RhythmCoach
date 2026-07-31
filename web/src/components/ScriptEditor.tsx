@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity, Library, ChevronRight, X, Trash2 } from 'lucide-react';
+import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity, Library, ChevronRight, X, Trash2, Upload, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { defaultMaterials, ScriptMaterial } from './materials';
 
@@ -89,6 +89,52 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     localStorage.setItem('rhythm_custom_materials', JSON.stringify(updated));
   };
 
+  const handleExportJSON = () => {
+    if (customMaterials.length === 0) {
+      alert("没有可以导出的自定义草稿 / No custom drafts to export.");
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(customMaterials, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `rhythm_coach_materials_${new Date().toISOString().split('T')[0]}.json`);
+    dlAnchorElem.click();
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        if (Array.isArray(imported)) {
+          // Simple validation
+          const validMaterials = imported.filter(m => m.id && m.title && m.content);
+          if (validMaterials.length > 0) {
+            // Merge with existing, avoiding exact id duplicates if possible
+            const existingIds = new Set(customMaterials.map(m => m.id));
+            const newMaterials = validMaterials.map(m => ({
+              ...m,
+              // generate new id if conflict
+              id: existingIds.has(m.id) ? Date.now().toString() + Math.random().toString(36).substring(7) : m.id
+            }));
+            const updated = [...newMaterials, ...customMaterials];
+            setCustomMaterials(updated);
+            localStorage.setItem('rhythm_custom_materials', JSON.stringify(updated));
+            alert(`成功导入 ${validMaterials.length} 个素材！`);
+          } else {
+            alert("文件格式不正确或没有有效素材。");
+          }
+        }
+      } catch (err) {
+        alert("解析 JSON 文件失败。");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
+
   return (
     <>
       {/* Drawer Toggle Button */}
@@ -152,6 +198,29 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   
+                  {/* Actions Section */}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                      className="btn-secondary" 
+                      onClick={() => document.getElementById('import-json')?.click()}
+                      style={{ flex: 1, padding: '8px', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '6px', borderRadius: '8px' }}
+                    >
+                      <Upload size={14} /> 导入数据
+                    </button>
+                    <input 
+                      type="file" id="import-json" accept=".json" 
+                      style={{ display: 'none' }} 
+                      onChange={handleImportJSON} 
+                    />
+                    <button 
+                      className="btn-secondary" 
+                      onClick={handleExportJSON}
+                      style={{ flex: 1, padding: '8px', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '6px', borderRadius: '8px' }}
+                    >
+                      <Download size={14} /> 导出备份
+                    </button>
+                  </div>
+
                   {/* Custom Drafts Section */}
                   {customMaterials.length > 0 && (
                     <div>
