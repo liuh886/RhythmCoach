@@ -500,7 +500,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             scrollBehavior: 'auto'
           }}
         >
-          {script.split('\n').map((line, i) => (
+          {script.split('\n').filter(line => line.trim() !== '').map((line, i) => (
             <p key={i} style={{ 
               marginBottom: '1.2em', 
               textShadow: '0 4px 24px rgba(0,0,0,0.5)',
@@ -508,7 +508,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
               overflowWrap: 'break-word',
               wordBreak: 'normal'
             }}>
-              {line || ' '}
+              {line}
             </p>
           ))}
           {/* Larger spacer at the bottom to ensure the last word can clear the screen top */}
