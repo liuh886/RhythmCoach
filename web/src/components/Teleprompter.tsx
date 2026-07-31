@@ -68,11 +68,53 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     
     const initAudio = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1
+          } 
+        });
         streamRef.current = stream;
         
-        // Setup Recording
-        const mediaRecorder = new MediaRecorder(stream);
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+        audioContextRef.current = audioCtx;
+        
+        const source = audioCtx.createMediaStreamSource(stream);
+        
+        // Dolby-like processing chain
+        // 1. High-pass filter to remove low-frequency rumble and wind noise
+        const highpass = audioCtx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 80;
+        
+        // 2. Dynamics Compressor to even out voice levels (softs louder, louds softer)
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -24; // Lower threshold to catch more voice
+        compressor.knee.value = 12;
+        compressor.ratio.value = 4;
+        compressor.attack.value = 0.01;
+        compressor.release.value = 0.1;
+        
+        // 3. Connect the chain
+        source.connect(highpass);
+        highpass.connect(compressor);
+        
+        // Create a new stream from the processed audio
+        const dest = audioCtx.createMediaStreamDestination();
+        compressor.connect(dest);
+        const processedStream = dest.stream;
+
+        // Setup Analyzer for visualizer
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        compressor.connect(analyser);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        // Setup Recording using PROCESSED stream
+        const mediaRecorder = new MediaRecorder(processedStream);
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
         
@@ -99,18 +141,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
           mediaRecorder.start(1000);
           setIsRecording(true);
         }
-
-        // Setup Analysis
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioContextClass();
-        audioContextRef.current = audioCtx;
-        
-        const source = audioCtx.createMediaStreamSource(stream);
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
         
         const checkAudio = (time: number) => {
           const delta = time - lastTime;
