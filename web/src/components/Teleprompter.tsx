@@ -26,6 +26,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
   // Recordings
   const [isRecording, setIsRecording] = useState(false);
   const [recDuration, setRecDuration] = useState(0);
+  const recDurationRef = useRef(0);
   
   const [manualScrollTimeout, setManualScrollTimeout] = useState<number | null>(null);
   
@@ -40,7 +41,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
   const requestRef = useRef<number>(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingStartRef = useRef<number>(0);
+
   const [audioData, setAudioData] = useState<number[]>(Array(12).fill(10));
   
   const speakingTimeMsRef = useRef<number>(0);
@@ -150,9 +151,10 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
         };
         
         mediaRecorder.onstop = () => {
+          if (audioChunksRef.current.length === 0) return;
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const url = URL.createObjectURL(audioBlob);
-          const duration = Math.round((Date.now() - recordingStartRef.current) / 1000);
+          const duration = recDurationRef.current;
           const newRec = {
             id: Math.random().toString(36).substring(7),
             url,
@@ -164,7 +166,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
 
         if (isPlaying) {
           audioChunksRef.current = [];
-          recordingStartRef.current = Date.now();
+          setRecDuration(0);
+          recDurationRef.current = 0;
           mediaRecorder.start(1000);
           setIsRecording(true);
         }
@@ -266,24 +269,36 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     let interval: number;
     if (isRecording) {
       interval = window.setInterval(() => {
-        setRecDuration(Math.round((Date.now() - recordingStartRef.current) / 1000));
+        setRecDuration(prev => {
+          const next = prev + 1;
+          recDurationRef.current = next;
+          return next;
+        });
       }, 1000);
-    } else {
-      setRecDuration(0);
     }
     return () => clearInterval(interval);
   }, [isRecording]);
 
   // Handle Play/Pause for Recording
   const togglePlay = () => {
-    if (!isPlaying && !isRecording && streamRef.current && mediaRecorderRef.current) {
-      audioChunksRef.current = [];
-      recordingStartRef.current = Date.now();
-      mediaRecorderRef.current.start(1000);
-      setIsRecording(true);
-    } else if (isPlaying && isRecording && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      if (!isPlaying) {
+        if (recorder.state === 'inactive') {
+          audioChunksRef.current = [];
+          setRecDuration(0);
+          recDurationRef.current = 0;
+          recorder.start(1000);
+        } else if (recorder.state === 'paused') {
+          recorder.resume();
+        }
+        setIsRecording(true);
+      } else {
+        if (recorder.state === 'recording') {
+          recorder.pause();
+        }
+        setIsRecording(false);
+      }
     }
     setIsPlaying(!isPlaying);
   };
