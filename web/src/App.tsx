@@ -43,8 +43,8 @@ function App() {
 
   return (
     <>
-      {/* Global Fullscreen Button */}
-      <div style={{ position: 'fixed', top: '20px', left: '20px', zIndex: 200 }}>
+      {/* Global Utilities */}
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200, display: 'flex', gap: '12px', alignItems: 'center' }}>
         <button 
           onClick={toggleFullscreen}
           className="btn-icon" 
@@ -59,6 +59,30 @@ function App() {
         >
           {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
         </button>
+        <a 
+          href="https://ko-fi.com/zhihao" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#ef4444', textDecoration: 'none', fontSize: '1.2rem',
+            background: 'rgba(255,255,255,0.05)', width: '40px', height: '40px', borderRadius: '50%',
+            border: '1px solid var(--glass-border)', transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+          }}
+          title="Buy me a coffee"
+        >
+          ❤
+        </a>
       </div>
 
       <RecordingsWidget recordings={recordings} setRecordings={setRecordings} />

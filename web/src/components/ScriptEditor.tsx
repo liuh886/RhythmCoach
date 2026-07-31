@@ -454,37 +454,6 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
         </div>
       </motion.div>
 
-      {/* Footer / Sponsor Link */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 100 }}
-      >
-        <a 
-          href="https://ko-fi.com/zhihao" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#ef4444', textDecoration: 'none', fontSize: '1.2rem',
-            background: 'rgba(255,255,255,0.05)', width: '40px', height: '40px', borderRadius: '50%',
-            border: '1px solid var(--glass-border)', transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            e.currentTarget.style.transform = 'scale(1.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          title="Support the Developer"
-        >
-          ❤
-        </a>
-      </motion.div>
     </>
   );
 }
