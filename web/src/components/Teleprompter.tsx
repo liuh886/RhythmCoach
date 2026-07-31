@@ -15,6 +15,7 @@ type VoiceState = 'SPEAKING' | 'SILENCE';
 
 export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }: TeleprompterProps) {
   const addRecording = useAppStore(state => state.addRecording);
+  const audioProfile = useAppStore(state => state.audioProfile);
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
   const [isMirrored, setIsMirrored] = useState(false);
@@ -76,8 +77,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
-            noiseSuppression: true, // Keep on to avoid static, but disable AGC
-            autoGainControl: false, // Disabling this fixes the 'pumping/rigid' volume issues
+            noiseSuppression: true, // Keep on to avoid static
+            autoGainControl: audioProfile === 'raw', // Disable for processed profiles to prevent pumping
             channelCount: 1
           } 
         });
@@ -96,40 +97,60 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         highpass.type = 'highpass';
         highpass.frequency.value = 80;
         
-        // 2. Broadcast EQ: Low Shelf (Adds natural body, not too boomy)
+        // 2. Broadcast EQ: Low Shelf
         const lowShelf = audioCtx.createBiquadFilter();
         lowShelf.type = 'lowshelf';
-        lowShelf.frequency.value = 150;
-        lowShelf.gain.value = 1.5; 
+        lowShelf.frequency.value = audioProfile === 'broadcast' ? 200 : 150;
+        lowShelf.gain.value = audioProfile === 'broadcast' ? 2 : 1.5; 
         
-        // 3. Broadcast EQ: High Shelf (Adds 'air' and openness, much less rigid than peaking)
+        // 3. Broadcast EQ: High Shelf / Peaking
         const presence = audioCtx.createBiquadFilter();
-        presence.type = 'highshelf';
-        presence.frequency.value = 4000;
-        presence.gain.value = 2;
+        if (audioProfile === 'broadcast') {
+          presence.type = 'peaking';
+          presence.frequency.value = 3500;
+          presence.Q.value = 1;
+          presence.gain.value = 3;
+        } else {
+          presence.type = 'highshelf';
+          presence.frequency.value = 4000;
+          presence.gain.value = 2;
+        }
         
-        // 4. Dynamics Compressor (Gentle 'glue', prevents squashed/rigid sound)
+        // 4. Dynamics Compressor
         const compressor = audioCtx.createDynamicsCompressor();
-        compressor.threshold.value = -18; // Only compress the louder peaks
-        compressor.knee.value = 15;       // Very soft knee for transparent transition
-        compressor.ratio.value = 2.5;     // Gentle ratio
-        compressor.attack.value = 0.005;  // 5ms attack
-        compressor.release.value = 0.25;  // 250ms release (natural decay, no pumping)
+        if (audioProfile === 'broadcast') {
+          compressor.threshold.value = -24; 
+          compressor.knee.value = 12;
+          compressor.ratio.value = 4;
+          compressor.attack.value = 0.01;
+          compressor.release.value = 0.1;
+        } else {
+          // Podcast (Gentle glue)
+          compressor.threshold.value = -18;
+          compressor.knee.value = 15;
+          compressor.ratio.value = 2.5;
+          compressor.attack.value = 0.005;
+          compressor.release.value = 0.25;
+        }
         
-        // 5. Hard Limiter (Safety net against clipping)
+        // 5. Hard Limiter (Safety net)
         const limiter = audioCtx.createDynamicsCompressor();
-        limiter.threshold.value = -2; // Cap at -2dB
+        limiter.threshold.value = -2;
         limiter.knee.value = 0;
         limiter.ratio.value = 20; 
         limiter.attack.value = 0.001;
         limiter.release.value = 0.05;
 
-        // Connect the chain sequentially
-        source.connect(highpass);
-        highpass.connect(lowShelf);
-        lowShelf.connect(presence);
-        presence.connect(compressor);
-        compressor.connect(limiter);
+        // Connect the chain based on profile
+        if (audioProfile === 'raw') {
+          source.connect(limiter);
+        } else {
+          source.connect(highpass);
+          highpass.connect(lowShelf);
+          lowShelf.connect(presence);
+          presence.connect(compressor);
+          compressor.connect(limiter);
+        }
         
         // Create a new stream from the processed audio
         const dest = audioCtx.createMediaStreamDestination();
@@ -139,7 +160,11 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         // Setup Analyzer for visualizer
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
-        compressor.connect(analyser);
+        if (audioProfile === 'raw') {
+          source.connect(analyser);
+        } else {
+          compressor.connect(analyser);
+        }
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         
         // Setup Recording using PROCESSED stream

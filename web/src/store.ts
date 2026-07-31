@@ -2,12 +2,15 @@ import { create } from 'zustand';
 import { Recording } from './types';
 import localforage from 'localforage';
 
+export type AudioProfile = 'raw' | 'podcast' | 'broadcast';
+
 interface AppState {
   mode: 'editor' | 'teleprompter';
   activeScript: string;
   targetCpm: number;
   globalLang: 'zh' | 'en';
   prompterMode: 'target' | 'free';
+  audioProfile: AudioProfile;
   recordings: Recording[];
   isRecordingsLoaded: boolean;
   
@@ -17,6 +20,7 @@ interface AppState {
   setTargetCpm: (cpm: number) => void;
   setGlobalLang: (lang: 'zh' | 'en') => void;
   setPrompterMode: (mode: 'target' | 'free') => void;
+  setAudioProfile: (profile: AudioProfile) => void;
   setRecordings: (updater: Recording[] | ((prev: Recording[]) => Recording[])) => void;
   loadRecordings: () => Promise<void>;
   addRecording: (rec: Recording) => void;
@@ -29,6 +33,7 @@ export const useAppStore = create<AppState>((set) => ({
   targetCpm: 220,
   globalLang: 'zh',
   prompterMode: 'target',
+  audioProfile: 'raw',
   recordings: [],
   isRecordingsLoaded: false,
 
@@ -37,6 +42,7 @@ export const useAppStore = create<AppState>((set) => ({
   setTargetCpm: (cpm) => set({ targetCpm: cpm }),
   setGlobalLang: (lang) => set({ globalLang: lang }),
   setPrompterMode: (mode) => set({ prompterMode: mode }),
+  setAudioProfile: (profile) => set({ audioProfile: profile }),
   
   setRecordings: (updater) => {
     set((state) => {

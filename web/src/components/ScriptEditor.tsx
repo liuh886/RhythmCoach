@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mic, Play, Save, Clock, FileText, Settings2, Activity, Library, ChevronRight, X, Trash2, Upload, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { defaultMaterials, ScriptMaterial } from './materials';
+import { useAppStore } from '../store';
 
 interface ScriptEditorProps {
   onStart: (script: string, cpm: number, lang: 'zh' | 'en', mode: 'target' | 'free') => void;
@@ -10,6 +11,9 @@ interface ScriptEditorProps {
 }
 
 export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEditorProps) {
+  const audioProfile = useAppStore(state => state.audioProfile);
+  const setAudioProfile = useAppStore(state => state.setAudioProfile);
+  
   const [title, setTitle] = useState('');
   const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [content, setContent] = useState('大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。');
@@ -414,6 +418,41 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
                 {lang === 'zh' ? '自由演讲 (手动)' : 'Free (Manual)'}
               </button>
             </div>
+          </div>
+
+
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+              <Mic size={16} /> {lang === 'zh' ? '人声增强配置 (DSP)' : 'Voice Enhancement (DSP)'}
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                className={`btn ${audioProfile === 'raw' ? '' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}
+                onClick={() => setAudioProfile('raw')}
+              >
+                {lang === 'zh' ? '原声 (无处理)' : 'Raw (None)'}
+              </button>
+              <button 
+                className={`btn ${audioProfile === 'podcast' ? '' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}
+                onClick={() => setAudioProfile('podcast')}
+              >
+                {lang === 'zh' ? '播客 (温暖自然)' : 'Podcast (Warm)'}
+              </button>
+              <button 
+                className={`btn ${audioProfile === 'broadcast' ? '' : 'btn-secondary'}`}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}
+                onClick={() => setAudioProfile('broadcast')}
+              >
+                {lang === 'zh' ? '广播 (清晰透亮)' : 'Broadcast (Crisp)'}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '8px', padding: '0 4px' }}>
+              {audioProfile === 'raw' && (lang === 'zh' ? '仅保留浏览器基础降噪，原汁原味还原麦克风声音。' : 'Basic browser noise suppression only, pure mic signal.')}
+              {audioProfile === 'podcast' && (lang === 'zh' ? '推荐。轻柔压缩动态，低频温暖厚实，适合安静环境下的深度长播。' : 'Recommended. Gentle compression, warm lows, great for long-form talking.')}
+              {audioProfile === 'broadcast' && (lang === 'zh' ? '较高压缩比与高频提升，声音极具穿透力，适合嘈杂环境或激昂演讲。' : 'Higher compression & high-end boost for maximum clarity and presence.')}
+            </p>
           </div>
 
           {prompterMode === 'target' && (
