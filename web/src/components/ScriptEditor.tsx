@@ -145,7 +145,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
           className="btn-icon"
           onClick={() => setIsDrawerOpen(true)}
           style={{
-            position: 'fixed', left: '20px', top: '80px', zIndex: 100,
+            position: 'fixed', left: '20px', top: '20px', zIndex: 100,
             background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
             backdropFilter: 'blur(20px)', width: '48px', height: '48px',
             color: 'var(--text-primary)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
