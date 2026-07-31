@@ -90,7 +90,20 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
         highpass.type = 'highpass';
         highpass.frequency.value = 80;
         
-        // 2. Dynamics Compressor to even out voice levels (softs louder, louds softer)
+        // 2. Broadcast EQ: Low Shelf (Adds "Warmth" and body)
+        const lowShelf = audioCtx.createBiquadFilter();
+        lowShelf.type = 'lowshelf';
+        lowShelf.frequency.value = 200;
+        lowShelf.gain.value = 2; // +2dB
+        
+        // 3. Broadcast EQ: Peaking (Adds "Presence" and clarity to consonants)
+        const presence = audioCtx.createBiquadFilter();
+        presence.type = 'peaking';
+        presence.frequency.value = 3500;
+        presence.Q.value = 1; // Wide band
+        presence.gain.value = 3; // +3dB
+
+        // 4. Dynamics Compressor to even out voice levels (softs louder, louds softer)
         const compressor = audioCtx.createDynamicsCompressor();
         compressor.threshold.value = -24; // Lower threshold to catch more voice
         compressor.knee.value = 12;
@@ -98,13 +111,24 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
         compressor.attack.value = 0.01;
         compressor.release.value = 0.1;
         
-        // 3. Connect the chain
+        // 5. Hard Limiter (Prevents audio clipping/distortion from EQ boosts)
+        const limiter = audioCtx.createDynamicsCompressor();
+        limiter.threshold.value = -3; // Cap at -3dB
+        limiter.knee.value = 0; // Hard knee
+        limiter.ratio.value = 20; // Brickwall
+        limiter.attack.value = 0.001; // Instant attack
+        limiter.release.value = 0.05;
+
+        // Connect the chain sequentially
         source.connect(highpass);
-        highpass.connect(compressor);
+        highpass.connect(lowShelf);
+        lowShelf.connect(presence);
+        presence.connect(compressor);
+        compressor.connect(limiter);
         
         // Create a new stream from the processed audio
         const dest = audioCtx.createMediaStreamDestination();
-        compressor.connect(dest);
+        limiter.connect(dest);
         const processedStream = dest.stream;
 
         // Setup Analyzer for visualizer
