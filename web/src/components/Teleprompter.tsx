@@ -468,7 +468,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              position: 'absolute', top: '35%', left: '50%', transform: 'translate(-50%, -50%)',
               zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
               cursor: 'pointer'
             }}
@@ -483,9 +483,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             }}>
               <Play size={48} fill="var(--accent-primary)" color="var(--accent-primary)" style={{ marginLeft: '8px' }} />
             </div>
-            <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-              {lang === 'zh' ? '点击开始排练' : 'Click to Start'}
-            </span>
           </motion.div>
         )}
         <div 
