@@ -1,21 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { RecordingsWidget } from './components/RecordingsWidget';
 import { AnimatePresence } from 'framer-motion';
-import { Recording } from './types';
 import { Maximize2, Minimize2, Languages } from 'lucide-react';
-import localforage from 'localforage';
+import { useAppStore } from './store';
 
 function App() {
-  const [mode, setMode] = useState<'editor' | 'teleprompter'>('editor');
-  const [activeScript, setActiveScript] = useState('');
-  const [targetCpm, setTargetCpm] = useState(220);
-  const [globalLang, setGlobalLang] = useState<'zh'|'en'>('zh');
-  const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
-  const [recordings, setRecordings] = useState<Recording[]>([]);
-  const [isRecordingsLoaded, setIsRecordingsLoaded] = useState(false);
+  return (
+    <AppInner />
+  );
+}
+
+// Inner component so we can use local state cleanly without messing with the replaced file bounds
+import { useState } from 'react';
+function AppInner() {
+  const {
+    mode, setMode,
+    activeScript, setActiveScript,
+    targetCpm, setTargetCpm,
+    globalLang, setGlobalLang,
+    prompterMode, setPrompterMode,
+    loadRecordings
+  } = useAppStore();
+
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    loadRecordings();
+  }, [loadRecordings]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -24,27 +37,6 @@ function App() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  useEffect(() => {
-    localforage.getItem<Recording[]>('rhythmcoach_recordings').then((savedRecs) => {
-      if (savedRecs && Array.isArray(savedRecs)) {
-        const withUrls = savedRecs.map(rec => {
-          if (rec.blob) {
-            rec.url = URL.createObjectURL(rec.blob);
-          }
-          return rec;
-        });
-        setRecordings(withUrls);
-      }
-      setIsRecordingsLoaded(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isRecordingsLoaded) {
-      localforage.setItem('rhythmcoach_recordings', recordings);
-    }
-  }, [recordings, isRecordingsLoaded]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -70,7 +62,7 @@ function App() {
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200, display: 'flex', gap: '12px', alignItems: 'center' }}>
         {mode === 'editor' && (
           <button 
-            onClick={() => setGlobalLang(l => l === 'zh' ? 'en' : 'zh')}
+            onClick={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
             className="btn-icon" 
             style={{ 
               background: 'rgba(255,255,255,0.05)', 
@@ -124,7 +116,7 @@ function App() {
         </a>
       </div>
 
-      <RecordingsWidget recordings={recordings} setRecordings={setRecordings} />
+      <RecordingsWidget />
       <AnimatePresence mode="wait">
         {mode === 'editor' && (
           <ScriptEditor key="editor" onStart={handleStart} globalLang={globalLang} setGlobalLang={setGlobalLang} />
@@ -138,7 +130,6 @@ function App() {
             lang={globalLang}
             prompterMode={prompterMode}
             onClose={() => setMode('editor')} 
-            setRecordings={setRecordings}
           />
         )}
       </AnimatePresence>

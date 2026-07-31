@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, X, CheckCircle2, Settings2, Activity, FlipHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Recording } from '../types';
+import { useAppStore } from '../store';
 
 interface TeleprompterProps {
   script: string;
@@ -9,12 +9,12 @@ interface TeleprompterProps {
   lang: 'zh' | 'en';
   prompterMode: 'target' | 'free';
   onClose: () => void;
-  setRecordings: React.Dispatch<React.SetStateAction<Recording[]>>;
 }
 
 type VoiceState = 'SPEAKING' | 'SILENCE';
 
-export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, setRecordings }: TeleprompterProps) {
+export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }: TeleprompterProps) {
+  const addRecording = useAppStore(state => state.addRecording);
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
   const [isMirrored, setIsMirrored] = useState(false);
@@ -163,7 +163,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             durationSec: duration,
             blob: audioBlob
           };
-          setRecordings(prev => [...prev, newRec]);
+          addRecording(newRec);
         };
 
         if (isPlaying) {

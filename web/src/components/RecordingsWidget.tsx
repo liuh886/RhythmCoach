@@ -2,17 +2,16 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Trash2, Edit2, Play, Pause } from 'lucide-react';
 import { Recording } from '../types';
-
-interface RecordingsWidgetProps {
-  recordings: Recording[];
-  setRecordings: React.Dispatch<React.SetStateAction<Recording[]>>;
-}
+import { useAppStore } from '../store';
 
 function RecordingItem({ 
-  rec, removeRecording, setRecordings 
+  rec 
 }: { 
-  rec: Recording; removeRecording: (id: string) => void; setRecordings: React.Dispatch<React.SetStateAction<Recording[]>> 
+  rec: Recording; 
 }) {
+  const deleteRecording = useAppStore(state => state.deleteRecording);
+  const setRecordings = useAppStore(state => state.setRecordings);
+  
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -115,7 +114,7 @@ function RecordingItem({
           <Download size={16} />
         </a>
         <button 
-          onClick={() => removeRecording(rec.id)}
+          onClick={() => deleteRecording(rec.id)}
           className="btn-icon" 
           style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
           title="Delete"
@@ -127,12 +126,10 @@ function RecordingItem({
   );
 }
 
-export function RecordingsWidget({ recordings, setRecordings }: RecordingsWidgetProps) {
-  if (recordings.length === 0) return null;
+export function RecordingsWidget() {
+  const recordings = useAppStore(state => state.recordings);
 
-  const removeRecording = (id: string) => {
-    setRecordings(prev => prev.filter(r => r.id !== id));
-  };
+  if (recordings.length === 0) return null;
 
   return (
     <motion.div
@@ -150,8 +147,6 @@ export function RecordingsWidget({ recordings, setRecordings }: RecordingsWidget
           <RecordingItem 
             key={rec.id} 
             rec={rec} 
-            removeRecording={removeRecording} 
-            setRecordings={setRecordings} 
           />
         ))}
       </AnimatePresence>
