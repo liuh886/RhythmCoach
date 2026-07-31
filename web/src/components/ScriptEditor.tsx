@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity, Library, ChevronRight, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity, Library, ChevronRight, X, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { defaultMaterials } from './materials';
+import { defaultMaterials, ScriptMaterial } from './materials';
 
 interface ScriptEditorProps {
   onStart: (script: string, cpm: number, lang: 'zh' | 'en', mode: 'target' | 'free') => void;
@@ -16,6 +16,19 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [customMaterials, setCustomMaterials] = useState<ScriptMaterial[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('rhythm_custom_materials');
+    if (saved) {
+      try {
+        setCustomMaterials(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse custom materials');
+      }
+    }
+  }, []);
 
   const wordCount = lang === 'zh' 
     ? (content.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length
@@ -40,9 +53,36 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const handleImport = (matTitle: string, matContent: string) => {
     setTitle(matTitle);
     setContent(matContent);
-    setLang('zh'); // All materials are in Chinese
+    setLang('zh'); // Most templates are Chinese
     setCpm(220);
     setIsDrawerOpen(false);
+  };
+
+  const handleSaveDraft = () => {
+    if (!content.trim()) return;
+    const finalTitle = title.trim() || `未命名草稿 ${new Date().toLocaleDateString()}`;
+    const newMaterial: ScriptMaterial = {
+      id: Date.now().toString(),
+      title: finalTitle,
+      content: content.trim()
+    };
+    const updated = [newMaterial, ...customMaterials];
+    setCustomMaterials(updated);
+    localStorage.setItem('rhythm_custom_materials', JSON.stringify(updated));
+    
+    // UI Feedback
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      setIsDrawerOpen(true);
+    }, 800);
+  };
+
+  const handleDeleteCustom = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = customMaterials.filter(m => m.id !== id);
+    setCustomMaterials(updated);
+    localStorage.setItem('rhythm_custom_materials', JSON.stringify(updated));
   };
 
   return (
@@ -106,29 +146,76 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               </div>
               
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {defaultMaterials.map((mat, index) => (
-                    <motion.div 
-                      key={mat.id}
-                      whileHover={{ scale: 1.02 }}
-                      style={{ 
-                        background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', 
-                        borderRadius: '12px', padding: '16px', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', gap: '8px'
-                      }}
-                      onClick={() => handleImport(mat.title, mat.content)}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                          {index + 1}. {mat.title}
-                        </span>
-                        <ChevronRight size={16} color="var(--text-secondary)" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  
+                  {/* Custom Drafts Section */}
+                  {customMaterials.length > 0 && (
+                    <div>
+                      <h4 style={{ margin: '0 0 12px 8px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>我的草稿 ({customMaterials.length})</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {customMaterials.map((mat) => (
+                          <motion.div 
+                            key={mat.id}
+                            whileHover={{ scale: 1.02 }}
+                            style={{ 
+                              background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)', 
+                              borderRadius: '12px', padding: '16px', cursor: 'pointer',
+                              display: 'flex', flexDirection: 'column', gap: '8px'
+                            }}
+                            onClick={() => handleImport(mat.title, mat.content)}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                                {mat.title}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button 
+                                  className="btn-icon" 
+                                  onClick={(e) => handleDeleteCustom(e, mat.id)}
+                                  style={{ width: '24px', height: '24px', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                                <ChevronRight size={16} color="var(--accent-primary)" />
+                              </div>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {mat.content}
+                            </p>
+                          </motion.div>
+                        ))}
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {mat.content}
-                      </p>
-                    </motion.div>
-                  ))}
+                    </div>
+                  )}
+
+                  {/* Default Materials Section */}
+                  <div>
+                    <h4 style={{ margin: '0 0 12px 8px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>精选练习素材 ({defaultMaterials.length})</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {defaultMaterials.map((mat, index) => (
+                        <motion.div 
+                          key={mat.id}
+                          whileHover={{ scale: 1.02 }}
+                          style={{ 
+                            background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', 
+                            borderRadius: '12px', padding: '16px', cursor: 'pointer',
+                            display: 'flex', flexDirection: 'column', gap: '8px'
+                          }}
+                          onClick={() => handleImport(mat.title, mat.content)}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                              {index + 1}. {mat.title}
+                            </span>
+                            <ChevronRight size={16} color="var(--text-secondary)" />
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {mat.content}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -255,8 +342,8 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '20px' }}>
-            <button className="btn btn-secondary">
-              <Save size={18} /> {lang === 'zh' ? '保存草稿' : 'Save Draft'}
+            <button className="btn btn-secondary" onClick={handleSaveDraft} disabled={!content.trim() || isSaving}>
+              <Save size={18} /> {isSaving ? (lang === 'zh' ? '已保存!' : 'Saved!') : (lang === 'zh' ? '保存草稿' : 'Save Draft')}
             </button>
             <motion.button 
               whileHover={{ scale: 1.02 }}
