@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Mic, Play, Save, Clock, FileText, Settings2, Languages } from 'lucide-react';
+import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface ScriptEditorProps {
-  onStart: (script: string, cpm: number, lang: 'zh' | 'en') => void;
+  onStart: (script: string, cpm: number, lang: 'zh' | 'en', mode: 'target' | 'free') => void;
 }
 
 export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const [title, setTitle] = useState('');
   const [lang, setLang] = useState<'zh'|'en'>('zh');
+  const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [content, setContent] = useState('大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。');
   const [cpm, setCpm] = useState(220);
 
@@ -96,32 +97,60 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>{lang === 'zh' ? '预估时长' : 'Estimated Time'}</span>
             <span style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={20} color="var(--text-secondary)"/>
-              {mins > 0 ? (lang === 'zh' ? `${mins}分 ` : `${mins}m `) : ''}{secs}{lang === 'zh' ? '秒' : 's'}
+              {prompterMode === 'target' 
+                ? (mins > 0 ? (lang === 'zh' ? `${mins}分 ` : `${mins}m `) : '') + `${secs}` + (lang === 'zh' ? '秒' : 's')
+                : (lang === 'zh' ? '-- 分 -- 秒' : '-- m -- s')
+              }
             </span>
           </div>
         </div>
 
+        {/* Mode Selector */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-              <Settings2 size={16} /> {lang === 'zh' ? '目标语速' : 'Target Speed'}
-            </label>
-            <span style={{ background: 'var(--accent-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
-              {cpm} {lang === 'zh' ? '字 / 分钟 (CPM)' : 'Words / Min (WPM)'}
-            </span>
-          </div>
-          <input 
-            type="range" 
-            min="80" max="350" 
-            value={cpm} 
-            onChange={e => setCpm(parseInt(e.target.value))}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            <span>{lang === 'zh' ? '舒缓 (120)' : 'Slow (100)'}</span>
-            <span>{lang === 'zh' ? '适中 (220)' : 'Normal (150)'}</span>
-            <span>{lang === 'zh' ? '急促 (350)' : 'Fast (250)'}</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <Activity size={16} /> {lang === 'zh' ? '提词模式' : 'Prompter Mode'}
+          </label>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              className={`btn ${prompterMode === 'target' ? '' : 'btn-secondary'}`}
+              style={{ flex: 1, padding: '12px' }}
+              onClick={() => setPrompterMode('target')}
+            >
+              {lang === 'zh' ? '定速训练 (自动滚动)' : 'Target Pace (Auto-scroll)'}
+            </button>
+            <button 
+              className={`btn ${prompterMode === 'free' ? '' : 'btn-secondary'}`}
+              style={{ flex: 1, padding: '12px' }}
+              onClick={() => setPrompterMode('free')}
+            >
+              {lang === 'zh' ? '自由演讲 (手动控制)' : 'Free Pace (Manual)'}
+            </button>
           </div>
         </div>
+
+        {prompterMode === 'target' && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', marginTop: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                <Settings2 size={16} /> {lang === 'zh' ? '目标语速' : 'Target Speed'}
+              </label>
+              <span style={{ background: 'var(--accent-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
+                {cpm} {lang === 'zh' ? '字 / 分钟 (CPM)' : 'Words / Min (WPM)'}
+              </span>
+            </div>
+            <input 
+              type="range" 
+              min="80" max="350" 
+              value={cpm} 
+              onChange={e => setCpm(parseInt(e.target.value))}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              <span>{lang === 'zh' ? '舒缓 (120)' : 'Slow (100)'}</span>
+              <span>{lang === 'zh' ? '适中 (220)' : 'Normal (150)'}</span>
+              <span>{lang === 'zh' ? '急促 (350)' : 'Fast (250)'}</span>
+            </div>
+          </motion.div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '20px' }}>
           <button className="btn btn-secondary">
@@ -131,7 +160,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="btn" 
-            onClick={() => onStart(content, cpm, lang)}
+            onClick={() => onStart(content, cpm, lang, prompterMode)}
           >
             <Play size={18} fill="currentColor" /> {lang === 'zh' ? '进入提词模式' : 'Start Prompter'}
           </motion.button>
