@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Play, Pause, Activity, Maximize2, Minimize2, Download, Trash2, Mic, Settings2, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Play, Pause, X, CheckCircle2, Settings2, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Recording } from '../types';
 
 interface TeleprompterProps {
   script: string;
@@ -8,18 +9,12 @@ interface TeleprompterProps {
   lang: 'zh' | 'en';
   prompterMode: 'target' | 'free';
   onClose: () => void;
+  setRecordings: React.Dispatch<React.SetStateAction<Recording[]>>;
 }
 
 type VoiceState = 'SPEAKING' | 'SILENCE';
 
-interface Recording {
-  id: string;
-  url: string;
-  name: string;
-  durationSec: number;
-}
-
-export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }: TeleprompterProps) {
+export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, setRecordings }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
   
@@ -27,11 +22,9 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
   const [localTargetCpm, setLocalTargetCpm] = useState(targetCpm);
   const [currentCpm, setCurrentCpm] = useState(0);
   
-  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Recordings
   const [isRecording, setIsRecording] = useState(false);
-  const [recordings, setRecordings] = useState<Recording[]>([]);
   
   const [manualScrollTimeout, setManualScrollTimeout] = useState<number | null>(null);
   
@@ -57,17 +50,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
       : (script.match(/\b\w+\b/g) || []).length;
   }, [script, lang]);
   
-  // Fullscreen handling
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => console.log(err));
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(()=>{});
-      setIsFullscreen(false);
-    }
-  };
-
   const handleManualScroll = useCallback(() => {
     if (manualScrollTimeout) clearTimeout(manualScrollTimeout);
     const timeout = window.setTimeout(() => {
@@ -276,9 +258,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
     onClose();
   };
 
-  const removeRecording = (id: string) => {
-    setRecordings(prev => prev.filter(r => r.id !== id));
-  };
+
 
   // Scrolling logic
   useEffect(() => {
@@ -360,61 +340,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Recording List Sidebar (Left) */}
-      <div style={{ position: 'absolute', top: '100px', left: '40px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <AnimatePresence>
-          {recordings.map((rec) => (
-            <motion.div
-              key={rec.id}
-              initial={{ opacity: 0, x: -20, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -50, scale: 0.8 }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.x < -100) removeRecording(rec.id);
-              }}
-              className="glass-panel"
-              style={{
-                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '16px',
-                background: 'rgba(24, 24, 27, 0.7)', border: '1px solid var(--glass-border)',
-                cursor: 'grab'
-              }}
-              whileDrag={{ scale: 1.05, cursor: 'grabbing', opacity: 0.8 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
-                <Mic size={18} color="var(--accent-primary)" />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span>{rec.name}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                    {Math.floor(rec.durationSec / 60)}:{(rec.durationSec % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <a 
-                  href={rec.url} 
-                  download={`${rec.name}.webm`}
-                  className="btn-icon" 
-                  style={{ width: '32px', height: '32px', background: 'rgba(99,102,241,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(99,102,241,0.2)' }}
-                  title="Download"
-                >
-                  <Download size={16} />
-                </a>
-                <button 
-                  onClick={() => removeRecording(rec.id)}
-                  className="btn-icon" 
-                  style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
-                  title="Delete (or swipe left)"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
 
       {/* Draggable Rhythm Widget (Right) */}
       <motion.div 
@@ -526,9 +451,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
           <button className="btn-icon" onClick={handleFinish} title="Finish Session" style={{ background: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80' }}>
             <CheckCircle2 size={22} />
           </button>
-          <button className="btn-icon" onClick={toggleFullscreen} title="Toggle Fullscreen">
-            {isFullscreen ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
-          </button>
           <button className="btn-icon" onClick={handleClose} style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}>
             <X size={22} />
           </button>
@@ -540,6 +462,32 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         className="fade-mask"
         style={{ height: '100vh', width: '100%', display: 'flex', justifyContent: 'center' }}
       >
+        {!isPlaying && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+              cursor: 'pointer'
+            }}
+            onClick={togglePlay}
+          >
+            <div style={{
+              width: '100px', height: '100px', borderRadius: '50%',
+              background: 'rgba(99, 102, 241, 0.2)', border: '2px solid var(--accent-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 40px rgba(99, 102, 241, 0.4)',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <Play size={48} fill="var(--accent-primary)" color="var(--accent-primary)" style={{ marginLeft: '8px' }} />
+            </div>
+            <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+              {lang === 'zh' ? '点击开始排练' : 'Click to Start'}
+            </span>
+          </motion.div>
+        )}
         <div 
           ref={scrollRef}
           onWheel={handleManualScroll}

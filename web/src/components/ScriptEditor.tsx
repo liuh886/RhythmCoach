@@ -235,19 +235,28 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
         style={{ padding: '32px', maxWidth: '800px', margin: '60px auto', width: '92%' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ 
-              background: 'var(--accent-glow)', padding: '12px', borderRadius: '16px',
-              boxShadow: '0 0 20px var(--accent-glow)'
+              background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(56, 189, 248, 0.2))', 
+              padding: '14px', borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 8px 32px rgba(167, 139, 250, 0.15)'
             }}>
-              <Mic size={28} color="var(--text-primary)" />
+              <Mic size={32} color="var(--accent-primary)" />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>节奏教练</h2>
-              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0', fontSize: '0.95rem' }}>你的智能口播排练助手</p>
+              <h2 style={{ 
+                fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px',
+                background: 'linear-gradient(135deg, #fff, #a78bfa)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.5))'
+              }}>RhythmCoach</h2>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 500 }}>
+                {lang === 'zh' ? '你的智能口播排练助手' : 'Your Smart Teleprompter'}
+              </p>
             </div>
           </div>
-          <button onClick={handleLangToggle} className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)' }}>
+          <button onClick={handleLangToggle} className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}>
             <Languages size={18} /> {lang === 'zh' ? '切换到英文 (WPM)' : 'Switch to Chinese'}
           </button>
         </div>
@@ -381,28 +390,30 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.5 }}
-        style={{ textAlign: 'center', padding: '0 0 40px 0' }}
+        style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 100 }}
       >
         <a 
           href="https://ko-fi.com/zhihao" 
           target="_blank" 
           rel="noopener noreferrer"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem',
-            background: 'rgba(255,255,255,0.05)', padding: '8px 16px', borderRadius: '20px',
-            border: '1px solid var(--glass-border)', transition: 'all 0.2s'
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#ef4444', textDecoration: 'none', fontSize: '1.2rem',
+            background: 'rgba(255,255,255,0.05)', width: '40px', height: '40px', borderRadius: '50%',
+            border: '1px solid var(--glass-border)', transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            e.currentTarget.style.color = 'var(--text-primary)';
+            e.currentTarget.style.transform = 'scale(1.1)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            e.currentTarget.style.color = 'var(--text-secondary)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
+          title="Support the Developer"
         >
-          ☕ Support the Developer on Ko-fi
+          ❤
         </a>
       </motion.div>
     </>
