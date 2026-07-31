@@ -299,37 +299,37 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
       </AnimatePresence>
 
       <motion.div 
+        className="editor-layout"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="glass-panel" 
-        style={{ padding: '32px', maxWidth: '800px', margin: '60px auto', width: '92%' }}
+        style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', maxWidth: '1200px', margin: '60px auto', width: '92%' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(56, 189, 248, 0.2))', 
-              padding: '14px', borderRadius: '20px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 8px 32px rgba(167, 139, 250, 0.15)'
-            }}>
-              <Mic size={32} color="var(--accent-primary)" />
-            </div>
-            <div>
-              <h2 style={{ 
-                fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px',
-                background: 'linear-gradient(135deg, #fff, #a78bfa)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.5))'
-              }}>RhythmCoach</h2>
-              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 500 }}>
-                {lang === 'zh' ? '你的智能口播排练助手' : 'Your Smart Teleprompter'}
-              </p>
+        {/* Left Column: Script Editing */}
+        <div className="glass-panel" style={{ padding: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ 
+                background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(56, 189, 248, 0.2))', 
+                padding: '14px', borderRadius: '20px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 8px 32px rgba(167, 139, 250, 0.15)'
+              }}>
+                <Mic size={32} color="var(--accent-primary)" />
+              </div>
+              <div>
+                <h2 style={{ 
+                  fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px',
+                  background: 'linear-gradient(135deg, #fff, #a78bfa)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.5))'
+                }}>RhythmCoach</h2>
+                <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 500 }}>
+                  {lang === 'zh' ? '你的智能口播排练助手' : 'Your Smart Teleprompter'}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>
               <FileText size={16} /> {lang === 'zh' ? '稿件标题' : 'Script Title'}
@@ -342,14 +342,14 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
             />
           </div>
 
-          <div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <label style={{ display: 'block', marginBottom: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>
               {lang === 'zh' ? '稿件正文' : 'Script Content'}
             </label>
             <textarea 
               value={content}
               onChange={e => setContent(e.target.value)}
-              style={{ minHeight: '260px', resize: 'vertical' }}
+              style={{ flex: 1, minHeight: '300px', resize: 'vertical' }}
               placeholder={lang === 'zh' ? "输入或粘贴你的口播稿件..." : "Type or paste your script..."}
             />
             {currentTip && (
@@ -368,7 +368,11 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
               </motion.div>
             )}
           </div>
+        </div>
 
+        {/* Right Column: Settings */}
+        <div className="glass-panel" style={{ padding: '40px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
           <div style={{ 
             display: 'flex', justifyContent: 'space-between', 
             background: 'rgba(0,0,0,0.2)', padding: '16px 20px', borderRadius: '12px',
@@ -390,7 +394,6 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
             </div>
           </div>
 
-          {/* Mode Selector */}
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>
               <Activity size={16} /> {lang === 'zh' ? '提词模式' : 'Prompter Mode'}
@@ -398,17 +401,17 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 className={`btn ${prompterMode === 'target' ? '' : 'btn-secondary'}`}
-                style={{ flex: 1, padding: '12px' }}
+                style={{ flex: 1, padding: '12px', fontSize: '0.9rem' }}
                 onClick={() => setPrompterMode('target')}
               >
-                {lang === 'zh' ? '定速训练 (自动滚动)' : 'Target Pace (Auto-scroll)'}
+                {lang === 'zh' ? '定速训练 (自动)' : 'Target (Auto)'}
               </button>
               <button 
                 className={`btn ${prompterMode === 'free' ? '' : 'btn-secondary'}`}
-                style={{ flex: 1, padding: '12px' }}
+                style={{ flex: 1, padding: '12px', fontSize: '0.9rem' }}
                 onClick={() => setPrompterMode('free')}
               >
-                {lang === 'zh' ? '自由演讲 (手动控制)' : 'Free Pace (Manual)'}
+                {lang === 'zh' ? '自由演讲 (手动)' : 'Free (Manual)'}
               </button>
             </div>
           </div>
@@ -420,7 +423,7 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
                   <Settings2 size={16} /> {lang === 'zh' ? '目标语速' : 'Target Speed'}
                 </label>
                 <span style={{ background: 'var(--accent-primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
-                  {cpm} {lang === 'zh' ? '字 / 分钟 (CPM)' : 'Words / Min (WPM)'}
+                  {cpm} {lang === 'zh' ? '字 / 分钟 (CPM)' : 'Words / Min'}
                 </span>
               </div>
               <input 
@@ -437,8 +440,8 @@ export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEdito
             </motion.div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '20px' }}>
-            <button className="btn btn-secondary" onClick={handleSaveDraft} disabled={!content.trim() || isSaving}>
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '20px' }}>
+            <button className="btn btn-secondary" onClick={handleSaveDraft} disabled={!content.trim() || isSaving} style={{ justifyContent: 'center' }}>
               <Save size={18} /> {isSaving ? (lang === 'zh' ? '已保存!' : 'Saved!') : (lang === 'zh' ? '保存草稿' : 'Save Draft')}
             </button>
             <motion.button 

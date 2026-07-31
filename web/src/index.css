@@ -190,3 +190,4 @@ input[type="range"]::-webkit-slider-thumb:hover {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
 }
+.editor-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; width: 100%; max-width: 1200px; margin: 40px auto; align-items: stretch; } @media (max-width: 900px) { .editor-layout { grid-template-columns: 1fr; } }
