@@ -160,7 +160,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             id: Math.random().toString(36).substring(7),
             url,
             name: `Rec_${new Date().toLocaleTimeString().replace(/:/g,'-')}`,
-            durationSec: duration
+            durationSec: duration,
+            blob: audioBlob
           };
           setRecordings(prev => [...prev, newRec]);
         };

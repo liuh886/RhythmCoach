@@ -3,4 +3,5 @@ export interface Recording {
   url: string;
   name: string;
   durationSec: number;
+  blob?: Blob;
 }

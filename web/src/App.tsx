@@ -5,6 +5,7 @@ import { RecordingsWidget } from './components/RecordingsWidget';
 import { AnimatePresence } from 'framer-motion';
 import { Recording } from './types';
 import { Maximize2, Minimize2, Languages } from 'lucide-react';
+import localforage from 'localforage';
 
 function App() {
   const [mode, setMode] = useState<'editor' | 'teleprompter'>('editor');
@@ -13,6 +14,7 @@ function App() {
   const [globalLang, setGlobalLang] = useState<'zh'|'en'>('zh');
   const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [isRecordingsLoaded, setIsRecordingsLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -24,16 +26,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (recordings.length > 0) {
-        e.preventDefault();
-        e.returnValue = '你有未保存的录音文件，刷新或关闭页面将永久丢失它们。请确保你已经下载了重要的录音。';
-        return e.returnValue;
+    localforage.getItem<Recording[]>('rhythmcoach_recordings').then((savedRecs) => {
+      if (savedRecs && Array.isArray(savedRecs)) {
+        const withUrls = savedRecs.map(rec => {
+          if (rec.blob) {
+            rec.url = URL.createObjectURL(rec.blob);
+          }
+          return rec;
+        });
+        setRecordings(withUrls);
       }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [recordings]);
+      setIsRecordingsLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isRecordingsLoaded) {
+      localforage.setItem('rhythmcoach_recordings', recordings);
+    }
+  }, [recordings, isRecordingsLoaded]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
