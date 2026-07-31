@@ -250,6 +250,17 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+    setIsPlaying(false);
+
+    if (totalTimeMsRef.current > 5000 && !showSummary) {
+      const totalSecs = Math.round(totalTimeMsRef.current / 1000);
+      const speakSecs = Math.round(speakingTimeMsRef.current / 1000);
+      const avg = speakSecs > 0 ? Math.round(wordCountRef.current / (speakSecs / 60)) : 0;
+      setStats({ totalTime: totalSecs, speakingTime: speakSecs, avgCpm: avg });
+      setShowSummary(true);
+      return;
+    }
+
     streamRef.current?.getTracks().forEach(track => track.stop());
     audioContextRef.current?.close();
     if (document.fullscreenElement) {
