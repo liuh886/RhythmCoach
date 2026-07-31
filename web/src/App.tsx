@@ -7,10 +7,12 @@ function App() {
   const [mode, setMode] = useState<'editor' | 'teleprompter'>('editor');
   const [activeScript, setActiveScript] = useState('');
   const [targetCpm, setTargetCpm] = useState(220);
+  const [lang, setLang] = useState<'zh'|'en'>('zh');
 
-  const handleStart = (script: string, cpm: number) => {
+  const handleStart = (script: string, cpm: number, lang: 'zh' | 'en') => {
     setActiveScript(script);
     setTargetCpm(cpm);
+    setLang(lang);
     setMode('teleprompter');
   };
 
@@ -26,6 +28,7 @@ function App() {
             key="teleprompter"
             script={activeScript} 
             targetCpm={targetCpm} 
+            lang={lang}
             onClose={() => setMode('editor')} 
           />
         )}

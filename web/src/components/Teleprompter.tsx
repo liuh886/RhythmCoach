@@ -1,25 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
-import { X, Play, Pause, Activity, Maximize2, Minimize2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Play, Pause, Activity, Maximize2, Minimize2, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TeleprompterProps {
   script: string;
   targetCpm: number;
+  lang: 'zh' | 'en';
   onClose: () => void;
 }
 
 type VoiceState = 'SPEAKING' | 'SILENCE';
 
-export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) {
+export function Teleprompter({ script, targetCpm, lang, onClose }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
   const [currentCpm, setCurrentCpm] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [manualScrollTimeout, setManualScrollTimeout] = useState<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const requestRef = useRef<number>(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [audioData, setAudioData] = useState<number[]>(Array(12).fill(10));
   
   // Fullscreen handling
@@ -28,12 +34,21 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
       document.documentElement.requestFullscreen().catch(err => console.log(err));
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen();
+      document.exitFullscreen().catch(()=>{});
       setIsFullscreen(false);
     }
   };
+
+  const handleManualScroll = useCallback(() => {
+    // If user interacts with scroll, pause auto-scroll for 1.5 seconds
+    if (manualScrollTimeout) clearTimeout(manualScrollTimeout);
+    const timeout = window.setTimeout(() => {
+      setManualScrollTimeout(null);
+    }, 1500);
+    setManualScrollTimeout(timeout);
+  }, [manualScrollTimeout]);
   
-  // Audio Analysis Setup
+  // Audio Analysis & Recording Setup
   useEffect(() => {
     let analyser: AnalyserNode;
     let dataArray: Uint8Array;
@@ -45,6 +60,27 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
         
+        // Setup Recording
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const url = URL.createObjectURL(audioBlob);
+          setAudioUrl(url);
+        };
+
+        if (isPlaying) {
+          mediaRecorder.start(1000);
+          setIsRecording(true);
+        }
+
+        // Setup Analysis
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         const audioCtx = new AudioContextClass();
         audioContextRef.current = audioCtx;
@@ -66,10 +102,9 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
           const rms = Math.sqrt(sum / dataArray.length);
           
           if (time - lastVolumeUpdate > 50) {
-            // Update visualizer data
             setAudioData(prev => {
               const newData = [...prev.slice(1)];
-              newData.push(Math.max(10, rms * 800)); // scale up rms for visual
+              newData.push(Math.max(10, rms * 800)); 
               return newData;
             });
             lastVolumeUpdate = time;
@@ -78,7 +113,6 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
           if (rms > 0.02) { 
             setVoiceState('SPEAKING');
             silenceStart = 0;
-            // Fake CPM calculation for MVP to show activity
             setCurrentCpm(prev => {
               if (prev === 0) return targetCpm;
               const vary = Math.random() > 0.8 ? (Math.random() > 0.5 ? 2 : -2) : 0;
@@ -92,14 +126,11 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
             }
           }
           
-          if (isPlaying) {
-            requestRef.current = requestAnimationFrame(checkAudio);
-          }
+          requestRef.current = requestAnimationFrame(checkAudio);
         };
         
-        if (isPlaying) {
-          requestRef.current = requestAnimationFrame(checkAudio);
-        }
+        requestRef.current = requestAnimationFrame(checkAudio);
+        
       } catch (err) {
         console.error("Microphone access denied or error:", err);
       }
@@ -114,16 +145,29 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
     };
   }, [isPlaying, targetCpm]);
 
-  // Clean up audio on unmount
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach(track => track.stop());
-      audioContextRef.current?.close();
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(()=>{});
-      }
-    };
-  }, []);
+  // Handle Play/Pause for Recording
+  const togglePlay = () => {
+    if (!isPlaying && !isRecording && streamRef.current && mediaRecorderRef.current) {
+      audioChunksRef.current = [];
+      mediaRecorderRef.current.start(1000);
+      setIsRecording(true);
+      setAudioUrl(null);
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  // Clean up audio on unmount or close
+  const handleClose = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    audioContextRef.current?.close();
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(()=>{});
+    }
+    onClose();
+  };
 
   // Scrolling logic
   useEffect(() => {
@@ -134,13 +178,15 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
       const delta = time - lastTime;
       lastTime = time;
       
-      // We only scroll if playing and NOT silent
-      if (isPlaying && voiceState === 'SPEAKING' && scrollRef.current) {
-        // Average char height in this layout is ~90px, targetCpm is per minute.
-        // pixelsPerSecond = (cpm / 60) * charsPerRow
-        // For a teleprompter, usually people tune speed directly. We map targetCpm to a reasonable speed.
-        const pixelsPerSecond = (targetCpm / 60) * 15; // tuning factor
+      // Auto-scroll ONLY if playing, speaking, and NOT manually scrolling
+      if (isPlaying && voiceState === 'SPEAKING' && scrollRef.current && !manualScrollTimeout) {
+        // Different mapping for English (WPM) vs Chinese (CPM)
+        // English words take more horizontal space per unit.
+        const speedFactor = lang === 'en' ? 20 : 15;
+        const pixelsPerSecond = (targetCpm / 60) * speedFactor; 
         const scrollAmount = (pixelsPerSecond * delta) / 1000;
+        
+        // Add scroll directly without resetting scroll pos
         scrollRef.current.scrollTop += scrollAmount;
       }
       
@@ -149,7 +195,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
     
     scrollRequest = requestAnimationFrame(scroll);
     return () => cancelAnimationFrame(scrollRequest);
-  }, [isPlaying, voiceState, targetCpm]);
+  }, [isPlaying, voiceState, targetCpm, manualScrollTimeout, lang]);
 
   return (
     <motion.div 
@@ -183,7 +229,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
             fontSize: '0.95rem'
           }}>
             <Activity size={18} className={voiceState === 'SPEAKING' ? 'pulse' : ''} />
-            {voiceState === 'SPEAKING' ? '状态稳定' : '检测停顿中'}
+            {voiceState === 'SPEAKING' ? (lang === 'zh' ? '状态稳定' : 'Speaking') : (lang === 'zh' ? '检测停顿中' : 'Paused')}
           </span>
           <button 
             className="btn-icon" 
@@ -192,7 +238,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
               borderColor: isPlaying ? 'var(--accent-primary)' : 'var(--glass-border)',
               color: isPlaying ? 'white' : 'var(--text-primary)'
             }} 
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={togglePlay}
           >
             {isPlaying ? <Pause size={20} fill="currentColor"/> : <Play size={20} fill="currentColor"/>}
           </button>
@@ -202,7 +248,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
           <span style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-2px' }}>
             {currentCpm}
           </span>
-          <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>CPM</span>
+          <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{lang === 'zh' ? 'CPM' : 'WPM'}</span>
         </div>
 
         {/* Audio Visualizer */}
@@ -235,14 +281,30 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
         pointerEvents: 'none'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: isPlaying ? 'var(--status-stable)' : 'var(--status-pause)', boxShadow: isPlaying ? '0 0 10px var(--status-stable)' : 'none' }} />
-          <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>LIVE PROMPTER</h3>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: isRecording ? '#ef4444' : (isPlaying ? 'var(--status-stable)' : 'var(--status-pause)'), boxShadow: isRecording ? '0 0 10px #ef4444' : 'none' }} className={isRecording ? 'pulse' : ''} />
+          <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>
+            {isRecording ? 'REC' : 'LIVE PROMPTER'}
+          </h3>
+          {/* Audio Download Button */}
+          <AnimatePresence>
+            {audioUrl && !isPlaying && (
+              <motion.a 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                href={audioUrl} 
+                download={`rhythm_coach_recording_${new Date().getTime()}.webm`}
+                style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary)', textDecoration: 'none', background: 'rgba(99,102,241,0.1)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)' }}
+              >
+                <Download size={16} /> {lang === 'zh' ? '下载录音' : 'Download Audio'}
+              </motion.a>
+            )}
+          </AnimatePresence>
         </div>
         <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
           <button className="btn-icon" onClick={toggleFullscreen} title="Toggle Fullscreen">
             {isFullscreen ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
           </button>
-          <button className="btn-icon" onClick={onClose} style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}>
+          <button className="btn-icon" onClick={handleClose} style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}>
             <X size={22} />
           </button>
         </div>
@@ -255,6 +317,8 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
       >
         <div 
           ref={scrollRef}
+          onWheel={handleManualScroll}
+          onTouchMove={handleManualScroll}
           style={{ 
             width: '100%', maxWidth: '1000px',
             overflowY: 'auto', 
@@ -270,13 +334,14 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
             <p key={i} style={{ 
               marginBottom: '1.2em', 
               textShadow: '0 4px 24px rgba(0,0,0,0.5)',
-              letterSpacing: '1px',
-              wordBreak: 'keep-all'
+              letterSpacing: lang === 'zh' ? '2px' : 'normal',
+              wordBreak: lang === 'zh' ? 'keep-all' : 'normal'
             }}>
               {line || ' '}
             </p>
           ))}
-          <div style={{ height: '50vh' }} />
+          {/* Larger spacer at the bottom to ensure the last word can clear the screen top */}
+          <div style={{ height: '100vh' }} />
         </div>
       </div>
       
