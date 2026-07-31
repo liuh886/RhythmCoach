@@ -577,9 +577,35 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
               {isRecording ? 'REC' : (prompterMode === 'free' ? 'FREE PACE' : 'LIVE PROMPTER')}
             </h3>
             {isRecording && (
-              <span style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700, letterSpacing: '1px' }}>
-                {Math.floor(recDuration / 60).toString().padStart(2, '0')}:{Math.floor(recDuration % 60).toString().padStart(2, '0')}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginLeft: '12px' }}>
+                <span style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700, letterSpacing: '1px' }}>
+                  {Math.floor(recDuration / 60).toString().padStart(2, '0')}:{Math.floor(recDuration % 60).toString().padStart(2, '0')}
+                </span>
+                
+                {/* Professional Segmented VU Meter */}
+                <div style={{ display: 'flex', gap: '3px', alignItems: 'center', height: '16px', padding: '0 8px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                  {Array.from({ length: 24 }).map((_, i) => {
+                    const currentVolume = audioData[audioData.length - 1];
+                    const threshold = 15 + (i * 130 / 24); 
+                    const isActive = currentVolume > threshold;
+                    const isPeak = i >= 20;
+                    const isWarning = i >= 15 && i < 20;
+                    const color = isPeak ? '#ef4444' : (isWarning ? '#eab308' : '#22c55e');
+                    
+                    return (
+                      <div key={i} style={{
+                        width: '4px', 
+                        height: isPeak ? '14px' : (isWarning ? '12px' : '10px'),
+                        borderRadius: '2px',
+                        backgroundColor: isActive ? color : 'rgba(255,255,255,0.15)',
+                        boxShadow: isActive ? `0 0 10px ${color}` : 'none',
+                        transition: 'all 0.05s ease-out',
+                        opacity: isActive ? 1 : 0.5
+                      }} />
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
         </div>
