@@ -90,66 +90,85 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         
         const source = audioCtx.createMediaStreamSource(stream);
         
-        // Natural Podcast Processing Chain
+        // ==========================================
+        // ULTIMATE PRO AUDIO DSP CHAIN
+        // ==========================================
         
-        // 1. High-pass filter to remove low-frequency rumble
+        // 1. Highpass (Low Cut) - Removes rumble, plosives, and mic stand bumps
         const highpass = audioCtx.createBiquadFilter();
         highpass.type = 'highpass';
-        highpass.frequency.value = 80;
+        highpass.frequency.value = audioProfile === 'broadcast' ? 90 : 80;
+
+        // 2. Mud Cut (Subtractive EQ) - Removes boxiness/mudiness around 250Hz
+        const mudCut = audioCtx.createBiquadFilter();
+        mudCut.type = 'peaking';
+        mudCut.frequency.value = 250;
+        mudCut.Q.value = 1.5;
+        mudCut.gain.value = -2.5;
+
+        // 3. De-Esser (Subtractive EQ) - Tames harsh 'S' sounds
+        const deEsser = audioCtx.createBiquadFilter();
+        deEsser.type = 'peaking';
+        deEsser.frequency.value = 6500;
+        deEsser.Q.value = 2;
+        deEsser.gain.value = -2;
+
+        // 4. Peak Compressor (VCA Style) - Catches fast, loud transients quickly
+        const peakCompressor = audioCtx.createDynamicsCompressor();
+        peakCompressor.threshold.value = audioProfile === 'broadcast' ? -15 : -12;
+        peakCompressor.ratio.value = audioProfile === 'broadcast' ? 6 : 4;
+        peakCompressor.attack.value = 0.005; // 5ms
+        peakCompressor.release.value = 0.050; // 50ms
         
-        // 2. Broadcast EQ: Low Shelf
-        const lowShelf = audioCtx.createBiquadFilter();
-        lowShelf.type = 'lowshelf';
-        lowShelf.frequency.value = audioProfile === 'broadcast' ? 200 : 150;
-        lowShelf.gain.value = audioProfile === 'broadcast' ? 2 : 1.5; 
-        
-        // 3. Broadcast EQ: High Shelf / Peaking
-        const presence = audioCtx.createBiquadFilter();
+        // 5. Leveling Compressor (LA-2A Style) - Smooths out overall volume slowly
+        const levelCompressor = audioCtx.createDynamicsCompressor();
+        levelCompressor.threshold.value = audioProfile === 'broadcast' ? -30 : -24;
+        levelCompressor.ratio.value = audioProfile === 'broadcast' ? 3 : 2;
+        levelCompressor.attack.value = 0.030; // 30ms (lets punch through)
+        levelCompressor.release.value = 0.250; // 250ms (smooth recovery)
+
+        // 6. Presence/Air (Additive EQ) - Adds expensive condenser mic feel
+        const airShelf = audioCtx.createBiquadFilter();
         if (audioProfile === 'broadcast') {
-          presence.type = 'peaking';
-          presence.frequency.value = 3500;
-          presence.Q.value = 1;
-          presence.gain.value = 3;
+          // Broadcast needs more aggressive bite in upper mids
+          airShelf.type = 'peaking';
+          airShelf.frequency.value = 4000;
+          airShelf.Q.value = 1;
+          airShelf.gain.value = 3.5;
         } else {
-          presence.type = 'highshelf';
-          presence.frequency.value = 4000;
-          presence.gain.value = 2;
+          // Podcast needs smooth air
+          airShelf.type = 'highshelf';
+          airShelf.frequency.value = 8500;
+          airShelf.gain.value = 3;
         }
-        
-        // 4. Dynamics Compressor
-        const compressor = audioCtx.createDynamicsCompressor();
-        if (audioProfile === 'broadcast') {
-          compressor.threshold.value = -24; 
-          compressor.knee.value = 12;
-          compressor.ratio.value = 4;
-          compressor.attack.value = 0.01;
-          compressor.release.value = 0.1;
-        } else {
-          // Podcast (Gentle glue)
-          compressor.threshold.value = -18;
-          compressor.knee.value = 15;
-          compressor.ratio.value = 2.5;
-          compressor.attack.value = 0.005;
-          compressor.release.value = 0.25;
-        }
-        
-        // 5. Hard Limiter (Safety net)
+
+        // 7. Warmth (Additive EQ) - Restores body after compression
+        const warmthShelf = audioCtx.createBiquadFilter();
+        warmthShelf.type = 'lowshelf';
+        warmthShelf.frequency.value = audioProfile === 'broadcast' ? 100 : 120;
+        warmthShelf.gain.value = audioProfile === 'broadcast' ? 3 : 2;
+
+        // 8. Brickwall Limiter - Absolute safety ceiling
         const limiter = audioCtx.createDynamicsCompressor();
-        limiter.threshold.value = -2;
+        limiter.threshold.value = -1;
         limiter.knee.value = 0;
         limiter.ratio.value = 20; 
         limiter.attack.value = 0.001;
-        limiter.release.value = 0.05;
+        limiter.release.value = 0.050;
 
         // Connect the chain based on profile
         if (audioProfile === 'raw') {
           source.connect(limiter);
         } else {
+          // source -> highpass -> mudCut -> deEsser -> peakComp -> levelComp -> airShelf -> warmthShelf -> limiter
           source.connect(highpass);
-          highpass.connect(lowShelf);
-          lowShelf.connect(presence);
-          presence.connect(compressor);
-          compressor.connect(limiter);
+          highpass.connect(mudCut);
+          mudCut.connect(deEsser);
+          deEsser.connect(peakCompressor);
+          peakCompressor.connect(levelCompressor);
+          levelCompressor.connect(airShelf);
+          airShelf.connect(warmthShelf);
+          warmthShelf.connect(limiter);
         }
         
         // Create a new stream from the processed audio
@@ -163,7 +182,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         if (audioProfile === 'raw') {
           source.connect(analyser);
         } else {
-          compressor.connect(analyser);
+          // Connect to the end of the chain before limiter for visualizer
+          warmthShelf.connect(analyser);
         }
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         
