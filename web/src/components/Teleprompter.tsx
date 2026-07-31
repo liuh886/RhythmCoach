@@ -16,6 +16,7 @@ interface Recording {
   id: string;
   url: string;
   name: string;
+  durationSec: number;
 }
 
 export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }: TeleprompterProps) {
@@ -43,6 +44,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
   const requestRef = useRef<number>(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
   const [audioData, setAudioData] = useState<number[]>(Array(12).fill(10));
   
   const speakingTimeMsRef = useRef<number>(0);
@@ -99,15 +101,19 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         mediaRecorder.onstop = () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const url = URL.createObjectURL(audioBlob);
+          const duration = Math.round((Date.now() - recordingStartRef.current) / 1000);
           const newRec = {
             id: Math.random().toString(36).substring(7),
             url,
-            name: `Rec_${new Date().toLocaleTimeString().replace(/:/g,'-')}`
+            name: `Rec_${new Date().toLocaleTimeString().replace(/:/g,'-')}`,
+            durationSec: duration
           };
           setRecordings(prev => [...prev, newRec]);
         };
 
         if (isPlaying) {
+          audioChunksRef.current = [];
+          recordingStartRef.current = Date.now();
           mediaRecorder.start(1000);
           setIsRecording(true);
         }
@@ -221,6 +227,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
   const togglePlay = () => {
     if (!isPlaying && !isRecording && streamRef.current && mediaRecorderRef.current) {
       audioChunksRef.current = [];
+      recordingStartRef.current = Date.now();
       mediaRecorderRef.current.start(1000);
       setIsRecording(true);
     } else if (isPlaying && isRecording && mediaRecorderRef.current) {
@@ -376,9 +383,14 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
               }}
               whileDrag={{ scale: 1.05, cursor: 'grabbing', opacity: 0.8 }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
-                <Mic size={16} color="var(--accent-primary)" />
-                {rec.name}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                <Mic size={18} color="var(--accent-primary)" />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span>{rec.name}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    {Math.floor(rec.durationSec / 60)}:{(rec.durationSec % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <a 
