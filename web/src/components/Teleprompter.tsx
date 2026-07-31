@@ -25,6 +25,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
   
   // Recordings
   const [isRecording, setIsRecording] = useState(false);
+  const [recDuration, setRecDuration] = useState(0);
   
   const [manualScrollTimeout, setManualScrollTimeout] = useState<number | null>(null);
   
@@ -259,6 +260,18 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     return () => clearInterval(interval);
   }, [voiceState, localTargetCpm, prompterMode]);
 
+  useEffect(() => {
+    let interval: number;
+    if (isRecording) {
+      interval = window.setInterval(() => {
+        setRecDuration(Math.round((Date.now() - recordingStartRef.current) / 1000));
+      }, 1000);
+    } else {
+      setRecDuration(0);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
   // Handle Play/Pause for Recording
   const togglePlay = () => {
     if (!isPlaying && !isRecording && streamRef.current && mediaRecorderRef.current) {
@@ -338,6 +351,16 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     scrollRequest = requestAnimationFrame(scroll);
     return () => cancelAnimationFrame(scrollRequest);
   }, [isPlaying, voiceState, localTargetCpm, manualScrollTimeout, lang, prompterMode]);
+
+  const speedFactor = lang === 'en' ? 20 : 15;
+  const pixelsPerSecond = (localTargetCpm / 60) * speedFactor;
+  const totalEstimatedSec = wordCountRef.current > 0 ? (wordCountRef.current / localTargetCpm) * 60 : 0;
+  const timeMarkers = [];
+  if (prompterMode === 'target' && totalEstimatedSec > 0) {
+    for (let t = 15; t <= totalEstimatedSec + 30; t += 15) {
+      timeMarkers.push(t);
+    }
+  }
 
   return (
     <motion.div 
@@ -497,9 +520,16 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: isRecording ? '#ef4444' : (isPlaying ? 'var(--status-stable)' : 'var(--status-pause)'), boxShadow: isRecording ? '0 0 10px #ef4444' : 'none' }} className={isRecording ? 'pulse' : ''} />
-          <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>
-            {isRecording ? 'REC' : (prompterMode === 'free' ? 'FREE PACE' : 'LIVE PROMPTER')}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>
+              {isRecording ? 'REC' : (prompterMode === 'free' ? 'FREE PACE' : 'LIVE PROMPTER')}
+            </h3>
+            {isRecording && (
+              <span style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700, letterSpacing: '1px' }}>
+                {Math.floor(recDuration / 60).toString().padStart(2, '0')}:{Math.floor(recDuration % 60).toString().padStart(2, '0')}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
           <button className="btn-icon" onClick={handleFinish} title="Finish Session" style={{ background: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80' }}>
@@ -546,7 +576,6 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
           style={{ 
             width: '100%', maxWidth: '1000px',
             overflowY: 'auto', 
-            padding: '50vh 40px', 
             fontSize: 'min(5.5vw, 72px)', 
             lineHeight: '1.6',
             fontWeight: 700,
@@ -554,19 +583,45 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
             scrollBehavior: 'auto'
           }}
         >
-          {script.split('\n').filter(line => line.trim() !== '').map((line, i) => (
-            <p key={i} style={{ 
-              marginBottom: '1.2em', 
-              textShadow: '0 4px 24px rgba(0,0,0,0.5)',
-              letterSpacing: lang === 'zh' ? '2px' : 'normal',
-              overflowWrap: 'break-word',
-              wordBreak: 'normal'
-            }}>
-              {line}
-            </p>
-          ))}
-          {/* Larger spacer at the bottom to ensure the last word can clear the screen top */}
-          <div style={{ height: '100vh' }} />
+          <div style={{ position: 'relative', padding: '50vh 40px' }}>
+            {/* Background Time Markers */}
+            {timeMarkers.map(t => (
+              <div key={t} style={{
+                position: 'absolute',
+                top: `calc(50vh + ${t * pixelsPerSecond}px)`,
+                left: 0,
+                right: 0,
+                borderTop: '2px dashed rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.15)',
+                fontSize: '1.5rem',
+                fontFamily: 'monospace',
+                padding: '4px 40px',
+                pointerEvents: 'none',
+                zIndex: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span>{Math.floor(t / 60)}:{(t % 60).toString().padStart(2, '0')}</span>
+              </div>
+            ))}
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              {script.split('\n').filter(line => line.trim() !== '').map((line, i) => (
+                <p key={i} style={{ 
+                  marginBottom: '1.2em', 
+                  textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+                  letterSpacing: lang === 'zh' ? '2px' : 'normal',
+                  overflowWrap: 'break-word',
+                  wordBreak: 'normal'
+                }}>
+                  {line}
+                </p>
+              ))}
+            </div>
+            {/* Larger spacer at the bottom to ensure the last word can clear the screen top */}
+            <div style={{ height: '100vh' }} />
+          </div>
         </div>
       </div>
       
