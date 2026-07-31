@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Play, Pause, Activity } from 'lucide-react';
+import { X, Play, Pause, Activity, Maximize2, Minimize2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface TeleprompterProps {
   script: string;
@@ -13,17 +14,31 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
   const [isPlaying, setIsPlaying] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('SILENCE');
   const [currentCpm, setCurrentCpm] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const requestRef = useRef<number>(0);
+  const [audioData, setAudioData] = useState<number[]>(Array(12).fill(10));
+  
+  // Fullscreen handling
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => console.log(err));
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
   
   // Audio Analysis Setup
   useEffect(() => {
     let analyser: AnalyserNode;
     let dataArray: Uint8Array;
     let silenceStart = 0;
+    let lastVolumeUpdate = 0;
     
     const initAudio = async () => {
       try {
@@ -41,7 +56,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
         
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         
-        const checkAudio = () => {
+        const checkAudio = (time: number) => {
           analyser.getByteTimeDomainData(dataArray as any);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) {
@@ -50,14 +65,28 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
           }
           const rms = Math.sqrt(sum / dataArray.length);
           
-          if (rms > 0.02) { // Speaking threshold
+          if (time - lastVolumeUpdate > 50) {
+            // Update visualizer data
+            setAudioData(prev => {
+              const newData = [...prev.slice(1)];
+              newData.push(Math.max(10, rms * 800)); // scale up rms for visual
+              return newData;
+            });
+            lastVolumeUpdate = time;
+          }
+          
+          if (rms > 0.02) { 
             setVoiceState('SPEAKING');
             silenceStart = 0;
-            // Fake CPM calculation for MVP
-            setCurrentCpm(prev => prev === 0 ? targetCpm : prev + (Math.random() > 0.5 ? 1 : -1));
+            // Fake CPM calculation for MVP to show activity
+            setCurrentCpm(prev => {
+              if (prev === 0) return targetCpm;
+              const vary = Math.random() > 0.8 ? (Math.random() > 0.5 ? 2 : -2) : 0;
+              return Math.max(0, prev + vary);
+            });
           } else {
-            if (silenceStart === 0) silenceStart = performance.now();
-            if (performance.now() - silenceStart > 1200) { // 1.2s silence
+            if (silenceStart === 0) silenceStart = time;
+            if (time - silenceStart > 1200) { 
               setVoiceState('SILENCE');
               setCurrentCpm(0);
             }
@@ -69,7 +98,7 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
         };
         
         if (isPlaying) {
-          checkAudio();
+          requestRef.current = requestAnimationFrame(checkAudio);
         }
       } catch (err) {
         console.error("Microphone access denied or error:", err);
@@ -78,8 +107,6 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
     
     if (isPlaying && !audioContextRef.current) {
       initAudio();
-    } else if (!isPlaying && audioContextRef.current) {
-      // pause logic handled in checkAudio stopping requestAnimationFrame
     }
     
     return () => {
@@ -92,6 +119,9 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
     return () => {
       streamRef.current?.getTracks().forEach(track => track.stop());
       audioContextRef.current?.close();
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(()=>{});
+      }
     };
   }, []);
 
@@ -104,10 +134,12 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
       const delta = time - lastTime;
       lastTime = time;
       
+      // We only scroll if playing and NOT silent
       if (isPlaying && voiceState === 'SPEAKING' && scrollRef.current) {
-        // CPM to pixels per second roughly
-        // If 220 chars/min, approx 3.6 chars/sec. Assume 1 char = 30px height, so ~110px/sec
-        const pixelsPerSecond = (targetCpm / 60) * 30; 
+        // Average char height in this layout is ~90px, targetCpm is per minute.
+        // pixelsPerSecond = (cpm / 60) * charsPerRow
+        // For a teleprompter, usually people tune speed directly. We map targetCpm to a reasonable speed.
+        const pixelsPerSecond = (targetCpm / 60) * 15; // tuning factor
         const scrollAmount = (pixelsPerSecond * delta) / 1000;
         scrollRef.current.scrollTop += scrollAmount;
       }
@@ -120,69 +152,142 @@ export function Teleprompter({ script, targetCpm, onClose }: TeleprompterProps) 
   }, [isPlaying, voiceState, targetCpm]);
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-dark)' }}>
-      {/* Floating Widget overlay (simulated) */}
-      <div 
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{ 
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+        backgroundColor: 'var(--bg-base)',
+        zIndex: 50,
+        overflow: 'hidden'
+      }}
+    >
+      {/* Draggable Rhythm Widget */}
+      <motion.div 
+        drag
+        dragMomentum={false}
         className="glass-panel" 
         style={{ 
-          position: 'absolute', top: '20px', right: '20px', zIndex: 100, 
-          width: '250px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' 
+          position: 'absolute', top: '80px', right: '40px', zIndex: 100, 
+          width: '280px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px',
+          cursor: 'grab', border: '1px solid var(--glass-highlight)',
+          backgroundColor: 'rgba(24, 24, 27, 0.85)'
         }}
+        whileDrag={{ cursor: 'grabbing', scale: 1.02 }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ 
             color: voiceState === 'SPEAKING' ? 'var(--status-stable)' : 'var(--status-pause)',
-            fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px'
+            fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px',
+            fontSize: '0.95rem'
           }}>
             <Activity size={18} className={voiceState === 'SPEAKING' ? 'pulse' : ''} />
-            {voiceState === 'SPEAKING' ? '稳定' : '停顿中'}
+            {voiceState === 'SPEAKING' ? '状态稳定' : '检测停顿中'}
           </span>
-          <button className="btn btn-secondary" style={{ padding: '6px' }} onClick={() => setIsPlaying(!isPlaying)}>
-            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          <button 
+            className="btn-icon" 
+            style={{ 
+              background: isPlaying ? 'var(--accent-glow)' : 'rgba(255,255,255,0.05)',
+              borderColor: isPlaying ? 'var(--accent-primary)' : 'var(--glass-border)',
+              color: isPlaying ? 'white' : 'var(--text-primary)'
+            }} 
+            onClick={() => setIsPlaying(!isPlaying)}
+          >
+            {isPlaying ? <Pause size={20} fill="currentColor"/> : <Play size={20} fill="currentColor"/>}
           </button>
         </div>
-        <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-          {currentCpm} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>CPM</span>
+        
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+          <span style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-2px' }}>
+            {currentCpm}
+          </span>
+          <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600 }}>CPM</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', height: '30px', alignItems: 'flex-end', opacity: voiceState === 'SPEAKING' ? 1 : 0.3 }}>
-          {[...Array(12)].map((_, i) => (
-            <div key={i} style={{ 
-              width: '10px', 
-              height: `${Math.random() * 100}%`, 
-              backgroundColor: 'var(--accent-primary)',
-              borderRadius: '2px'
-            }} />
+
+        {/* Audio Visualizer */}
+        <div style={{ 
+          display: 'flex', justifyContent: 'space-between', height: '40px', 
+          alignItems: 'flex-end', opacity: voiceState === 'SPEAKING' ? 1 : 0.2,
+          transition: 'opacity 0.3s ease',
+          gap: '4px'
+        }}>
+          {audioData.map((val, i) => (
+            <motion.div key={i} 
+              animate={{ height: `${Math.min(100, Math.max(10, val))}%` }}
+              transition={{ type: "spring", bounce: 0, duration: 0.1 }}
+              style={{ 
+                flex: 1, 
+                backgroundColor: 'var(--accent-primary)',
+                borderRadius: '4px',
+                backgroundImage: 'linear-gradient(to top, var(--accent-secondary), var(--accent-primary))'
+              }} 
+            />
           ))}
         </div>
+      </motion.div>
+
+      {/* Top Bar */}
+      <div style={{ 
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 60,
+        padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)',
+        pointerEvents: 'none'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: isPlaying ? 'var(--status-stable)' : 'var(--status-pause)', boxShadow: isPlaying ? '0 0 10px var(--status-stable)' : 'none' }} />
+          <h3 style={{ margin: 0, fontWeight: 600, letterSpacing: '2px', color: 'rgba(255,255,255,0.6)' }}>LIVE PROMPTER</h3>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
+          <button className="btn-icon" onClick={toggleFullscreen} title="Toggle Fullscreen">
+            {isFullscreen ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
+          </button>
+          <button className="btn-icon" onClick={onClose} style={{ background: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}>
+            <X size={22} />
+          </button>
+        </div>
       </div>
 
-      <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <h3 style={{ margin: 0 }}>提词模式</h3>
-        <button className="btn btn-secondary" style={{ padding: '8px' }} onClick={onClose}>
-          <X size={20} />
-        </button>
-      </div>
-
+      {/* Teleprompter Text Area */}
       <div 
-        ref={scrollRef}
-        style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '40px 10%', 
-          fontSize: '48px', 
-          lineHeight: '1.8',
-          fontWeight: 600,
-          color: 'rgba(255,255,255,0.9)',
-          scrollBehavior: 'auto'
-        }}
+        className="fade-mask"
+        style={{ height: '100vh', width: '100%', display: 'flex', justifyContent: 'center' }}
       >
-        {/* Placeholder spacer to allow scrolling past the end */}
-        <div style={{ height: '30vh' }} />
-        {script.split('\n').map((line, i) => (
-          <p key={i} style={{ marginBottom: '1em', opacity: 0.8 }}>{line}</p>
-        ))}
-        <div style={{ height: '70vh' }} />
+        <div 
+          ref={scrollRef}
+          style={{ 
+            width: '100%', maxWidth: '1000px',
+            overflowY: 'auto', 
+            padding: '50vh 40px', 
+            fontSize: 'min(5.5vw, 72px)', 
+            lineHeight: '1.6',
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.95)',
+            scrollBehavior: 'auto'
+          }}
+        >
+          {script.split('\n').map((line, i) => (
+            <p key={i} style={{ 
+              marginBottom: '1.2em', 
+              textShadow: '0 4px 24px rgba(0,0,0,0.5)',
+              letterSpacing: '1px',
+              wordBreak: 'keep-all'
+            }}>
+              {line || ' '}
+            </p>
+          ))}
+          <div style={{ height: '50vh' }} />
+        </div>
       </div>
-    </div>
+      
+      {/* Focus Line overlay */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '0', right: '0', height: '2px',
+        background: 'linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.5) 50%, transparent 100%)',
+        zIndex: 40, pointerEvents: 'none',
+        transform: 'translateY(-50%)',
+        boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)'
+      }} />
+    </motion.div>
   );
 }
