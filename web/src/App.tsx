@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { RecordingsWidget } from './components/RecordingsWidget';
-import { AnimatePresence } from 'framer-motion';
-import { Maximize2, Minimize2, Languages } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Maximize2, Minimize2, Languages, Mic, Check } from 'lucide-react';
 import { useAppStore } from './store';
 
 function App() {
@@ -21,10 +21,12 @@ function AppInner() {
     targetCpm, setTargetCpm,
     globalLang, setGlobalLang,
     prompterMode, setPrompterMode,
+    audioProfile, setAudioProfile,
     loadRecordings
   } = useAppStore();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
 
   useEffect(() => {
     loadRecordings();
@@ -60,6 +62,71 @@ function AppInner() {
     <>
       {/* Global Utilities */}
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200, display: 'flex', gap: '12px', alignItems: 'center' }}>
+        {mode === 'editor' && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowAudioMenu(!showAudioMenu)}
+              className="btn-icon" 
+              style={{ 
+                background: showAudioMenu ? 'rgba(167, 139, 250, 0.2)' : 'rgba(255,255,255,0.05)', 
+                borderColor: showAudioMenu ? 'var(--accent-primary)' : 'var(--glass-border)', 
+                color: showAudioMenu ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                backdropFilter: 'blur(10px)',
+                width: '40px', height: '40px'
+              }}
+              title={globalLang === 'zh' ? "录音增强设置" : "Audio DSP Settings"}
+            >
+              <Mic size={20} />
+            </button>
+
+            <AnimatePresence>
+              {showAudioMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  style={{
+                    position: 'absolute', bottom: '50px', right: '0',
+                    background: 'var(--bg-card)', border: '1px solid var(--glass-border)',
+                    borderRadius: '12px', padding: '12px', width: '220px',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)', zIndex: 300,
+                    backdropFilter: 'blur(20px)'
+                  }}
+                >
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    {globalLang === 'zh' ? '人声增强 (DSP)' : 'Voice Enhancement'}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {[
+                      { id: 'raw', labelZh: '原声 (无处理)', labelEn: 'Raw (None)' },
+                      { id: 'podcast', labelZh: '播客 (温暖自然)', labelEn: 'Podcast (Warm)' },
+                      { id: 'broadcast', labelZh: '广播 (清晰透亮)', labelEn: 'Broadcast (Crisp)' }
+                    ].map(prof => (
+                      <button
+                        key={prof.id}
+                        onClick={() => {
+                          setAudioProfile(prof.id as any);
+                          setTimeout(() => setShowAudioMenu(false), 200);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          background: audioProfile === prof.id ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
+                          color: audioProfile === prof.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
+                          fontSize: '0.85rem', textAlign: 'left', transition: 'all 0.2s'
+                        }}
+                      >
+                        {globalLang === 'zh' ? prof.labelZh : prof.labelEn}
+                        {audioProfile === prof.id && <Check size={14} color="var(--accent-primary)" />}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+        
         {mode === 'editor' && (
           <button 
             onClick={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
