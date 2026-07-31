@@ -76,8 +76,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
+            noiseSuppression: true, // Keep on to avoid static, but disable AGC
+            autoGainControl: false, // Disabling this fixes the 'pumping/rigid' volume issues
             channelCount: 1
           } 
         });
@@ -89,39 +89,39 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
         
         const source = audioCtx.createMediaStreamSource(stream);
         
-        // Dolby-like processing chain
-        // 1. High-pass filter to remove low-frequency rumble and wind noise
+        // Natural Podcast Processing Chain
+        
+        // 1. High-pass filter to remove low-frequency rumble
         const highpass = audioCtx.createBiquadFilter();
         highpass.type = 'highpass';
         highpass.frequency.value = 80;
         
-        // 2. Broadcast EQ: Low Shelf (Adds "Warmth" and body)
+        // 2. Broadcast EQ: Low Shelf (Adds natural body, not too boomy)
         const lowShelf = audioCtx.createBiquadFilter();
         lowShelf.type = 'lowshelf';
-        lowShelf.frequency.value = 200;
-        lowShelf.gain.value = 2; // +2dB
+        lowShelf.frequency.value = 150;
+        lowShelf.gain.value = 1.5; 
         
-        // 3. Broadcast EQ: Peaking (Adds "Presence" and clarity to consonants)
+        // 3. Broadcast EQ: High Shelf (Adds 'air' and openness, much less rigid than peaking)
         const presence = audioCtx.createBiquadFilter();
-        presence.type = 'peaking';
-        presence.frequency.value = 3500;
-        presence.Q.value = 1; // Wide band
-        presence.gain.value = 3; // +3dB
-
-        // 4. Dynamics Compressor to even out voice levels (softs louder, louds softer)
-        const compressor = audioCtx.createDynamicsCompressor();
-        compressor.threshold.value = -24; // Lower threshold to catch more voice
-        compressor.knee.value = 12;
-        compressor.ratio.value = 4;
-        compressor.attack.value = 0.01;
-        compressor.release.value = 0.1;
+        presence.type = 'highshelf';
+        presence.frequency.value = 4000;
+        presence.gain.value = 2;
         
-        // 5. Hard Limiter (Prevents audio clipping/distortion from EQ boosts)
+        // 4. Dynamics Compressor (Gentle 'glue', prevents squashed/rigid sound)
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -18; // Only compress the louder peaks
+        compressor.knee.value = 15;       // Very soft knee for transparent transition
+        compressor.ratio.value = 2.5;     // Gentle ratio
+        compressor.attack.value = 0.005;  // 5ms attack
+        compressor.release.value = 0.25;  // 250ms release (natural decay, no pumping)
+        
+        // 5. Hard Limiter (Safety net against clipping)
         const limiter = audioCtx.createDynamicsCompressor();
-        limiter.threshold.value = -3; // Cap at -3dB
-        limiter.knee.value = 0; // Hard knee
-        limiter.ratio.value = 20; // Brickwall
-        limiter.attack.value = 0.001; // Instant attack
+        limiter.threshold.value = -2; // Cap at -2dB
+        limiter.knee.value = 0;
+        limiter.ratio.value = 20; 
+        limiter.attack.value = 0.001;
         limiter.release.value = 0.05;
 
         // Connect the chain sequentially
