@@ -4,13 +4,13 @@ import { Teleprompter } from './components/Teleprompter';
 import { RecordingsWidget } from './components/RecordingsWidget';
 import { AnimatePresence } from 'framer-motion';
 import { Recording } from './types';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, Languages } from 'lucide-react';
 
 function App() {
   const [mode, setMode] = useState<'editor' | 'teleprompter'>('editor');
   const [activeScript, setActiveScript] = useState('');
   const [targetCpm, setTargetCpm] = useState(220);
-  const [lang, setLang] = useState<'zh'|'en'>('zh');
+  const [globalLang, setGlobalLang] = useState<'zh'|'en'>('zh');
   const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -36,7 +36,7 @@ function App() {
   const handleStart = (script: string, cpm: number, lang: 'zh' | 'en', pMode: 'target' | 'free') => {
     setActiveScript(script);
     setTargetCpm(cpm);
-    setLang(lang);
+    setGlobalLang(lang);
     setPrompterMode(pMode);
     setMode('teleprompter');
   };
@@ -45,6 +45,22 @@ function App() {
     <>
       {/* Global Utilities */}
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200, display: 'flex', gap: '12px', alignItems: 'center' }}>
+        {mode === 'editor' && (
+          <button 
+            onClick={() => setGlobalLang(l => l === 'zh' ? 'en' : 'zh')}
+            className="btn-icon" 
+            style={{ 
+              background: 'rgba(255,255,255,0.05)', 
+              borderColor: 'var(--glass-border)', 
+              color: 'var(--text-secondary)',
+              backdropFilter: 'blur(10px)',
+              width: '40px', height: '40px'
+            }}
+            title={globalLang === 'zh' ? "Switch to English" : "切换到中文"}
+          >
+            <Languages size={20} />
+          </button>
+        )}
         <button 
           onClick={toggleFullscreen}
           className="btn-icon" 
@@ -88,7 +104,7 @@ function App() {
       <RecordingsWidget recordings={recordings} setRecordings={setRecordings} />
       <AnimatePresence mode="wait">
         {mode === 'editor' && (
-          <ScriptEditor key="editor" onStart={handleStart} />
+          <ScriptEditor key="editor" onStart={handleStart} globalLang={globalLang} setGlobalLang={setGlobalLang} />
         )}
         
         {mode === 'teleprompter' && (
@@ -96,7 +112,7 @@ function App() {
             key="teleprompter"
             script={activeScript} 
             targetCpm={targetCpm} 
-            lang={lang}
+            lang={globalLang}
             prompterMode={prompterMode}
             onClose={() => setMode('editor')} 
             setRecordings={setRecordings}

@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Mic, Play, Save, Clock, FileText, Settings2, Languages, Activity, Library, ChevronRight, X, Trash2, Upload, Download } from 'lucide-react';
+import { Mic, Play, Save, Clock, FileText, Settings2, Activity, Library, ChevronRight, X, Trash2, Upload, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { defaultMaterials, ScriptMaterial } from './materials';
 
 interface ScriptEditorProps {
   onStart: (script: string, cpm: number, lang: 'zh' | 'en', mode: 'target' | 'free') => void;
+  globalLang: 'zh' | 'en';
+  setGlobalLang: (lang: 'zh' | 'en') => void;
 }
 
-export function ScriptEditor({ onStart }: ScriptEditorProps) {
+export function ScriptEditor({ onStart, globalLang, setGlobalLang }: ScriptEditorProps) {
   const [title, setTitle] = useState('');
-  const [lang, setLang] = useState<'zh'|'en'>('zh');
   const [prompterMode, setPrompterMode] = useState<'target'|'free'>('target');
   const [content, setContent] = useState('大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。');
+  const lang = globalLang;
   const [cpm, setCpm] = useState(220);
   const [currentTip, setCurrentTip] = useState('');
   
@@ -39,25 +41,25 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const mins = Math.floor(estimatedSeconds / 60);
   const secs = estimatedSeconds % 60;
 
-  const handleLangToggle = () => {
-    if (lang === 'zh') {
-      setLang('en');
-      setCpm(150); // standard WPM
-      setContent("Hello everyone, welcome to RhythmCoach.\n\nHere you can practice your pacing and maintain a steady speaking rate. Try looking at the screen; when you stop speaking, the prompter will detect your pause and stop scrolling automatically.");
-      setCurrentTip('');
+  useEffect(() => {
+    if (globalLang === 'en') {
+      setCpm(150);
+      if (content === "大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。") {
+        setContent("Hello everyone, welcome to RhythmCoach.\n\nHere you can practice your pacing and maintain a steady speaking rate. Try looking at the screen; when you stop speaking, the prompter will detect your pause and stop scrolling automatically.");
+      }
     } else {
-      setLang('zh');
       setCpm(220);
-      setContent("大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。");
-      setCurrentTip('');
+      if (content === "Hello everyone, welcome to RhythmCoach.\n\nHere you can practice your pacing and maintain a steady speaking rate. Try looking at the screen; when you stop speaking, the prompter will detect your pause and stop scrolling automatically.") {
+        setContent("大家好，欢迎来到节奏教练。\n\n在这里你可以练习你的口播节奏，保持平稳的语速。尝试看着屏幕，当你不说话时，提词器会自动感应你的停顿而停止滚动。");
+      }
     }
-  };
+  }, [globalLang]);
   
   const handleImport = (matTitle: string, matContent: string, matTip?: string) => {
     setTitle(matTitle);
     setContent(matContent);
     setCurrentTip(matTip || '');
-    setLang('zh'); // Most templates are Chinese
+    setGlobalLang('zh'); // Most templates are Chinese
     setCpm(220);
     setIsDrawerOpen(false);
   };
@@ -325,9 +327,6 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               </p>
             </div>
           </div>
-          <button onClick={handleLangToggle} className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}>
-            <Languages size={18} /> {lang === 'zh' ? '切换到英文 (WPM)' : 'Switch to Chinese'}
-          </button>
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
