@@ -33,6 +33,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
   const [stats, setStats] = useState({ totalTime: 0, speakingTime: 0, avgCpm: 0 });
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textContainerRef = useRef<HTMLDivElement>(null);
+  const [pixelsPerSecond, setPixelsPerSecond] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const requestRef = useRef<number>(0);
@@ -327,6 +329,23 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
 
 
 
+  // Dynamic Scroll Speed Calculation
+  useEffect(() => {
+    if (!textContainerRef.current || wordCountRef.current === 0 || prompterMode !== 'target') return;
+    
+    const updateSpeed = () => {
+      const H = textContainerRef.current!.clientHeight;
+      const totalSec = (wordCountRef.current / localTargetCpm) * 60;
+      setPixelsPerSecond(totalSec > 0 ? H / totalSec : 0);
+    };
+    
+    updateSpeed();
+    // Use a small timeout to ensure fonts/layout are fully rendered
+    setTimeout(updateSpeed, 100);
+    window.addEventListener('resize', updateSpeed);
+    return () => window.removeEventListener('resize', updateSpeed);
+  }, [script, localTargetCpm, prompterMode, lang]);
+
   // Scrolling logic
   useEffect(() => {
     let scrollRequest: number;
@@ -336,12 +355,9 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
       const delta = time - lastTime;
       lastTime = time;
       
-      // Auto-scroll ONLY in target mode
-      if (prompterMode === 'target' && isPlaying && voiceState === 'SPEAKING' && scrollRef.current && !manualScrollTimeout) {
-        const speedFactor = lang === 'en' ? 20 : 15;
-        const pixelsPerSecond = (localTargetCpm / 60) * speedFactor; 
+      // Auto-scroll ONLY in target mode and when speed is calculated
+      if (prompterMode === 'target' && isPlaying && voiceState === 'SPEAKING' && scrollRef.current && !manualScrollTimeout && pixelsPerSecond > 0) {
         const scrollAmount = (pixelsPerSecond * delta) / 1000;
-        
         scrollRef.current.scrollTop += scrollAmount;
       }
       
@@ -350,10 +366,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
     
     scrollRequest = requestAnimationFrame(scroll);
     return () => cancelAnimationFrame(scrollRequest);
-  }, [isPlaying, voiceState, localTargetCpm, manualScrollTimeout, lang, prompterMode]);
+  }, [isPlaying, voiceState, manualScrollTimeout, prompterMode, pixelsPerSecond]);
 
-  const speedFactor = lang === 'en' ? 20 : 15;
-  const pixelsPerSecond = (localTargetCpm / 60) * speedFactor;
   const totalEstimatedSec = wordCountRef.current > 0 ? (wordCountRef.current / localTargetCpm) * 60 : 0;
   const timeMarkers = [];
   if (prompterMode === 'target' && totalEstimatedSec > 0) {
@@ -606,7 +620,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose, s
               </div>
             ))}
 
-            <div style={{ position: 'relative', zIndex: 1 }}>
+            <div ref={textContainerRef} style={{ position: 'relative', zIndex: 1 }}>
               {script.split('\n').filter(line => line.trim() !== '').map((line, i) => (
                 <p key={i} style={{ 
                   marginBottom: '1.2em', 
