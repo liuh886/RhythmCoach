@@ -1,7 +1,7 @@
 import './RecordingsWidget.css';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AudioLines, Check, Download, Edit3, Pause, Play, Trash2, X } from 'lucide-react';
+import { Check, Download, Edit3, Mic2, Pause, Play, Trash2, X } from 'lucide-react';
 import { useAppStore } from '../store';
 import type { Language, Recording } from '../types';
 
@@ -68,6 +68,10 @@ function RecordingItem({ recording, lang, activeId, onPlaybackChange }: Recordin
   const isPlaying = activeId === recording.id;
 
   useEffect(() => {
+    if (!recording.url) {
+      audioRef.current = null;
+      return;
+    }
     const audio = new Audio(recording.url);
     audio.onended = () => onPlaybackChange(null);
     audioRef.current = audio;
@@ -75,7 +79,7 @@ function RecordingItem({ recording, lang, activeId, onPlaybackChange }: Recordin
       audio.pause();
       audio.src = '';
     };
-  }, [onPlaybackChange, recording.id, recording.url]);
+  }, [onPlaybackChange, recording.url]);
 
   useEffect(() => {
     if (!isPlaying) audioRef.current?.pause();
@@ -249,7 +253,7 @@ export function RecordingsWidget() {
         aria-controls="recordings-panel"
         aria-label={isOpen ? text.close : text.open}
       >
-        <AudioLines size={19} />
+        <Mic2 size={19} />
         <span>{text.title}</span>
         <strong>{recordings.length}</strong>
       </button>
