@@ -2,6 +2,16 @@
 
 All notable changes to RhythmCoach are documented here.
 
+## [Unreleased]
+
+### Experience
+
+- Replace the scattered floating utility controls with a unified commercial application header.
+- Add a clear brand lockup, stable-version badge, local-first trust signal, and structured primary and utility navigation.
+- Refine the workspace into a calmer two-panel production layout with a sticky rehearsal setup surface on desktop.
+- Improve panel density, hierarchy, primary-action emphasis, drawer layering, and mobile safe-area behavior.
+- Add a compact trust footer covering local storage, account requirements, audio upload behavior, source access, and version status.
+
 ## [1.0.0] - 2026-08-02
 
 ### Release
