@@ -3,6 +3,7 @@ import { Github, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import packageJson from '../package.json';
 import { AppHeader } from './components/AppHeader';
+import './components/CommercialTheme.css';
 import { ProductGuide } from './components/ProductGuide';
 import './components/ProductExperience.css';
 import { RecordingsWidget } from './components/RecordingsWidget';
