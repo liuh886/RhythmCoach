@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Github, ShieldCheck } from 'lucide-react';
+import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import packageJson from '../package.json';
 import { AppHeader } from './components/AppHeader';
@@ -142,7 +142,7 @@ export default function App() {
           </div>
           <div className="app-footer-meta">
             <a href="https://github.com/liuh886/RhythmCoach" target="_blank" rel="noopener noreferrer">
-              <Github size={14} /> RhythmCoach
+              <ExternalLink size={14} /> RhythmCoach
             </a>
             <span>v{packageJson.version} · Stable</span>
           </div>
