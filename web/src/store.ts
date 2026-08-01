@@ -54,6 +54,9 @@ interface AppState {
   loadPersistedData: () => Promise<void>;
 }
 
+let workspacePersistTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingWorkspace: PersistedWorkspace | null = null;
+
 function withoutObjectUrls(recordings: Recording[]): Recording[] {
   return recordings.map(({ url: _url, ...recording }) => ({ ...recording, url: '' }));
 }
@@ -66,13 +69,23 @@ async function persistSettings(settings: PersistedSettings) {
   await localforage.setItem(SETTINGS_KEY, settings);
 }
 
-async function persistWorkspace(workspace: PersistedWorkspace) {
-  await localforage.setItem(WORKSPACE_KEY, workspace);
+function scheduleWorkspacePersistence(workspace: PersistedWorkspace) {
+  pendingWorkspace = workspace;
+  if (workspacePersistTimer) clearTimeout(workspacePersistTimer);
+  workspacePersistTimer = setTimeout(() => {
+    const nextWorkspace = pendingWorkspace;
+    pendingWorkspace = null;
+    workspacePersistTimer = null;
+    if (!nextWorkspace) return;
+    void localforage.setItem(WORKSPACE_KEY, nextWorkspace).catch((error) => {
+      console.error('Failed to persist RhythmCoach workspace:', error);
+    });
+  }, 160);
 }
 
 function saveCurrentWorkspace(state: AppState) {
   if (!state.isPersistedDataLoaded) return;
-  void persistWorkspace({
+  scheduleWorkspacePersistence({
     activeTitle: state.activeTitle,
     activeScript: state.activeScript,
     activeTip: state.activeTip
