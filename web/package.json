@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js && node .tmp-test/test/trainingFocus.test.js && node .tmp-test/test/audioDsp.test.js",
+    "test": "tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js && node .tmp-test/test/trainingFocus.test.js && node .tmp-test/test/audioDsp.test.js && node .tmp-test/test/prompterTimeline.test.js",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
