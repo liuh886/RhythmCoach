@@ -8,9 +8,17 @@ export interface CompressorPreset {
   release: number;
 }
 
+export interface ExpanderPreset {
+  floorGain: number;
+  holdMs: number;
+  openTimeConstant: number;
+  closeTimeConstant: number;
+}
+
 export interface DspPreset {
   highpassHz: number | null;
   highpassQ: number;
+  expander: ExpanderPreset | null;
   presenceHz: number | null;
   presenceGainDb: number;
   presenceQ: number;
@@ -33,14 +41,15 @@ const SAFETY_LIMITER: CompressorPreset = {
 /**
  * Conservative spoken-word presets for browser microphones.
  *
- * They intentionally avoid makeup gain, aggressive high-shelf boosts and
- * multiband processing because those choices amplify room noise and vary too
- * much across phones, laptops, headsets and USB microphones.
+ * The processed profiles use a soft, speech-aware downward expander rather
+ * than a hard noise gate. It never mutes the signal and opens quickly so quiet
+ * syllables and word endings are less likely to be clipped.
  */
 export const DSP_PRESETS: Record<DspProfile, DspPreset> = {
   raw: {
     highpassHz: null,
     highpassQ: 0.707,
+    expander: null,
     presenceHz: null,
     presenceGainDb: 0,
     presenceQ: 0.8,
@@ -50,6 +59,12 @@ export const DSP_PRESETS: Record<DspProfile, DspPreset> = {
   podcast: {
     highpassHz: 80,
     highpassQ: 0.707,
+    expander: {
+      floorGain: 0.38,
+      holdMs: 320,
+      openTimeConstant: 0.012,
+      closeTimeConstant: 0.18
+    },
     presenceHz: 3000,
     presenceGainDb: 1.5,
     presenceQ: 0.8,
@@ -65,6 +80,12 @@ export const DSP_PRESETS: Record<DspProfile, DspPreset> = {
   broadcast: {
     highpassHz: 95,
     highpassQ: 0.707,
+    expander: {
+      floorGain: 0.28,
+      holdMs: 280,
+      openTimeConstant: 0.008,
+      closeTimeConstant: 0.15
+    },
     presenceHz: 3800,
     presenceGainDb: 2,
     presenceQ: 0.9,
@@ -78,6 +99,11 @@ export const DSP_PRESETS: Record<DspProfile, DspPreset> = {
     limiter: SAFETY_LIMITER
   }
 };
+
+export function getExpanderTargetGain(expander: ExpanderPreset | null, detectedSpeech: boolean, silenceDurationMs: number): number {
+  if (!expander) return 1;
+  return detectedSpeech || silenceDurationMs < expander.holdMs ? 1 : expander.floorGain;
+}
 
 export function classifyInputLevel(rms: number, peak: number, noiseFloor = 0): InputLevelStatus {
   if (!Number.isFinite(rms) || !Number.isFinite(peak) || rms <= 0 || peak <= 0) return 'waiting';
