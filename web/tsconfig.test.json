@@ -12,7 +12,9 @@
     "src/types.ts",
     "src/domain/sessionMetrics.ts",
     "src/domain/trainingFocus.ts",
+    "src/domain/audioDsp.ts",
     "test/sessionMetrics.test.ts",
-    "test/trainingFocus.test.ts"
+    "test/trainingFocus.test.ts",
+    "test/audioDsp.test.ts"
   ]
 }
