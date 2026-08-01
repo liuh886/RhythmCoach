@@ -62,7 +62,7 @@ function AppInner() {
     <>
       {/* Global Utilities */}
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200, display: 'flex', gap: '12px', alignItems: 'center' }}>
-        {mode === 'editor' && (
+        {mode === 'teleprompter' && (
           <div style={{ position: 'relative' }}>
             <button 
               onClick={() => setShowAudioMenu(!showAudioMenu)}

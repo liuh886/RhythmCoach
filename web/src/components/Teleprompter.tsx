@@ -64,6 +64,24 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
     setManualScrollTimeout(timeout);
   }, [manualScrollTimeout]);
   
+  // If audioProfile changes, we must destroy the old audioContext so it rebuilds on next tick
+  useEffect(() => {
+    if (audioContextRef.current) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+      }
+      if (audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+      audioContextRef.current = null;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+  }, [audioProfile]);
+
   // Audio Analysis & Recording Setup
   useEffect(() => {
     let analyser: AnalyserNode;
@@ -282,7 +300,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [isPlaying]);
+    // Re-run if isPlaying or audioProfile changes (so it rebuilds after cleanup)
+  }, [isPlaying, audioProfile]);
 
   // Update currentCpm 
   useEffect(() => {
