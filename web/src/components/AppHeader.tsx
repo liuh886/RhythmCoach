@@ -17,7 +17,6 @@ interface AppHeaderProps {
   lang: Language;
   canInstall: boolean;
   isFullscreen: boolean;
-  isLibraryOpen: boolean;
   onOpenLibrary: () => void;
   onOpenGuide: () => void;
   onOpenFocus: () => void;
@@ -59,7 +58,6 @@ export function AppHeader({
   lang,
   canInstall,
   isFullscreen,
-  isLibraryOpen,
   onOpenLibrary,
   onOpenGuide,
   onOpenFocus,
@@ -90,13 +88,7 @@ export function AppHeader({
         </div>
 
         <nav className="app-header-actions" aria-label={lang === 'zh' ? '应用导航' : 'Application navigation'}>
-          <button
-            type="button"
-            className="header-action header-action-primary"
-            onClick={onOpenLibrary}
-            aria-expanded={isLibraryOpen}
-            title={text.library}
-          >
+          <button type="button" className="header-action header-action-primary" onClick={onOpenLibrary} title={text.library}>
             <Library size={17} />
             <span>{text.library}</span>
           </button>
