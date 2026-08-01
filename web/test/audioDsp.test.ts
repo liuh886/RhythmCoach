@@ -27,7 +27,8 @@ for (const [name, preset] of Object.entries(DSP_PRESETS)) {
 expectEqual(classifyInputLevel(0, 0), 'waiting', 'No signal waits for a level check');
 expectEqual(classifyInputLevel(0.02, 0.12), 'low', 'Quiet speech is flagged');
 expectEqual(classifyInputLevel(0.08, 0.45), 'good', 'Normal speech is accepted');
-expectEqual(classifyInputLevel(0.18, 0.94), 'hot', 'Near-clipping peaks are flagged');
+expectEqual(classifyInputLevel(0.08, 0.45, 0.03), 'noisy', 'High background floor is flagged');
+expectEqual(classifyInputLevel(0.18, 0.94, 0.03), 'hot', 'Near-clipping peaks take priority');
 
 const options = getRecorderOptions('audio/webm;codecs=opus');
 expectEqual(options.mimeType, 'audio/webm;codecs=opus', 'Recorder MIME type');
