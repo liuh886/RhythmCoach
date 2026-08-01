@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Download, Heart, HelpCircle, Languages, Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { Github, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import packageJson from '../package.json';
+import { AppHeader } from './components/AppHeader';
 import { ProductGuide } from './components/ProductGuide';
 import './components/ProductExperience.css';
 import { RecordingsWidget } from './components/RecordingsWidget';
@@ -93,63 +95,24 @@ export default function App() {
     if (choice.outcome === 'accepted') setInstallPrompt(null);
   };
 
+  const openLibrary = () => {
+    document.querySelector<HTMLButtonElement>('.library-launcher')?.click();
+  };
+
   return (
-    <>
+    <div className={mode === 'editor' ? 'app-shell' : undefined}>
       {mode === 'editor' && (
-        <nav className="global-utility-dock" aria-label={globalLang === 'zh' ? '全局工具' : 'Global tools'}>
-          <button
-            className="btn-icon utility-button"
-            onClick={() => setIsGuideOpen(true)}
-            title={globalLang === 'zh' ? '打开使用引导' : 'Open quick guide'}
-            aria-label={globalLang === 'zh' ? '打开使用引导' : 'Open quick guide'}
-          >
-            <HelpCircle size={18} />
-          </button>
-          <button
-            className="btn-icon utility-button"
-            onClick={() => setIsFocusOpen(true)}
-            title={globalLang === 'zh' ? '查看下一次训练建议' : 'View next training focus'}
-            aria-label={globalLang === 'zh' ? '查看下一次训练建议' : 'View next training focus'}
-          >
-            <Sparkles size={18} />
-          </button>
-          {installPrompt && (
-            <button
-              className="btn-icon utility-button"
-              onClick={() => void installApp()}
-              title={globalLang === 'zh' ? '安装 RhythmCoach' : 'Install RhythmCoach'}
-              aria-label={globalLang === 'zh' ? '安装 RhythmCoach' : 'Install RhythmCoach'}
-            >
-              <Download size={18} />
-            </button>
-          )}
-          <button
-            className="btn-icon utility-button"
-            onClick={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
-            title={globalLang === 'zh' ? 'Switch to English' : '切换到中文'}
-            aria-label={globalLang === 'zh' ? 'Switch to English' : '切换到中文'}
-          >
-            <Languages size={18} />
-          </button>
-          <button
-            className="btn-icon utility-button"
-            onClick={() => void toggleFullscreen()}
-            title={isFullscreen ? (globalLang === 'zh' ? '退出全屏' : 'Exit fullscreen') : (globalLang === 'zh' ? '进入全屏' : 'Enter fullscreen')}
-            aria-label={isFullscreen ? (globalLang === 'zh' ? '退出全屏' : 'Exit fullscreen') : (globalLang === 'zh' ? '进入全屏' : 'Enter fullscreen')}
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-          <a
-            className="utility-link"
-            href="https://ko-fi.com/zhihao"
-            target="_blank"
-            rel="noopener noreferrer"
-            title={globalLang === 'zh' ? '支持 RhythmCoach' : 'Support RhythmCoach'}
-            aria-label={globalLang === 'zh' ? '支持 RhythmCoach' : 'Support RhythmCoach'}
-          >
-            <Heart size={17} />
-          </a>
-        </nav>
+        <AppHeader
+          lang={globalLang}
+          canInstall={Boolean(installPrompt)}
+          isFullscreen={isFullscreen}
+          onOpenLibrary={openLibrary}
+          onOpenGuide={() => setIsGuideOpen(true)}
+          onOpenFocus={() => setIsFocusOpen(true)}
+          onInstall={() => void installApp()}
+          onToggleLanguage={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
+          onToggleFullscreen={() => void toggleFullscreen()}
+        />
       )}
 
       {mode === 'editor' && <RecordingsWidget />}
@@ -169,6 +132,22 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {mode === 'editor' && (
+        <footer className="app-footer">
+          <div className="app-footer-trust">
+            <strong><ShieldCheck size={15} /> {globalLang === 'zh' ? '本地优先' : 'Local-first'}</strong>
+            <span>{globalLang === 'zh' ? '无需账户' : 'No account required'}</span>
+            <span>{globalLang === 'zh' ? '音频不自动上传' : 'No automatic audio upload'}</span>
+          </div>
+          <div className="app-footer-meta">
+            <a href="https://github.com/liuh886/RhythmCoach" target="_blank" rel="noopener noreferrer">
+              <Github size={14} /> RhythmCoach
+            </a>
+            <span>v{packageJson.version} · Stable</span>
+          </div>
+        </footer>
+      )}
+
       <ProductGuide
         open={mode === 'editor' && isGuideOpen}
         lang={globalLang}
@@ -182,6 +161,6 @@ export default function App() {
         sessions={sessions}
         onClose={() => setIsFocusOpen(false)}
       />
-    </>
+    </div>
   );
 }
