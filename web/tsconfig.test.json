@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "outDir": ".tmp-test"
+  },
+  "include": ["src/types.ts", "src/domain/sessionMetrics.ts", "test/sessionMetrics.test.ts"]
+}
