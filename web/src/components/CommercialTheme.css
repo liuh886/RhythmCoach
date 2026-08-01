@@ -1,0 +1,277 @@
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.app-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(ellipse at 12% -8%, rgba(120, 96, 220, 0.12), transparent 42%),
+    radial-gradient(ellipse at 92% 102%, rgba(50, 166, 214, 0.075), transparent 42%);
+}
+
+.app-shell .library-launcher {
+  display: none;
+}
+
+.app-shell .drawer-backdrop {
+  z-index: 210;
+  background: rgba(3, 4, 7, 0.74);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-shell .library-drawer {
+  z-index: 220;
+  width: min(420px, 94vw);
+  border-right-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 18%),
+    rgba(13, 14, 18, 0.97);
+  box-shadow: 28px 0 90px rgba(0, 0, 0, 0.46);
+}
+
+.app-shell .editor-page {
+  width: min(1240px, calc(100vw - 48px));
+  margin: 116px auto 92px;
+}
+
+.app-shell .editor-layout {
+  grid-template-columns: minmax(0, 1.58fr) minmax(326px, 0.88fr);
+  gap: 18px;
+  max-width: none;
+  margin: 0 auto 24px;
+  align-items: start;
+}
+
+.app-shell .editor-script-panel,
+.app-shell .editor-controls-panel {
+  border-color: rgba(255, 255, 255, 0.085);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.027), transparent 20%),
+    rgba(17, 18, 23, 0.82);
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(20px) saturate(112%);
+  -webkit-backdrop-filter: blur(20px) saturate(112%);
+}
+
+.app-shell .editor-script-panel {
+  min-height: 660px;
+  padding: 32px;
+}
+
+.app-shell .editor-controls-panel {
+  position: sticky;
+  top: 104px;
+  min-height: 660px;
+  padding: 28px;
+}
+
+.app-shell .editor-script-panel::before,
+.app-shell .editor-controls-panel::before {
+  opacity: 0.38;
+}
+
+.app-shell .editor-hero {
+  padding-bottom: 4px;
+}
+
+.app-shell .editor-hero h1 {
+  margin-top: 8px;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -0.048em;
+}
+
+.app-shell .editor-hero p {
+  max-width: 540px;
+  margin-top: 12px;
+  color: #b5b5c0;
+  font-size: 0.94rem;
+}
+
+.app-shell .editor-kicker {
+  color: #8edcff;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+}
+
+.app-shell .workspace-status {
+  border-color: rgba(74, 222, 128, 0.14);
+  color: #9be8b0;
+  background: rgba(34, 197, 94, 0.052);
+}
+
+.app-shell input[type="text"],
+.app-shell textarea {
+  border-color: rgba(255, 255, 255, 0.075);
+  border-radius: 11px;
+  background: rgba(4, 5, 8, 0.34);
+}
+
+.app-shell input[type="text"]:focus,
+.app-shell textarea:focus {
+  border-color: rgba(126, 110, 238, 0.68);
+  background: rgba(4, 5, 8, 0.48);
+  box-shadow: 0 0 0 3px rgba(126, 110, 238, 0.105);
+}
+
+.app-shell .script-field textarea {
+  min-height: 390px;
+  font-size: 1rem;
+  line-height: 1.76;
+}
+
+.app-shell .controls-heading {
+  align-items: center;
+}
+
+.app-shell .controls-heading h2 {
+  margin-top: 6px;
+  font-size: 1.34rem;
+}
+
+.app-shell .controls-heading > svg {
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  border-radius: 11px;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.07);
+}
+
+.app-shell .summary-tile {
+  padding: 15px;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.app-shell .summary-tile strong {
+  font-size: 1.48rem;
+}
+
+.app-shell .segmented-control {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(3, 4, 7, 0.3);
+}
+
+.app-shell .mode-button.active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.115), rgba(255, 255, 255, 0.075));
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.075);
+}
+
+.app-shell .setting-help {
+  color: #7f7f8b;
+}
+
+.app-shell .editor-actions {
+  gap: 9px;
+  padding-top: 4px;
+}
+
+.app-shell .editor-actions .btn {
+  min-height: 46px;
+  border-radius: 11px;
+}
+
+.app-shell .editor-actions .btn:not(.btn-secondary) {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #8c73eb 0%, #557fd7 52%, #45afd2 100%);
+  box-shadow: 0 12px 30px rgba(74, 86, 185, 0.25);
+}
+
+.app-shell .editor-actions .btn:not(.btn-secondary)::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.14), transparent 72%);
+  transform: translateX(-120%);
+  transition: transform 0.46s ease;
+}
+
+.app-shell .editor-actions .btn:not(.btn-secondary):hover::after {
+  transform: translateX(120%);
+}
+
+.app-shell .practice-tip {
+  border-color: rgba(94, 201, 255, 0.14);
+  color: #b7e9ff;
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.app-shell .session-history {
+  border-color: rgba(255, 255, 255, 0.075);
+  border-radius: 18px;
+  background: rgba(16, 17, 22, 0.72);
+  box-shadow: 0 20px 58px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 900px) {
+  .app-shell .editor-page {
+    width: min(760px, calc(100vw - 32px));
+    margin-top: 100px;
+  }
+
+  .app-shell .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell .editor-controls-panel {
+    position: relative;
+    top: auto;
+    min-height: auto;
+  }
+
+  .app-shell .editor-script-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-shell .editor-page {
+    width: calc(100vw - 24px);
+    margin: 82px auto 82px;
+  }
+
+  .app-shell .editor-layout {
+    gap: 12px;
+  }
+
+  .app-shell .editor-script-panel,
+  .app-shell .editor-controls-panel {
+    padding: 21px 17px;
+    border-radius: 16px;
+  }
+
+  .app-shell .editor-hero h1 {
+    font-size: 2.18rem;
+  }
+
+  .app-shell .editor-hero p {
+    font-size: 0.88rem;
+  }
+
+  .app-shell .script-field textarea {
+    min-height: 320px;
+    font-size: 0.96rem;
+  }
+
+  .app-shell .drawer-backdrop {
+    z-index: 310;
+  }
+
+  .app-shell .library-drawer {
+    z-index: 320;
+    width: 94vw;
+  }
+}
