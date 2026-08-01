@@ -2,6 +2,16 @@
 
 All notable changes to RhythmCoach are documented here.
 
+## [1.0.0] - 2026-08-02
+
+### Release
+
+- Promote RhythmCoach from public beta to the first stable release baseline.
+- Establish semantic versioning with `web/package.json` as the authoritative application version.
+- Display the current version in the in-product help dialog.
+- Add an automated version-consistency check covering the PWA cache, README, changelog, and privacy notes.
+- Rotate the Service Worker cache to `rhythmcoach-v1.0.0` so installed PWAs receive the stable release assets.
+
 ## [0.1.0] - 2026-08-01
 
 ### Added
