@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Languages, Maximize2, Minimize2 } from 'lucide-react';
+import { Heart, Languages, Maximize2, Minimize2 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { RecordingsWidget } from './components/RecordingsWidget';
 import { ScriptEditor } from './components/ScriptEditor';
@@ -55,32 +55,38 @@ export default function App() {
 
   return (
     <>
-      <div style={{ position: 'fixed', right: 20, bottom: 20, zIndex: 180, display: 'flex', gap: 10 }}>
-        {mode === 'editor' && (
+      {mode === 'editor' && (
+        <nav className="global-utility-dock" aria-label={globalLang === 'zh' ? '全局工具' : 'Global tools'}>
           <button
-            className="btn-icon"
+            className="btn-icon utility-button"
             onClick={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
             title={globalLang === 'zh' ? 'Switch to English' : '切换到中文'}
-            style={{ width: 40, height: 40, backdropFilter: 'blur(12px)' }}
+            aria-label={globalLang === 'zh' ? 'Switch to English' : '切换到中文'}
           >
-            <Languages size={19} />
+            <Languages size={18} />
           </button>
-        )}
-        <button className="btn-icon" onClick={() => void toggleFullscreen()} style={{ width: 40, height: 40, backdropFilter: 'blur(12px)' }}>
-          {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
-        </button>
-        <a
-          href="https://ko-fi.com/zhihao"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Buy me a coffee"
-          style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#ef4444', textDecoration: 'none', background: 'rgba(255,255,255,.05)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(12px)' }}
-        >
-          ♥
-        </a>
-      </div>
+          <button
+            className="btn-icon utility-button"
+            onClick={() => void toggleFullscreen()}
+            title={isFullscreen ? (globalLang === 'zh' ? '退出全屏' : 'Exit fullscreen') : (globalLang === 'zh' ? '进入全屏' : 'Enter fullscreen')}
+            aria-label={isFullscreen ? (globalLang === 'zh' ? '退出全屏' : 'Exit fullscreen') : (globalLang === 'zh' ? '进入全屏' : 'Enter fullscreen')}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+          <a
+            className="utility-link"
+            href="https://ko-fi.com/zhihao"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={globalLang === 'zh' ? '支持 RhythmCoach' : 'Support RhythmCoach'}
+            aria-label={globalLang === 'zh' ? '支持 RhythmCoach' : 'Support RhythmCoach'}
+          >
+            <Heart size={17} />
+          </a>
+        </nav>
+      )}
 
-      <RecordingsWidget />
+      {mode === 'editor' && <RecordingsWidget />}
       <AnimatePresence mode="wait">
         {mode === 'editor' ? (
           <ScriptEditor key="editor" onStart={startSession} />
