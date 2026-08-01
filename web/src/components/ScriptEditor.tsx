@@ -272,7 +272,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             </div>
 
             <div>
-              <span className="field-label">{globalLang === 'zh' ? '录音声音' : 'Recording sound'}</span>
+              <span className="field-label">{globalLang === 'zh' ? '录音风格' : 'Recording style'}</span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {(['raw', 'podcast', 'broadcast'] as const).map((profile) => (
                   <button
@@ -286,9 +286,6 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', lineHeight: 1.5, margin: '9px 2px 0' }}>
-                {globalLang === 'zh' ? '音频配置在训练开始时锁定，避免练习中断或录音被拆分。' : 'The audio profile is locked when the session starts to prevent recording interruptions.'}
-              </p>
             </div>
 
             {storedMode !== 'free' && (
