@@ -5,6 +5,7 @@ import type { Language, PracticeSession, PrompterMode, Recording } from './types
 export type AudioProfile = 'raw' | 'podcast' | 'broadcast';
 
 const RECORDINGS_KEY = 'rhythmcoach_recordings_v2';
+const LEGACY_RECORDINGS_KEY = 'rhythmcoach_recordings';
 const SESSIONS_KEY = 'rhythmcoach_sessions_v1';
 const SETTINGS_KEY = 'rhythmcoach_settings_v1';
 const MAX_SESSIONS = 100;
@@ -158,19 +159,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadPersistedData: async () => {
     if (get().isPersistedDataLoaded) return;
     try {
-      const [savedRecordings, savedSessions, savedSettings] = await Promise.all([
+      const [savedRecordings, legacyRecordings, savedSessions, savedSettings] = await Promise.all([
         localforage.getItem<Recording[]>(RECORDINGS_KEY),
+        localforage.getItem<Recording[]>(LEGACY_RECORDINGS_KEY),
         localforage.getItem<PracticeSession[]>(SESSIONS_KEY),
         localforage.getItem<PersistedSettings>(SETTINGS_KEY)
       ]);
 
-      const recordings = Array.isArray(savedRecordings)
-        ? savedRecordings.map((recording) => ({
-            ...recording,
-            createdAt: recording.createdAt || Date.now(),
-            url: recording.blob ? URL.createObjectURL(recording.blob) : ''
-          }))
-        : [];
+      const sourceRecordings = Array.isArray(savedRecordings)
+        ? savedRecordings
+        : Array.isArray(legacyRecordings)
+          ? legacyRecordings
+          : [];
+      const recordings = sourceRecordings.map((recording) => ({
+        ...recording,
+        createdAt: recording.createdAt || Date.now(),
+        url: recording.blob ? URL.createObjectURL(recording.blob) : ''
+      }));
       const sessions = Array.isArray(savedSessions) ? savedSessions.slice(0, MAX_SESSIONS) : [];
 
       set({
@@ -182,6 +187,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         audioProfile: savedSettings?.audioProfile ?? 'raw',
         isPersistedDataLoaded: true
       });
+
+      if (!Array.isArray(savedRecordings) && recordings.length > 0) {
+        await persistRecordings(recordings);
+      }
     } catch (error) {
       console.error('Failed to load persisted RhythmCoach data:', error);
       set({ isPersistedDataLoaded: true });
