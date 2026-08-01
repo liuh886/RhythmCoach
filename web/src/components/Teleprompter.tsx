@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CheckCircle2, FlipHorizontal, Gauge, Mic, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DSP_PRESETS, classifyInputLevel, getExpanderTargetGain, getRecorderOptions, type InputLevelStatus } from '../domain/audioDsp';
+import { buildTimeMarkers } from '../domain/prompterTimeline';
 import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, getScrollCompletion } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PracticeSession, PrompterMode, SessionComparison, SessionStatus } from '../types';
@@ -58,6 +59,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
   const [audioLevel, setAudioLevel] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [liveEstimatedPace, setLiveEstimatedPace] = useState(0);
+  const [liveProgress, setLiveProgress] = useState(0);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(0);
   const [audioMessage, setAudioMessage] = useState('');
   const [completedSession, setCompletedSession] = useState<PracticeSession | null>(null);
@@ -87,6 +89,11 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
 
   const totalUnits = useMemo(() => countScriptUnits(script, lang), [lang, script]);
   const scriptKey = useMemo(() => createScriptKey(title, script, lang), [lang, script, title]);
+  const targetDurationSeconds = useMemo(
+    () => prompterMode === 'timed' && targetPace > 0 ? (totalUnits / targetPace) * 60 : 0,
+    [prompterMode, targetPace, totalUnits]
+  );
+  const timeMarkers = useMemo(() => buildTimeMarkers(targetDurationSeconds), [targetDurationSeconds]);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
   const canResume = isPaused || status === 'ready';
@@ -153,8 +160,6 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.65;
 
-      // Measurement always uses the same pre-style signal so changing recording
-      // style cannot change speaking time, pauses, or estimated pace.
       source.connect(analyser);
 
       const preset = DSP_PRESETS[audioProfile];
@@ -334,6 +339,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
       if (time - lastUi > 250) {
         setElapsedMs(totalTimeRef.current);
         const progress = getScrollCompletion(scrollRef.current);
+        setLiveProgress(progress);
         const completedUnits = Math.round(totalUnits * progress);
         const speakingMinutes = speakingTimeRef.current / 60_000;
         setLiveEstimatedPace(speakingMinutes > 0.03 ? Math.round(completedUnits / speakingMinutes) : 0);
@@ -518,31 +524,38 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
       <header className="prompter-topbar">
         <div className="session-state">
           <span className={`status-dot ${isRunning ? 'running' : ''}`} />
-          <div><strong>{modeLabel}</strong><span>{formatDuration(elapsedMs)} · {statusLabel}</span></div>
+          <div><strong>{title || modeLabel}</strong><span>{modeLabel} · {formatDuration(elapsedMs)} · {statusLabel}</span></div>
         </div>
         <div className="top-actions">
-          <button className="btn-icon" onClick={() => setIsMirrored((value) => !value)} title="Mirror"><FlipHorizontal size={20} /></button>
-          <button className="btn-icon finish-button" onClick={finishSession} title="Finish"><CheckCircle2 size={21} /></button>
-          <button className="btn-icon close-button" onClick={close} title="Close"><X size={21} /></button>
+          <button className="btn-icon" onClick={() => setIsMirrored((value) => !value)} title="Mirror"><FlipHorizontal size={19} /></button>
+          <button className="btn-icon finish-button" onClick={finishSession} title="Finish"><CheckCircle2 size={20} /></button>
+          <button className="btn-icon close-button" onClick={close} title="Close"><X size={20} /></button>
         </div>
       </header>
 
-      <motion.aside drag dragMomentum={false} className="pace-panel">
-        <div className="pace-panel-row">
+      <motion.aside drag dragMomentum={false} dragElastic={0.06} className={`pace-panel ${isRunning ? 'is-running' : ''}`}>
+        <div className="hud-header">
           <span className={`voice-label ${voiceState.toLowerCase()}`}>
-            <Activity size={17} />
-            {voiceState === 'SPEAKING' ? (lang === 'zh' ? '正在讲话' : 'Speaking') : voiceState === 'SILENCE' ? (lang === 'zh' ? '停顿' : 'Silence') : (lang === 'zh' ? '无麦克风数据' : 'No microphone data')}
+            <Activity size={15} />
+            {voiceState === 'SPEAKING' ? (lang === 'zh' ? '讲话' : 'Speaking') : voiceState === 'SILENCE' ? (lang === 'zh' ? '停顿' : 'Silence') : (lang === 'zh' ? '无麦克风' : 'No mic')}
           </span>
-          <button className="btn-icon" onClick={() => isRunning ? pauseSession() : void startOrResume()}>
-            {isRunning ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
+          <button className="btn-icon hud-toggle" onClick={() => isRunning ? pauseSession() : void startOrResume()}>
+            {isRunning ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
           </button>
         </div>
-        <div className="pace-number"><strong>{paceValue || '—'}</strong><span>{lang === 'zh' ? 'CPM' : 'WPM'}</span></div>
-        <div className="pace-caption"><Gauge size={15} /> {paceLabel}</div>
-        <p>{prompterMode === 'timed' ? (lang === 'zh' ? '按目标时长连续滚动；停顿不会暂停。' : 'Continuous scrolling to the target duration.') : prompterMode === 'follow' ? (lang === 'zh' ? '检测到讲话时滚动；长停顿后暂停。' : 'Scrolls while speaking and pauses during silence.') : (lang === 'zh' ? '手动滚动；语速仅按文本进度估算。' : 'Manual scrolling; pace is estimated from text progress.')}</p>
+        <div className="hud-readout">
+          <div className="hud-metric primary">
+            <span><Gauge size={13} /> {paceLabel}</span>
+            <div><strong>{paceValue || '—'}</strong><small>{lang === 'zh' ? 'CPM' : 'WPM'}</small></div>
+          </div>
+          <div className="hud-metric">
+            <span>{lang === 'zh' ? '正文进度' : 'Progress'}</span>
+            <strong>{Math.round(liveProgress * 100)}%</strong>
+          </div>
+        </div>
         <div className="audio-meter" aria-label="audio level">{Array.from({ length: 14 }).map((_, index) => <span key={index} className={audioLevel * 14 > index ? 'active' : ''} />)}</div>
-        {voiceState !== 'UNAVAILABLE' && <div className={`input-level-status ${inputLevelStatus}`}><Mic size={14} /> {inputLevelText[inputLevelStatus]}</div>}
-        {audioMessage && <div className="audio-warning"><Mic size={15} /> {audioMessage}</div>}
+        {voiceState !== 'UNAVAILABLE' && <div className={`input-level-status ${inputLevelStatus}`}><Mic size={13} /> {inputLevelText[inputLevelStatus]}</div>}
+        {audioMessage && <div className="audio-warning"><Mic size={14} /> {audioMessage}</div>}
       </motion.aside>
 
       <div className="prompter-frame">
@@ -554,7 +567,23 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         )}
         <div ref={scrollRef} className={`prompter-scroll ${isMirrored ? 'mirrored' : ''}`} onWheel={manualScroll} onTouchMove={manualScroll} onScroll={prompterMode === 'free' ? manualScroll : undefined}>
           <div className="prompter-padding">
-            <div className="prompter-text">{script.split('\n').filter((line) => line.trim()).map((line, index) => <p key={`${index}_${line.slice(0, 12)}`}>{line}</p>)}</div>
+            <div className={`prompter-script-stage ${prompterMode === 'timed' ? 'with-time-ruler' : ''}`}>
+              {prompterMode === 'timed' && timeMarkers.length > 0 && (
+                <div className="time-ruler" aria-label={lang === 'zh' ? '目标时间标尺' : 'Target timeline'}>
+                  <span className="time-ruler-track" />
+                  {timeMarkers.map((marker) => (
+                    <div
+                      key={`${marker.seconds}_${marker.label}`}
+                      className={`time-marker ${marker.major ? 'major' : ''}`}
+                      style={{ top: `${marker.progress * 100}%` }}
+                    >
+                      <span>{marker.label}</span><i />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="prompter-text">{script.split('\n').filter((line) => line.trim()).map((line, index) => <p key={`${index}_${line.slice(0, 12)}`}>{line}</p>)}</div>
+            </div>
           </div>
         </div>
       </div>
