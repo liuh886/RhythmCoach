@@ -1,11 +1,12 @@
 {
-  "name": "web",
+  "name": "rhythmcoach",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "A local-first rehearsal coach for scripted speaking.",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js",
+    "test": "tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js && node .tmp-test/test/trainingFocus.test.js",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
