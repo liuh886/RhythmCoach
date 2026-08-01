@@ -8,5 +8,11 @@
     "noEmit": false,
     "outDir": ".tmp-test"
   },
-  "include": ["src/types.ts", "src/domain/sessionMetrics.ts", "test/sessionMetrics.test.ts"]
+  "include": [
+    "src/types.ts",
+    "src/domain/sessionMetrics.ts",
+    "src/domain/trainingFocus.ts",
+    "test/sessionMetrics.test.ts",
+    "test/trainingFocus.test.ts"
+  ]
 }
