@@ -4,17 +4,35 @@
   gap: 7px;
   min-width: 0;
   padding: 14px;
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid var(--glass-border);
-  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.8rem;
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
+
+.metric-card:hover {
+  border-color: var(--glass-highlight);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.metric-card svg {
+  color: var(--accent-primary);
+}
+
 .metric-card > :last-child {
+  overflow: hidden;
   color: var(--text-primary);
   font-size: 1rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
 }
+
 @media (max-width: 760px) {
-  .metric-card { min-width: 135px; }
+  .metric-card {
+    min-width: 132px;
+    padding: 12px;
+  }
 }
