@@ -1,6 +1,6 @@
 import './ScriptEditor.css';
-import { useEffect, useMemo, useState } from 'react';
-import { Activity, ChevronRight, Download, FileText, Library, Play, Save, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Activity, CheckCircle2, ChevronRight, Download, FileText, Library, Play, Save, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { countScriptUnits } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
@@ -18,8 +18,8 @@ const DRAFTS_KEY = 'rhythm_custom_materials';
 
 const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
   timed: {
-    zh: '按目标总时长连续滚动，适合 60 秒口播、演讲限时和录制排练。',
-    en: 'Scrolls continuously to meet the target duration. Best for timed delivery.'
+    zh: '按目标总时长连续滚动，并在正文旁显示时间标尺。',
+    en: 'Scrolls to the target duration with a timeline aligned to the script.'
   },
   follow: {
     zh: '讲话时滚动，停顿后暂停。适合跟读、熟稿和节奏稳定训练。',
@@ -37,12 +37,12 @@ const audioProfileCopy = {
     en: 'Natural dynamics with no additional EQ or compression.'
   },
   podcast: {
-    zh: '温和压缩与清晰度增强，适合日常口播。',
-    en: 'Gentle compression and clarity for everyday spoken delivery.'
+    zh: '温和清理停顿底噪，并增强日常口播清晰度。',
+    en: 'Gentle pause cleanup and clarity for everyday spoken delivery.'
   },
   broadcast: {
-    zh: '更清晰、更紧凑，并加入峰值保护。',
-    en: 'A tighter, clearer sound with peak protection.'
+    zh: '更清晰、更紧凑，并加入更强的停顿降噪与峰值保护。',
+    en: 'A tighter sound with stronger pause cleanup and peak protection.'
   }
 } as const;
 
@@ -55,13 +55,21 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const setStoredMode = useAppStore((state) => state.setPrompterMode);
   const audioProfile = useAppStore((state) => state.audioProfile);
   const setAudioProfile = useAppStore((state) => state.setAudioProfile);
+  const activeTitle = useAppStore((state) => state.activeTitle);
+  const activeScript = useAppStore((state) => state.activeScript);
+  const activeTip = useAppStore((state) => state.activeTip);
+  const setActiveTitle = useAppStore((state) => state.setActiveTitle);
+  const setActiveScript = useAppStore((state) => state.setActiveScript);
+  const setActiveTip = useAppStore((state) => state.setActiveTip);
+  const isPersistedDataLoaded = useAppStore((state) => state.isPersistedDataLoaded);
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState(globalLang === 'zh' ? ZH_DEFAULT : EN_DEFAULT);
-  const [tip, setTip] = useState('');
+  const [title, setTitle] = useState(activeTitle);
+  const [content, setContent] = useState(activeScript || (globalLang === 'zh' ? ZH_DEFAULT : EN_DEFAULT));
+  const [tip, setTip] = useState(activeTip);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [customMaterials, setCustomMaterials] = useState<ScriptMaterial[]>([]);
+  const workspaceHydratedRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -73,17 +81,42 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   }, []);
 
   useEffect(() => {
+    if (!isPersistedDataLoaded || workspaceHydratedRef.current) return;
+    if (activeTitle) setTitle(activeTitle);
+    if (activeScript) setContent(activeScript);
+    if (activeTip) setTip(activeTip);
+    workspaceHydratedRef.current = true;
+  }, [activeScript, activeTip, activeTitle, isPersistedDataLoaded]);
+
+  useEffect(() => {
     if (globalLang === 'en' && content === ZH_DEFAULT) {
       setContent(EN_DEFAULT);
+      setActiveScript(EN_DEFAULT);
       setStoredPace(150);
     } else if (globalLang === 'zh' && content === EN_DEFAULT) {
       setContent(ZH_DEFAULT);
+      setActiveScript(ZH_DEFAULT);
       setStoredPace(220);
     }
-  }, [content, globalLang, setStoredPace]);
+  }, [content, globalLang, setActiveScript, setStoredPace]);
 
   const unitCount = useMemo(() => countScriptUnits(content, globalLang), [content, globalLang]);
   const estimatedSeconds = storedMode === 'free' || storedPace <= 0 ? 0 : Math.round((unitCount / storedPace) * 60);
+
+  const updateTitle = (value: string) => {
+    setTitle(value);
+    setActiveTitle(value);
+  };
+
+  const updateContent = (value: string) => {
+    setContent(value);
+    setActiveScript(value);
+  };
+
+  const updateTip = (value: string) => {
+    setTip(value);
+    setActiveTip(value);
+  };
 
   const persistDrafts = (drafts: ScriptMaterial[]) => {
     setCustomMaterials(drafts);
@@ -91,9 +124,9 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   };
 
   const importMaterial = (material: ScriptMaterial) => {
-    setTitle(material.title);
-    setContent(material.content);
-    setTip(material.tip || '');
+    updateTitle(material.title);
+    updateContent(material.content);
+    updateTip(material.tip || '');
     setGlobalLang('zh');
     setStoredPace(220);
     setIsDrawerOpen(false);
@@ -123,7 +156,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     URL.revokeObjectURL(url);
   };
 
-  const importDrafts = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importDrafts = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -151,7 +184,10 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
   const start = () => {
     if (!content.trim()) return;
-    onStart(title.trim() || (globalLang === 'zh' ? '未命名稿件' : 'Untitled script'), content.trim(), storedPace, globalLang, storedMode);
+    const finalTitle = title.trim() || (globalLang === 'zh' ? '未命名稿件' : 'Untitled script');
+    updateTitle(finalTitle);
+    updateContent(content.trim());
+    onStart(finalTitle, content.trim(), storedPace, globalLang, storedMode);
   };
 
   const durationLabel = storedMode === 'free'
@@ -161,60 +197,59 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   return (
     <>
       <button
-        className="btn-icon"
+        className="btn-icon library-launcher"
         onClick={() => setIsDrawerOpen(true)}
-        style={{ position: 'fixed', left: 20, top: 20, zIndex: 90, width: 48, height: 48, background: 'var(--bg-panel)' }}
         title={globalLang === 'zh' ? '素材库' : 'Script library'}
+        aria-label={globalLang === 'zh' ? '打开素材库' : 'Open script library'}
       >
-        <Library size={22} />
+        <Library size={21} />
       </button>
 
       <AnimatePresence>
         {isDrawerOpen && (
           <>
             <motion.div
+              className="drawer-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsDrawerOpen(false)}
-              style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.62)' }}
             />
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="glass-panel"
-              style={{ position: 'fixed', inset: '0 auto 0 0', zIndex: 110, width: 'min(390px, 92vw)', borderRadius: '0 24px 24px 0', padding: 0, overflow: 'hidden' }}
+              className="glass-panel library-drawer"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottom: '1px solid var(--glass-border)' }}>
-                <strong style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Library size={19} /> {globalLang === 'zh' ? '素材库' : 'Library'}</strong>
-                <button className="btn-icon" onClick={() => setIsDrawerOpen(false)} style={{ width: 32, height: 32, padding: 0 }}><X size={17} /></button>
+              <div className="library-drawer-header">
+                <strong><Library size={19} /> {globalLang === 'zh' ? '素材库' : 'Library'}</strong>
+                <button className="btn-icon compact-icon" onClick={() => setIsDrawerOpen(false)}><X size={17} /></button>
               </div>
-              <div style={{ height: 'calc(100vh - 77px)', overflowY: 'auto', padding: 16 }}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-                  <button className="btn btn-secondary" onClick={() => document.getElementById('draft-import')?.click()} style={{ flex: 1, padding: 10, justifyContent: 'center', fontSize: '.82rem' }}>
+              <div className="library-drawer-content">
+                <div className="library-actions">
+                  <button className="btn btn-secondary" onClick={() => document.getElementById('draft-import')?.click()}>
                     <Upload size={15} /> {globalLang === 'zh' ? '导入' : 'Import'}
                   </button>
                   <input id="draft-import" type="file" accept="application/json,.json" hidden onChange={importDrafts} />
-                  <button className="btn btn-secondary" onClick={exportDrafts} style={{ flex: 1, padding: 10, justifyContent: 'center', fontSize: '.82rem' }}>
+                  <button className="btn btn-secondary" onClick={exportDrafts}>
                     <Download size={15} /> {globalLang === 'zh' ? '导出' : 'Export'}
                   </button>
                 </div>
 
                 {customMaterials.length > 0 && (
-                  <div style={{ marginBottom: 24 }}>
-                    <h4 style={{ color: 'var(--text-muted)', margin: '0 0 10px 6px' }}>{globalLang === 'zh' ? '我的草稿' : 'My drafts'}</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  <div className="library-section">
+                    <h4>{globalLang === 'zh' ? '我的草稿' : 'My drafts'}</h4>
+                    <div className="library-list">
                       {customMaterials.map((material) => (
                         <div key={material.id} className="library-item" onClick={() => importMaterial(material)}>
-                          <div style={{ minWidth: 0 }}>
+                          <div>
                             <strong>{material.title}</strong>
                             <p>{material.content}</p>
                           </div>
                           <button
-                            className="btn-icon"
+                            className="btn-icon compact-icon delete-draft"
                             onClick={(event) => {
                               event.stopPropagation();
                               persistDrafts(customMaterials.filter((item) => item.id !== material.id));
                             }}
-                            style={{ width: 28, height: 28, padding: 0, color: '#ef4444' }}
+                            aria-label={globalLang === 'zh' ? '删除草稿' : 'Delete draft'}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -224,17 +259,19 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                   </div>
                 )}
 
-                <h4 style={{ color: 'var(--text-muted)', margin: '0 0 10px 6px' }}>{globalLang === 'zh' ? '精选练习' : 'Practice scripts'}</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                  {defaultMaterials.map((material) => (
-                    <div key={material.id} className="library-item" onClick={() => importMaterial(material)}>
-                      <div style={{ minWidth: 0 }}>
-                        <strong>{material.title}</strong>
-                        <p>{material.content}</p>
+                <div className="library-section">
+                  <h4>{globalLang === 'zh' ? '精选练习' : 'Practice scripts'}</h4>
+                  <div className="library-list">
+                    {defaultMaterials.map((material) => (
+                      <div key={material.id} className="library-item" onClick={() => importMaterial(material)}>
+                        <div>
+                          <strong>{material.title}</strong>
+                          <p>{material.content}</p>
+                        </div>
+                        <ChevronRight size={16} color="var(--text-muted)" />
                       </div>
-                      <ChevronRight size={16} color="var(--text-muted)" />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.aside>
@@ -242,88 +279,89 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
         )}
       </AnimatePresence>
 
-      <main style={{ width: 'min(1200px, 92vw)', margin: '60px auto 80px' }}>
-        <div className="editor-layout" style={{ alignItems: 'stretch' }}>
-          <section className="glass-panel" style={{ padding: 34, display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '2.2rem' }}>RhythmCoach</h1>
-              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)' }}>
-                {globalLang === 'zh' ? '把一次口播变成可复盘、可比较的训练。' : 'Turn every rehearsal into measurable progress.'}
-              </p>
+      <main className="editor-page">
+        <div className="editor-layout">
+          <section className="glass-panel editor-script-panel">
+            <div className="editor-hero">
+              <div>
+                <span className="editor-kicker">REHEARSAL WORKSPACE</span>
+                <h1>RhythmCoach</h1>
+                <p>{globalLang === 'zh' ? '把一次口播变成可复盘、可比较的训练。' : 'Turn every rehearsal into measurable progress.'}</p>
+              </div>
+              <span className="workspace-status"><CheckCircle2 size={15} /> {globalLang === 'zh' ? '当前稿件自动保留' : 'Workspace preserved'}</span>
             </div>
+
             <label>
               <span className="field-label"><FileText size={16} /> {globalLang === 'zh' ? '稿件标题' : 'Script title'}</span>
-              <input type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={globalLang === 'zh' ? '例如：60 秒项目介绍' : 'e.g. 60-second project introduction'} />
+              <input type="text" value={title} onChange={(event) => updateTitle(event.target.value)} placeholder={globalLang === 'zh' ? '例如：60 秒项目介绍' : 'e.g. 60-second project introduction'} />
             </label>
-            <label style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <label className="script-field">
               <span className="field-label">{globalLang === 'zh' ? '稿件正文' : 'Script'}</span>
-              <textarea value={content} onChange={(event) => setContent(event.target.value)} style={{ minHeight: 360, flex: 1 }} />
+              <textarea value={content} onChange={(event) => updateContent(event.target.value)} />
             </label>
             {tip && <div className="practice-tip">💡 {tip}</div>}
           </section>
 
-          <section className="glass-panel" style={{ padding: 30, display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <section className="glass-panel editor-controls-panel">
+            <div className="controls-heading">
+              <div>
+                <span className="editor-kicker">SESSION SETUP</span>
+                <h2>{globalLang === 'zh' ? '训练设置' : 'Rehearsal setup'}</h2>
+              </div>
+              <Activity size={20} />
+            </div>
+
+            <div className="summary-row">
               <div className="summary-tile"><span>{globalLang === 'zh' ? '有效字数' : 'Words'}</span><strong>{unitCount}</strong></div>
               <div className="summary-tile"><span>{globalLang === 'zh' ? '目标时长' : 'Target time'}</span><strong>{durationLabel}</strong></div>
             </div>
 
-            <div>
+            <div className="settings-group">
               <span className="field-label"><Activity size={16} /> {globalLang === 'zh' ? '训练模式' : 'Training mode'}</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <div className="segmented-control">
                 {(['timed', 'follow', 'free'] as PrompterMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    className={`mode-button ${storedMode === mode ? 'active' : ''}`}
-                    onClick={() => setStoredMode(mode)}
-                  >
+                  <button key={mode} className={`mode-button ${storedMode === mode ? 'active' : ''}`} onClick={() => setStoredMode(mode)}>
                     {globalLang === 'zh'
                       ? mode === 'timed' ? '定时' : mode === 'follow' ? '跟随' : '自由'
                       : mode === 'timed' ? 'Timed' : mode === 'follow' ? 'Follow' : 'Free'}
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '.84rem', lineHeight: 1.55, margin: '10px 2px 0' }}>{modeCopy[storedMode][globalLang]}</p>
+              <p className="setting-help">{modeCopy[storedMode][globalLang]}</p>
             </div>
 
-            <div>
+            <div className="settings-group">
               <span className="field-label">{globalLang === 'zh' ? '录音风格' : 'Recording style'}</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <div className="segmented-control">
                 {(['raw', 'podcast', 'broadcast'] as const).map((profile) => (
-                  <button
-                    key={profile}
-                    className={`mode-button ${audioProfile === profile ? 'active' : ''}`}
-                    onClick={() => setAudioProfile(profile)}
-                  >
+                  <button key={profile} className={`mode-button ${audioProfile === profile ? 'active' : ''}`} onClick={() => setAudioProfile(profile)}>
                     {globalLang === 'zh'
                       ? profile === 'raw' ? '自然' : profile === 'podcast' ? '播客' : '清晰'
                       : profile === 'raw' ? 'Natural' : profile === 'podcast' ? 'Podcast' : 'Crisp'}
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', lineHeight: 1.5, margin: '9px 2px 0' }}>
-                {audioProfileCopy[audioProfile][globalLang]}
-              </p>
+              <p className="setting-help compact">{audioProfileCopy[audioProfile][globalLang]}</p>
             </div>
 
             {storedMode !== 'free' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span className="field-label" style={{ margin: 0 }}>{globalLang === 'zh' ? '目标语速' : 'Target pace'}</span>
-                  <strong style={{ color: 'var(--accent-primary)' }}>{storedPace} {globalLang === 'zh' ? 'CPM' : 'WPM'}</strong>
+              <div className="settings-group pace-setting">
+                <div className="pace-setting-header">
+                  <span className="field-label">{globalLang === 'zh' ? '目标语速' : 'Target pace'}</span>
+                  <strong>{storedPace} {globalLang === 'zh' ? 'CPM' : 'WPM'}</strong>
                 </div>
                 <input type="range" min={globalLang === 'zh' ? 100 : 70} max={globalLang === 'zh' ? 350 : 240} value={storedPace} onChange={(event) => setStoredPace(Number(event.target.value))} />
-                <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', lineHeight: 1.5, marginTop: 9 }}>
-                  {globalLang === 'zh' ? '这是滚动目标，不会被冒充为实时测得语速。完成后才会给出“进度估算语速”。' : 'This controls scrolling. It is not presented as measured pace; an estimated pace is calculated after the session.'}
+                <p className="setting-help compact">
+                  {globalLang === 'zh' ? '它控制滚动与时间标尺，不会被冒充为实时测得语速。' : 'This controls scrolling and the timeline; it is not presented as measured pace.'}
                 </p>
               </div>
             )}
 
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button className="btn btn-secondary" onClick={saveDraft} disabled={!content.trim()} style={{ justifyContent: 'center' }}>
-                <Save size={17} /> {isSaving ? (globalLang === 'zh' ? '已保存' : 'Saved') : (globalLang === 'zh' ? '保存草稿' : 'Save draft')}
+            <div className="editor-actions">
+              <button className="btn btn-secondary" onClick={saveDraft} disabled={!content.trim()}>
+                <Save size={17} /> {isSaving ? (globalLang === 'zh' ? '已保存' : 'Saved') : (globalLang === 'zh' ? '保存到素材库' : 'Save to library')}
               </button>
-              <button className="btn" onClick={start} disabled={!content.trim()} style={{ justifyContent: 'center' }}>
+              <button className="btn" onClick={start} disabled={!content.trim()}>
                 <Play size={18} fill="currentColor" /> {globalLang === 'zh' ? '开始训练' : 'Start rehearsal'}
               </button>
             </div>
