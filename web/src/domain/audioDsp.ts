@@ -18,7 +18,7 @@ export interface DspPreset {
   limiter: CompressorPreset | null;
 }
 
-export type InputLevelStatus = 'waiting' | 'low' | 'good' | 'hot';
+export type InputLevelStatus = 'waiting' | 'low' | 'good' | 'hot' | 'noisy';
 
 export const TARGET_AUDIO_BITRATE_BPS = 128_000;
 
@@ -79,9 +79,10 @@ export const DSP_PRESETS: Record<DspProfile, DspPreset> = {
   }
 };
 
-export function classifyInputLevel(rms: number, peak: number): InputLevelStatus {
+export function classifyInputLevel(rms: number, peak: number, noiseFloor = 0): InputLevelStatus {
   if (!Number.isFinite(rms) || !Number.isFinite(peak) || rms <= 0 || peak <= 0) return 'waiting';
   if (peak >= 0.92 || rms >= 0.3) return 'hot';
+  if (noiseFloor >= 0.025) return 'noisy';
   if (rms < 0.025) return 'low';
   return 'good';
 }
