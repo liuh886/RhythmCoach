@@ -18,6 +18,7 @@ All notable changes to RhythmCoach are documented here.
 
 - Separate pre-DSP measurement from the recording-style signal path so style changes cannot alter training metrics.
 - Refine Natural, Podcast, and Crisp spoken-word profiles with conservative EQ, soft-knee compression, and peak protection.
+- Add a speech-aware soft expander to Podcast and Crisp so longer pauses are gently reduced without a hard gate or complete mute.
 - Disable browser automatic gain control to prevent double compression and pumping.
 - Add lightweight input guidance for low, good, hot, and noisy microphone conditions.
 - Target 128 kbps MediaRecorder audio with a browser-compatible fallback.
@@ -26,7 +27,7 @@ All notable changes to RhythmCoach are documented here.
 
 - Core session metric tests.
 - Rule-based training focus tests.
-- DSP parameter, bitrate, and input-level classification tests.
+- DSP parameter, soft-expander timing, bitrate, and input-level classification tests.
 - TypeScript and Vite production builds in GitHub Actions.
 - GitHub Pages deployment after validation.
 
