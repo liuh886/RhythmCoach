@@ -2,7 +2,7 @@ import './Teleprompter.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CheckCircle2, FlipHorizontal, Gauge, Mic, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DSP_PRESETS, classifyInputLevel, getRecorderOptions, type InputLevelStatus } from '../domain/audioDsp';
+import { DSP_PRESETS, classifyInputLevel, getExpanderTargetGain, getRecorderOptions, type InputLevelStatus } from '../domain/audioDsp';
 import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, getScrollCompletion } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PracticeSession, PrompterMode, SessionComparison, SessionStatus } from '../types';
@@ -159,6 +159,8 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
 
       const preset = DSP_PRESETS[audioProfile];
       let recordingOutput: AudioNode = source;
+      let expanderGain: GainNode | null = null;
+      let expanderTargetGain = 1;
 
       if (preset.highpassHz !== null) {
         const highpass = context.createBiquadFilter();
@@ -167,6 +169,13 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         highpass.Q.value = preset.highpassQ;
         recordingOutput.connect(highpass);
         recordingOutput = highpass;
+      }
+
+      if (preset.expander) {
+        expanderGain = context.createGain();
+        expanderGain.gain.value = 1;
+        recordingOutput.connect(expanderGain);
+        recordingOutput = expanderGain;
       }
 
       if (preset.presenceHz !== null) {
@@ -248,11 +257,12 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         const threshold = Math.max(0.015, noiseFloorRef.current * 2.6);
         const detectedSpeech = rms > threshold;
         let speakingNow = detectedSpeech;
+        let silenceDuration = 0;
 
         if (!detectedSpeech) {
           noiseFloorRef.current = noiseFloorRef.current * 0.97 + rms * 0.03;
           if (silenceStartRef.current === 0) silenceStartRef.current = time;
-          const silenceDuration = time - silenceStartRef.current;
+          silenceDuration = time - silenceStartRef.current;
           speakingNow = silenceDuration < SPEECH_GRACE_MS;
           if (hasSpokenRef.current && silenceDuration >= LONG_PAUSE_MS && !longPauseCountedRef.current && statusRef.current === 'running') {
             longPauseCountRef.current += 1;
@@ -262,6 +272,22 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
           hasSpokenRef.current = true;
           silenceStartRef.current = 0;
           longPauseCountedRef.current = false;
+        }
+
+        if (expanderGain && preset.expander) {
+          const nextExpanderTarget = getExpanderTargetGain(preset.expander, detectedSpeech, silenceDuration);
+          if (nextExpanderTarget !== expanderTargetGain) {
+            expanderTargetGain = nextExpanderTarget;
+            const now = context.currentTime;
+            const currentGain = expanderGain.gain.value;
+            expanderGain.gain.cancelScheduledValues(now);
+            expanderGain.gain.setValueAtTime(currentGain, now);
+            expanderGain.gain.setTargetAtTime(
+              nextExpanderTarget,
+              now,
+              nextExpanderTarget === 1 ? preset.expander.openTimeConstant : preset.expander.closeTimeConstant
+            );
+          }
         }
 
         const nextVoice: VoiceState = speakingNow ? 'SPEAKING' : 'SILENCE';
