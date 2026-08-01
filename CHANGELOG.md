@@ -14,9 +14,19 @@ All notable changes to RhythmCoach are documented here.
 - Chinese and English interface support.
 - Public beta product documentation and privacy notes.
 
+### Audio
+
+- Separate pre-DSP measurement from the recording-style signal path so style changes cannot alter training metrics.
+- Refine Natural, Podcast, and Crisp spoken-word profiles with conservative EQ, soft-knee compression, and peak protection.
+- Disable browser automatic gain control to prevent double compression and pumping.
+- Add lightweight input guidance for low, good, hot, and noisy microphone conditions.
+- Target 128 kbps MediaRecorder audio with a browser-compatible fallback.
+
 ### Quality
 
 - Core session metric tests.
+- Rule-based training focus tests.
+- DSP parameter, bitrate, and input-level classification tests.
 - TypeScript and Vite production builds in GitHub Actions.
 - GitHub Pages deployment after validation.
 
@@ -25,3 +35,4 @@ All notable changes to RhythmCoach are documented here.
 - Voice-follow responds to speech activity and silence; it does not align spoken words to the script.
 - Estimated pace is intended for rehearsal comparison and is not a speech-recognition measurement.
 - Local data may be removed when browser site data is cleared.
+- Final tonal quality still depends on the microphone, distance, room, operating-system gain, and browser implementation.
