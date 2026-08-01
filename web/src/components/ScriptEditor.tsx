@@ -31,6 +31,21 @@ const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
   }
 };
 
+const audioProfileCopy = {
+  raw: {
+    zh: '自然动态，不做额外 EQ 或压缩。',
+    en: 'Natural dynamics with no additional EQ or compression.'
+  },
+  podcast: {
+    zh: '温和压缩与清晰度增强，适合日常口播。',
+    en: 'Gentle compression and clarity for everyday spoken delivery.'
+  },
+  broadcast: {
+    zh: '更清晰、更紧凑，并加入峰值保护。',
+    en: 'A tighter, clearer sound with peak protection.'
+  }
+} as const;
+
 export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const globalLang = useAppStore((state) => state.globalLang);
   const setGlobalLang = useAppStore((state) => state.setGlobalLang);
@@ -281,11 +296,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                     onClick={() => setAudioProfile(profile)}
                   >
                     {globalLang === 'zh'
-                      ? profile === 'raw' ? '原始' : profile === 'podcast' ? '播客' : '清晰'
-                      : profile === 'raw' ? 'Raw' : profile === 'podcast' ? 'Podcast' : 'Crisp'}
+                      ? profile === 'raw' ? '自然' : profile === 'podcast' ? '播客' : '清晰'
+                      : profile === 'raw' ? 'Natural' : profile === 'podcast' ? 'Podcast' : 'Crisp'}
                   </button>
                 ))}
               </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', lineHeight: 1.5, margin: '9px 2px 0' }}>
+                {audioProfileCopy[audioProfile][globalLang]}
+              </p>
             </div>
 
             {storedMode !== 'free' && (
