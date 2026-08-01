@@ -1,30 +1,186 @@
 import './SessionHistory.css';
-import { BarChart3, Clock3, Gauge, PauseCircle, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { BarChart3, Clock3, Gauge, History, PauseCircle, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { compareSessions, createScriptKey } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
-import type { Language, PracticeSession } from '../types';
+import type { Language, PracticeSession, PrompterMode } from '../types';
 
-interface SessionHistoryProps { title: string; script: string; lang: Language; }
-const formatDuration = (milliseconds: number) => { const seconds = Math.max(0, Math.round(milliseconds / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; };
+interface SessionHistoryProps {
+  title: string;
+  script: string;
+  lang: Language;
+}
+
+const copy = {
+  zh: {
+    eyebrow: '训练复盘',
+    title: '同稿练习记录',
+    subtitle: '比较最近两次练习，重点观察用时、停顿、完成度和估算语速。',
+    attempts: (count: number) => `${count} 次练习`,
+    emptyTitle: '还没有可比较的练习',
+    emptyBody: '完成第一次训练后，这里会保存本稿件的表现；第二次开始会自动显示变化。',
+    timeMode: '时间 / 模式',
+    duration: '用时',
+    pace: '估算语速',
+    completion: '完成度',
+    pauses: '长停顿',
+    durationChange: '用时变化',
+    paceChange: '语速变化',
+    pauseChange: '停顿变化',
+    completionChange: '完成度变化',
+    remove: '删除训练记录',
+    confirmRemove: '确定删除这条训练记录吗？',
+    untitled: '未命名稿件',
+    modes: { timed: '定时提词', follow: '语音跟随', free: '自由演讲' }
+  },
+  en: {
+    eyebrow: 'Rehearsal review',
+    title: 'Repeat-session history',
+    subtitle: 'Compare the latest two attempts across time, pauses, completion, and estimated pace.',
+    attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
+    emptyTitle: 'No comparable rehearsal yet',
+    emptyBody: 'Finish one rehearsal to save a baseline. The next attempt will automatically show the change.',
+    timeMode: 'Time / mode',
+    duration: 'Duration',
+    pace: 'Estimated pace',
+    completion: 'Completion',
+    pauses: 'Long pauses',
+    durationChange: 'Duration change',
+    paceChange: 'Pace change',
+    pauseChange: 'Pause change',
+    completionChange: 'Completion change',
+    remove: 'Delete rehearsal record',
+    confirmRemove: 'Delete this rehearsal record?',
+    untitled: 'Untitled script',
+    modes: { timed: 'Timed', follow: 'Voice follow', free: 'Free speaking' }
+  }
+} as const;
+
+function formatDuration(milliseconds: number) {
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 function Delta({ value, suffix = '', inverse = false }: { value: number; suffix?: string; inverse?: boolean }) {
-  if (Math.abs(value) < 0.001) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  const improved = inverse ? value < 0 : value > 0; const Icon = improved ? TrendingUp : TrendingDown;
-  return <span style={{ color: improved ? 'var(--status-stable)' : '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon size={14} /> {value > 0 ? '+' : ''}{value}{suffix}</span>;
+  if (Math.abs(value) < 0.001) return <span className="history-delta is-neutral">—</span>;
+  const improved = inverse ? value < 0 : value > 0;
+  const Icon = improved ? TrendingUp : TrendingDown;
+  return (
+    <span className={`history-delta ${improved ? 'is-improved' : 'is-regressed'}`}>
+      <Icon size={14} />
+      {value > 0 ? '+' : ''}{value}{suffix}
+    </span>
+  );
 }
-function SessionRow({ session, onDelete }: { session: PracticeSession; onDelete: (id: string) => void }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, minmax(72px, auto)) 32px', gap: 12, alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: '0.84rem' }}>
-    <div><div style={{ color: 'var(--text-primary)', fontWeight: 650 }}>{new Date(session.endedAt).toLocaleString()}</div><div style={{ color: 'var(--text-muted)', marginTop: 3 }}>{session.mode === 'timed' ? '定时提词' : session.mode === 'follow' ? '语音跟随' : '自由演讲'}</div></div>
-    <span>{formatDuration(session.metrics.totalTimeMs)}</span><span>{session.metrics.estimatedPace || '—'} {session.metrics.paceUnit}</span><span>{Math.round(session.metrics.completionRatio * 100)}%</span><span>{session.metrics.longPauseCount}</span>
-    <button className="btn-icon" onClick={() => onDelete(session.id)} title="删除记录" style={{ width: 28, height: 28, padding: 0, color: '#ef4444', background: 'rgba(239,68,68,0.08)' }}><Trash2 size={14} /></button>
-  </div>;
+
+interface SessionRowProps {
+  session: PracticeSession;
+  lang: Language;
+  onDelete: (id: string) => void;
 }
+
+function SessionRow({ session, lang, onDelete }: SessionRowProps) {
+  const text = copy[lang];
+  const date = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(session.endedAt);
+
+  const remove = () => {
+    if (window.confirm(text.confirmRemove)) onDelete(session.id);
+  };
+
+  return (
+    <article className="session-row">
+      <div className="session-primary" data-label={text.timeMode}>
+        <strong>{date}</strong>
+        <span>{text.modes[session.mode as PrompterMode]}</span>
+      </div>
+      <div className="session-value" data-label={text.duration}><strong>{formatDuration(session.metrics.totalTimeMs)}</strong></div>
+      <div className="session-value" data-label={text.pace}><strong>{session.metrics.estimatedPace || '—'}</strong><span>{session.metrics.paceUnit}</span></div>
+      <div className="session-value" data-label={text.completion}><strong>{Math.round(session.metrics.completionRatio * 100)}%</strong></div>
+      <div className="session-value" data-label={text.pauses}><strong>{session.metrics.longPauseCount}</strong></div>
+      <button type="button" className="session-delete" onClick={remove} aria-label={text.remove}><Trash2 size={15} /></button>
+    </article>
+  );
+}
+
 export function SessionHistory({ title, script, lang }: SessionHistoryProps) {
-  const sessions = useAppStore((state) => state.sessions); const deleteSession = useAppStore((state) => state.deleteSession);
-  const scriptKey = createScriptKey(title || '未命名稿件', script, lang); const relevantSessions = sessions.filter((session) => session.scriptKey === scriptKey);
-  const latest = relevantSessions[0]; const previous = relevantSessions[1]; const comparison = latest && previous ? compareSessions(latest, previous) : null;
-  return <section className="glass-panel" style={{ padding: 24, marginTop: 24 }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18 }}><div><h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={20} color="var(--accent-primary)" /> 训练记录</h3><p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: '0.86rem' }}>同一稿件会自动比较最近两次练习。语速为基于文本进度与有效发声时长的估算值。</p></div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{relevantSessions.length} 次</span></div>
-    {comparison && latest && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 18 }}><div className="metric-card"><Clock3 size={18} /><span>用时变化</span><Delta value={Math.round(comparison.durationDeltaMs / 1000)} suffix="s" inverse /></div><div className="metric-card"><Gauge size={18} /><span>估算语速</span><Delta value={comparison.estimatedPaceDelta} suffix={` ${latest.metrics.paceUnit}`} /></div><div className="metric-card"><PauseCircle size={18} /><span>长停顿</span><Delta value={comparison.longPauseDelta} inverse /></div><div className="metric-card"><BarChart3 size={18} /><span>完成度</span><Delta value={Math.round(comparison.completionDelta * 100)} suffix="%" /></div></div>}
-    {relevantSessions.length === 0 ? <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>完成第一次练习后，这里会显示可比较的训练记录。</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowX: 'auto' }}><div style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, minmax(72px, auto)) 32px', gap: 12, padding: '0 14px', color: 'var(--text-muted)', fontSize: '0.76rem' }}><span>时间 / 模式</span><span>用时</span><span>估算语速</span><span>完成度</span><span>长停顿</span><span /></div>{relevantSessions.slice(0, 8).map((session) => <SessionRow key={session.id} session={session} onDelete={deleteSession} />)}</div>}
-  </section>;
+  const sessions = useAppStore((state) => state.sessions);
+  const deleteSession = useAppStore((state) => state.deleteSession);
+  const text = copy[lang];
+  const scriptKey = createScriptKey(title || text.untitled, script, lang);
+  const relevantSessions = sessions.filter((session) => session.scriptKey === scriptKey);
+  const latest = relevantSessions[0];
+  const previous = relevantSessions[1];
+  const comparison = latest && previous ? compareSessions(latest, previous) : null;
+
+  return (
+    <section className="glass-panel session-history" aria-labelledby="session-history-title">
+      <header className="session-history-header">
+        <div className="session-history-heading">
+          <span className="session-history-icon"><History size={18} /></span>
+          <div>
+            <span className="session-history-eyebrow">{text.eyebrow}</span>
+            <h2 id="session-history-title">{text.title}</h2>
+            <p>{text.subtitle}</p>
+          </div>
+        </div>
+        <span className="session-count">{text.attempts(relevantSessions.length)}</span>
+      </header>
+
+      {comparison && latest && (
+        <div className="history-comparison" aria-label={lang === 'zh' ? '最近两次练习变化' : 'Latest attempt changes'}>
+          <div className="metric-card">
+            <span className="metric-icon"><Clock3 size={17} /></span>
+            <span>{text.durationChange}</span>
+            <Delta value={Math.round(comparison.durationDeltaMs / 1000)} suffix="s" inverse />
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon"><Gauge size={17} /></span>
+            <span>{text.paceChange}</span>
+            <Delta value={comparison.estimatedPaceDelta} suffix={` ${latest.metrics.paceUnit}`} />
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon"><PauseCircle size={17} /></span>
+            <span>{text.pauseChange}</span>
+            <Delta value={comparison.longPauseDelta} inverse />
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon"><BarChart3 size={17} /></span>
+            <span>{text.completionChange}</span>
+            <Delta value={Math.round(comparison.completionDelta * 100)} suffix="%" />
+          </div>
+        </div>
+      )}
+
+      {relevantSessions.length === 0 ? (
+        <div className="session-empty">
+          <span><BarChart3 size={22} /></span>
+          <div>
+            <strong>{text.emptyTitle}</strong>
+            <p>{text.emptyBody}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="session-table">
+          <div className="session-table-head" aria-hidden="true">
+            <span>{text.timeMode}</span>
+            <span>{text.duration}</span>
+            <span>{text.pace}</span>
+            <span>{text.completion}</span>
+            <span>{text.pauses}</span>
+            <span />
+          </div>
+          <div className="session-list">
+            {relevantSessions.slice(0, 8).map((session) => (
+              <SessionRow key={session.id} session={session} lang={lang} onDelete={deleteSession} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }

@@ -20,6 +20,9 @@ All notable changes to RhythmCoach are documented here.
 - Replace the large rehearsal overlay with a compact translucent HUD that emphasizes pace, progress, audio level, and the primary pause action.
 - Add an adaptive timeline beside the script in timed mode, with marker density scaled to the target duration.
 - Refine the dark visual system, hierarchy, surfaces, controls, and responsive editor layout.
+- Replace the permanently floating recording cards with a compact, collapsible recording drawer that stays clear of the main workspace.
+- Rebuild rehearsal history as a responsive, bilingual review surface with clearer comparisons, empty states, and mobile cards.
+- Remove mixed-language editor labels and improve keyboard semantics, localized draft names, disabled states, and destructive-action confirmation.
 
 ### Audio
 

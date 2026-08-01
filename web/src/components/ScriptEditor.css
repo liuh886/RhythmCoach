@@ -68,6 +68,10 @@
   letter-spacing: 0.17em;
 }
 
+.editor-kicker.is-zh {
+  letter-spacing: 0.08em;
+}
+
 .workspace-status {
   display: inline-flex;
   flex: 0 0 auto;
@@ -318,23 +322,49 @@
   gap: 9px;
 }
 
+.library-item-row,
+.library-item {
+  width: 100%;
+  border: 1px solid var(--glass-border);
+  border-radius: 13px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.library-item-row {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
 .library-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
+.library-item-row .library-item {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.library-item-row:hover,
 .library-item:hover {
   transform: translateX(2px);
   border-color: var(--glass-highlight);
   background: rgba(255, 255, 255, 0.055);
+}
+
+.library-item-row:hover .library-item {
+  background: transparent;
 }
 
 .library-item > div {
@@ -366,6 +396,7 @@
 
 .delete-draft {
   flex: 0 0 auto;
+  margin-right: 10px;
   color: #f87171;
 }
 
@@ -430,6 +461,7 @@
     left: 12px;
   }
 
+  .library-item-row:hover,
   .library-item:hover {
     transform: none;
   }

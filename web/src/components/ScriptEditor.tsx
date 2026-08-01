@@ -134,9 +134,12 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
   const saveDraft = () => {
     if (!content.trim()) return;
+    const fallbackTitle = globalLang === 'zh'
+      ? `未命名草稿 ${new Date().toLocaleDateString('zh-CN')}`
+      : `Untitled draft ${new Date().toLocaleDateString('en')}`;
     const draft: ScriptMaterial = {
       id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      title: title.trim() || `未命名草稿 ${new Date().toLocaleDateString()}`,
+      title: title.trim() || fallbackTitle,
       content: content.trim(),
       tip: tip.trim() || undefined
     };
@@ -197,6 +200,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   return (
     <>
       <button
+        type="button"
         className="btn-icon library-launcher"
         onClick={() => setIsDrawerOpen(true)}
         title={globalLang === 'zh' ? '素材库' : 'Script library'}
@@ -210,25 +214,37 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
           <>
             <motion.div
               className="drawer-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setIsDrawerOpen(false)}
             />
             <motion.aside
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
               className="glass-panel library-drawer"
+              aria-label={globalLang === 'zh' ? '素材库' : 'Script library'}
             >
               <div className="library-drawer-header">
                 <strong><Library size={19} /> {globalLang === 'zh' ? '素材库' : 'Library'}</strong>
-                <button className="btn-icon compact-icon" onClick={() => setIsDrawerOpen(false)}><X size={17} /></button>
+                <button
+                  type="button"
+                  className="btn-icon compact-icon"
+                  onClick={() => setIsDrawerOpen(false)}
+                  aria-label={globalLang === 'zh' ? '关闭素材库' : 'Close script library'}
+                >
+                  <X size={17} />
+                </button>
               </div>
               <div className="library-drawer-content">
                 <div className="library-actions">
-                  <button className="btn btn-secondary" onClick={() => document.getElementById('draft-import')?.click()}>
+                  <button type="button" className="btn btn-secondary" onClick={() => document.getElementById('draft-import')?.click()}>
                     <Upload size={15} /> {globalLang === 'zh' ? '导入' : 'Import'}
                   </button>
                   <input id="draft-import" type="file" accept="application/json,.json" hidden onChange={importDrafts} />
-                  <button className="btn btn-secondary" onClick={exportDrafts}>
+                  <button type="button" className="btn btn-secondary" onClick={exportDrafts} disabled={customMaterials.length === 0}>
                     <Download size={15} /> {globalLang === 'zh' ? '导出' : 'Export'}
                   </button>
                 </div>
@@ -238,18 +254,18 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                     <h4>{globalLang === 'zh' ? '我的草稿' : 'My drafts'}</h4>
                     <div className="library-list">
                       {customMaterials.map((material) => (
-                        <div key={material.id} className="library-item" onClick={() => importMaterial(material)}>
-                          <div>
-                            <strong>{material.title}</strong>
-                            <p>{material.content}</p>
-                          </div>
+                        <div key={material.id} className="library-item-row">
+                          <button type="button" className="library-item" onClick={() => importMaterial(material)}>
+                            <div>
+                              <strong>{material.title}</strong>
+                              <p>{material.content}</p>
+                            </div>
+                          </button>
                           <button
+                            type="button"
                             className="btn-icon compact-icon delete-draft"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              persistDrafts(customMaterials.filter((item) => item.id !== material.id));
-                            }}
-                            aria-label={globalLang === 'zh' ? '删除草稿' : 'Delete draft'}
+                            onClick={() => persistDrafts(customMaterials.filter((item) => item.id !== material.id))}
+                            aria-label={globalLang === 'zh' ? `删除草稿：${material.title}` : `Delete draft: ${material.title}`}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -263,13 +279,13 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                   <h4>{globalLang === 'zh' ? '精选练习' : 'Practice scripts'}</h4>
                   <div className="library-list">
                     {defaultMaterials.map((material) => (
-                      <div key={material.id} className="library-item" onClick={() => importMaterial(material)}>
+                      <button type="button" key={material.id} className="library-item" onClick={() => importMaterial(material)}>
                         <div>
                           <strong>{material.title}</strong>
                           <p>{material.content}</p>
                         </div>
                         <ChevronRight size={16} color="var(--text-muted)" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -281,14 +297,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
       <main className="editor-page">
         <div className="editor-layout">
-          <section className="glass-panel editor-script-panel">
+          <section className="glass-panel editor-script-panel" aria-labelledby="editor-title">
             <div className="editor-hero">
               <div>
-                <span className="editor-kicker">REHEARSAL WORKSPACE</span>
-                <h1>RhythmCoach</h1>
+                <span className={`editor-kicker ${globalLang === 'zh' ? 'is-zh' : ''}`}>{globalLang === 'zh' ? '口播工作区' : 'REHEARSAL WORKSPACE'}</span>
+                <h1 id="editor-title">RhythmCoach</h1>
                 <p>{globalLang === 'zh' ? '把一次口播变成可复盘、可比较的训练。' : 'Turn every rehearsal into measurable progress.'}</p>
               </div>
-              <span className="workspace-status"><CheckCircle2 size={15} /> {globalLang === 'zh' ? '当前稿件自动保留' : 'Workspace preserved'}</span>
+              <span className="workspace-status" aria-live="polite"><CheckCircle2 size={15} /> {globalLang === 'zh' ? '当前稿件已自动保存' : 'Workspace autosaved'}</span>
             </div>
 
             <label>
@@ -302,11 +318,11 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             {tip && <div className="practice-tip">💡 {tip}</div>}
           </section>
 
-          <section className="glass-panel editor-controls-panel">
+          <section className="glass-panel editor-controls-panel" aria-labelledby="session-setup-title">
             <div className="controls-heading">
               <div>
-                <span className="editor-kicker">SESSION SETUP</span>
-                <h2>{globalLang === 'zh' ? '训练设置' : 'Rehearsal setup'}</h2>
+                <span className={`editor-kicker ${globalLang === 'zh' ? 'is-zh' : ''}`}>{globalLang === 'zh' ? '训练配置' : 'SESSION SETUP'}</span>
+                <h2 id="session-setup-title">{globalLang === 'zh' ? '训练设置' : 'Rehearsal setup'}</h2>
               </div>
               <Activity size={20} />
             </div>
@@ -320,7 +336,13 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               <span className="field-label"><Activity size={16} /> {globalLang === 'zh' ? '训练模式' : 'Training mode'}</span>
               <div className="segmented-control">
                 {(['timed', 'follow', 'free'] as PrompterMode[]).map((mode) => (
-                  <button key={mode} className={`mode-button ${storedMode === mode ? 'active' : ''}`} onClick={() => setStoredMode(mode)}>
+                  <button
+                    type="button"
+                    key={mode}
+                    className={`mode-button ${storedMode === mode ? 'active' : ''}`}
+                    onClick={() => setStoredMode(mode)}
+                    aria-pressed={storedMode === mode}
+                  >
                     {globalLang === 'zh'
                       ? mode === 'timed' ? '定时' : mode === 'follow' ? '跟随' : '自由'
                       : mode === 'timed' ? 'Timed' : mode === 'follow' ? 'Follow' : 'Free'}
@@ -334,7 +356,13 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               <span className="field-label">{globalLang === 'zh' ? '录音风格' : 'Recording style'}</span>
               <div className="segmented-control">
                 {(['raw', 'podcast', 'broadcast'] as const).map((profile) => (
-                  <button key={profile} className={`mode-button ${audioProfile === profile ? 'active' : ''}`} onClick={() => setAudioProfile(profile)}>
+                  <button
+                    type="button"
+                    key={profile}
+                    className={`mode-button ${audioProfile === profile ? 'active' : ''}`}
+                    onClick={() => setAudioProfile(profile)}
+                    aria-pressed={audioProfile === profile}
+                  >
                     {globalLang === 'zh'
                       ? profile === 'raw' ? '自然' : profile === 'podcast' ? '播客' : '清晰'
                       : profile === 'raw' ? 'Natural' : profile === 'podcast' ? 'Podcast' : 'Crisp'}
@@ -350,7 +378,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                   <span className="field-label">{globalLang === 'zh' ? '目标语速' : 'Target pace'}</span>
                   <strong>{storedPace} {globalLang === 'zh' ? 'CPM' : 'WPM'}</strong>
                 </div>
-                <input type="range" min={globalLang === 'zh' ? 100 : 70} max={globalLang === 'zh' ? 350 : 240} value={storedPace} onChange={(event) => setStoredPace(Number(event.target.value))} />
+                <input
+                  type="range"
+                  min={globalLang === 'zh' ? 100 : 70}
+                  max={globalLang === 'zh' ? 350 : 240}
+                  value={storedPace}
+                  onChange={(event) => setStoredPace(Number(event.target.value))}
+                  aria-label={globalLang === 'zh' ? '目标语速' : 'Target pace'}
+                />
                 <p className="setting-help compact">
                   {globalLang === 'zh' ? '它控制滚动与时间标尺，不会被冒充为实时测得语速。' : 'This controls scrolling and the timeline; it is not presented as measured pace.'}
                 </p>
@@ -358,10 +393,10 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             )}
 
             <div className="editor-actions">
-              <button className="btn btn-secondary" onClick={saveDraft} disabled={!content.trim()}>
+              <button type="button" className="btn btn-secondary" onClick={saveDraft} disabled={!content.trim()}>
                 <Save size={17} /> {isSaving ? (globalLang === 'zh' ? '已保存' : 'Saved') : (globalLang === 'zh' ? '保存到素材库' : 'Save to library')}
               </button>
-              <button className="btn" onClick={start} disabled={!content.trim()}>
+              <button type="button" className="btn" onClick={start} disabled={!content.trim()}>
                 <Play size={18} fill="currentColor" /> {globalLang === 'zh' ? '开始训练' : 'Start rehearsal'}
               </button>
             </div>
