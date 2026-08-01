@@ -1,4 +1,5 @@
 import { BarChart3, Download, FileText, Mic2, ShieldCheck, X } from 'lucide-react';
+import packageJson from '../../package.json';
 import type { Language } from '../types';
 
 interface ProductGuideProps {
@@ -20,6 +21,7 @@ const copy = {
       { title: '查看进步', body: '回听录音，查看完成度、停顿和同稿对比。', icon: BarChart3 }
     ],
     privacy: '本地优先：无需账户，不主动上传麦克风音频。',
+    version: '当前版本',
     install: '安装应用',
     start: '开始使用'
   },
@@ -33,6 +35,7 @@ const copy = {
       { title: 'Review', body: 'Replay the recording and compare completion, pauses, and repeat attempts.', icon: BarChart3 }
     ],
     privacy: 'Local-first: no account and no automatic microphone upload.',
+    version: 'Current version',
     install: 'Install app',
     start: 'Start using'
   }
@@ -72,6 +75,11 @@ export function ProductGuide({ open, lang, canInstall, onInstall, onClose }: Pro
         </div>
 
         <div className="guide-privacy"><ShieldCheck size={17} /> {text.privacy}</div>
+
+        <div className="guide-version" aria-label={`${text.version} v${packageJson.version}`}>
+          <span>{text.version}</span>
+          <strong>v{packageJson.version}</strong>
+        </div>
 
         <div className="product-dialog-actions">
           {canInstall && (

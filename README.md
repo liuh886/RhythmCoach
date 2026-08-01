@@ -6,9 +6,9 @@ RhythmCoach 是一个本地优先、轻量小巧的 Web 口播训练工具。它
 
 ## 当前版本
 
-**v0.1.0 · Public Beta**
+**v1.0.0 · Stable**
 
-- 极简首次引导，并可从右下角帮助按钮再次打开。
+- 极简首次引导，并可从右下角帮助按钮再次打开；帮助窗口会显示当前应用版本。
 - 支持安装为 PWA，在桌面或手机上以独立应用运行。
 - 提供基于现有训练指标的轻量建议，每次只聚焦一个可执行改进点。
 - 核心训练数据保持本地优先，不引入语音内容识别、账户体系或复杂云端服务。
@@ -55,6 +55,12 @@ npm run dev
 npm run build
 ```
 
+版本一致性检查：
+
+```bash
+npm run version:check
+```
+
 ## 技术栈
 
 - React 19 + TypeScript
@@ -71,8 +77,12 @@ npm run build
 
 更完整说明见 [`PRIVACY.md`](PRIVACY.md)。
 
+## 版本管理
+
+RhythmCoach 从 `v1.0.0` 起采用语义化版本。`web/package.json` 是应用版本的唯一权威来源，帮助窗口直接读取该版本；Service Worker 缓存名、README、CHANGELOG 与隐私说明由自动脚本校验。详细规则见 [`docs/VERSIONING.md`](docs/VERSIONING.md)。
+
 ## 质量门禁
 
-GitHub Actions 在 pull request 和 main 分支更新时执行 `npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试以及 TypeScript/Vite 生产构建。
+GitHub Actions 在 pull request 和 main 分支更新时执行版本一致性检查、`npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试以及 TypeScript/Vite 生产构建。
 
 核心训练闭环和验收标准见 [`docs/CORE_TRAINING_LOOP.md`](docs/CORE_TRAINING_LOOP.md)。版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。
