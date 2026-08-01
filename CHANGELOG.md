@@ -14,6 +14,13 @@ All notable changes to RhythmCoach are documented here.
 - Chinese and English interface support.
 - Public beta product documentation and privacy notes.
 
+### Experience
+
+- Preserve the current title, script, and practice tip when moving between the editor and rehearsal views, including local workspace recovery after reload.
+- Replace the large rehearsal overlay with a compact translucent HUD that emphasizes pace, progress, audio level, and the primary pause action.
+- Add an adaptive timeline beside the script in timed mode, with marker density scaled to the target duration.
+- Refine the dark visual system, hierarchy, surfaces, controls, and responsive editor layout.
+
 ### Audio
 
 - Separate pre-DSP measurement from the recording-style signal path so style changes cannot alter training metrics.
@@ -28,6 +35,7 @@ All notable changes to RhythmCoach are documented here.
 - Core session metric tests.
 - Rule-based training focus tests.
 - DSP parameter, soft-expander timing, bitrate, and input-level classification tests.
+- Adaptive timed-script marker tests.
 - TypeScript and Vite production builds in GitHub Actions.
 - GitHub Pages deployment after validation.
 
