@@ -41,6 +41,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const requestRef = useRef<number>(0);
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -64,6 +66,13 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
     setManualScrollTimeout(timeout);
   }, [manualScrollTimeout]);
   
+  // Clean up animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, []);
+  
   // If audioProfile changes, we must destroy the old audioContext so it rebuilds on next tick
   useEffect(() => {
     if (audioContextRef.current) {
@@ -78,6 +87,10 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
+      }
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = 0;
       }
     }
   }, [audioProfile]);
@@ -241,7 +254,7 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
           const delta = time - lastTime;
           lastTime = time;
           
-          if (isPlaying) {
+          if (isPlayingRef.current) {
             totalTimeMsRef.current += delta;
           }
 
@@ -276,13 +289,14 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
             }
           }
           
-          if (isPlaying && isSpeakingNow) {
+          if (isPlayingRef.current && isSpeakingNow) {
             speakingTimeMsRef.current += delta;
           }
           
           requestRef.current = requestAnimationFrame(checkAudio);
         };
         
+        if (requestRef.current) cancelAnimationFrame(requestRef.current);
         requestRef.current = requestAnimationFrame(checkAudio);
         
       } catch (err) {
@@ -297,10 +311,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
       lastTime = performance.now();
     }
     
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-    // Re-run if isPlaying or audioProfile changes (so it rebuilds after cleanup)
+    // Do not cancel animation frame here, let it run to track volume while paused
+    // It will be cancelled when audioProfile changes or component unmounts
   }, [isPlaying, audioProfile]);
 
   // Update currentCpm 
@@ -459,7 +471,8 @@ export function Teleprompter({ script, targetCpm, lang, prompterMode, onClose }:
       lastTime = time;
       
       // Auto-scroll ONLY in target mode and when speed is calculated
-      if (prompterMode === 'target' && isPlaying && voiceState === 'SPEAKING' && scrollRef.current && !manualScrollTimeout && pixelsPerSecond > 0) {
+      // Removed voiceState === 'SPEAKING' so it scrolls continuously to guarantee target duration
+      if (prompterMode === 'target' && isPlayingRef.current && scrollRef.current && !manualScrollTimeout && pixelsPerSecond > 0) {
         const scrollAmount = (pixelsPerSecond * delta) / 1000;
         scrollRef.current.scrollTop += scrollAmount;
       }
