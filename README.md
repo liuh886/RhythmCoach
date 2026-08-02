@@ -9,6 +9,7 @@ RhythmCoach 是一个本地优先、轻量小巧的 Web 口播训练工具。它
 **v1.0.0 · Stable**
 
 - 极简首次引导，并可从顶部帮助按钮再次打开；帮助窗口会显示当前应用版本。
+- 顶部提供深色与白色模式切换，选择会保存在当前浏览器，并在页面首次绘制前恢复。
 - 支持安装为 PWA，在桌面或手机上以独立应用运行。
 - 提供基于现有训练指标的轻量建议，每次只聚焦一个可执行改进点。
 - 核心训练数据保持本地优先，不引入语音内容识别、账户体系或复杂云端服务。
@@ -85,6 +86,6 @@ RhythmCoach 从 `v1.0.0` 起采用语义化版本。`web/package.json` 是应用
 
 ## 质量门禁
 
-GitHub Actions 在 pull request 和 main 分支更新时执行版本一致性检查、`npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试以及 TypeScript/Vite 生产构建。
+GitHub Actions 在 pull request 和 main 分支更新时执行版本一致性检查、`npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试、主题切换测试以及 TypeScript/Vite 生产构建。
 
 核心训练闭环和验收标准见 [`docs/CORE_TRAINING_LOOP.md`](docs/CORE_TRAINING_LOOP.md)。版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。
