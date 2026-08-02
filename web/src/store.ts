@@ -23,6 +23,7 @@ interface PersistedWorkspace {
   activeTitle: string;
   activeScript: string;
   activeTip: string;
+  activeDeliveryMarkup?: string;
 }
 
 interface AppState {
@@ -30,6 +31,7 @@ interface AppState {
   activeTitle: string;
   activeScript: string;
   activeTip: string;
+  activeDeliveryMarkup: string;
   targetPace: number;
   globalLang: Language;
   prompterMode: PrompterMode;
@@ -42,6 +44,7 @@ interface AppState {
   setActiveTitle: (title: string) => void;
   setActiveScript: (script: string) => void;
   setActiveTip: (tip: string) => void;
+  setActiveDeliveryMarkup: (markup: string) => void;
   setTargetPace: (pace: number) => void;
   setGlobalLang: (lang: Language) => void;
   setPrompterMode: (mode: PrompterMode) => void;
@@ -49,6 +52,7 @@ interface AppState {
   setRecordings: (updater: Recording[] | ((prev: Recording[]) => Recording[])) => void;
   addRecording: (recording: Recording) => void;
   deleteRecording: (id: string) => void;
+  discardRecordingsForSession: (sessionId: string) => void;
   addSession: (session: PracticeSession) => void;
   deleteSession: (id: string) => void;
   clearSessions: () => void;
@@ -89,7 +93,8 @@ function saveCurrentWorkspace(state: AppState) {
   scheduleWorkspacePersistence({
     activeTitle: state.activeTitle,
     activeScript: state.activeScript,
-    activeTip: state.activeTip
+    activeTip: state.activeTip,
+    activeDeliveryMarkup: state.activeDeliveryMarkup
   });
 }
 
@@ -98,6 +103,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTitle: '',
   activeScript: '',
   activeTip: '',
+  activeDeliveryMarkup: '',
   targetPace: 220,
   globalLang: 'zh',
   prompterMode: 'timed',
@@ -117,6 +123,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setActiveTip: (activeTip) => {
     set({ activeTip });
+    saveCurrentWorkspace(get());
+  },
+  setActiveDeliveryMarkup: (activeDeliveryMarkup) => {
+    set({ activeDeliveryMarkup });
     saveCurrentWorkspace(get());
   },
   setTargetPace: (targetPace) => {
@@ -183,6 +193,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { recordings };
     });
   },
+  discardRecordingsForSession: (sessionId) => {
+    if (!sessionId) return;
+    set((state) => {
+      state.recordings
+        .filter((recording) => recording.sessionId === sessionId)
+        .forEach((recording) => {
+          if (recording.url) URL.revokeObjectURL(recording.url);
+        });
+      const recordings = state.recordings.filter((recording) => recording.sessionId !== sessionId);
+      if (state.isPersistedDataLoaded) void persistRecordings(recordings);
+      return { recordings };
+    });
+  },
 
   addSession: (session) => {
     set((state) => {
@@ -234,6 +257,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeTitle: savedWorkspace?.activeTitle ?? '',
         activeScript: savedWorkspace?.activeScript ?? '',
         activeTip: savedWorkspace?.activeTip ?? '',
+        activeDeliveryMarkup: savedWorkspace?.activeDeliveryMarkup ?? '',
         globalLang: savedSettings?.globalLang ?? 'zh',
         targetPace: savedSettings?.targetPace ?? 220,
         prompterMode: savedSettings?.prompterMode ?? 'timed',
