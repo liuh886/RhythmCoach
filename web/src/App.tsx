@@ -37,6 +37,8 @@ export default function App() {
     setActiveTitle,
     activeScript,
     setActiveScript,
+    activeDeliveryMarkup,
+    setActiveDeliveryMarkup,
     targetPace,
     setTargetPace,
     globalLang,
@@ -87,9 +89,17 @@ export default function App() {
     };
   }, []);
 
-  const startSession = (title: string, script: string, pace: number, lang: Language, sessionMode: PrompterMode) => {
+  const startSession = (
+    title: string,
+    script: string,
+    pace: number,
+    lang: Language,
+    sessionMode: PrompterMode,
+    deliveryMarkup: string
+  ) => {
     setActiveTitle(title);
     setActiveScript(script);
+    setActiveDeliveryMarkup(deliveryMarkup);
     setTargetPace(pace);
     setGlobalLang(lang);
     setPrompterMode(sessionMode);
@@ -148,6 +158,7 @@ export default function App() {
             key="teleprompter"
             title={activeTitle}
             script={activeScript}
+            deliveryMarkup={activeDeliveryMarkup}
             targetPace={targetPace}
             lang={globalLang}
             prompterMode={prompterMode}
