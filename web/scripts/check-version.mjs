@@ -7,10 +7,20 @@ const webRoot = resolve(scriptDir, '..');
 const repoRoot = resolve(webRoot, '..');
 
 const packageJson = JSON.parse(await readFile(resolve(webRoot, 'package.json'), 'utf8'));
+const packageLock = JSON.parse(await readFile(resolve(webRoot, 'package-lock.json'), 'utf8'));
 const version = packageJson.version;
+const packageName = packageJson.name;
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) {
   throw new Error(`package.json version must use SemVer x.y.z; received ${String(version)}`);
+}
+
+if (packageLock.name !== packageName || packageLock.packages?.['']?.name !== packageName) {
+  throw new Error(`package-lock.json package name is not synchronized with ${packageName}`);
+}
+
+if (packageLock.version !== version || packageLock.packages?.['']?.version !== version) {
+  throw new Error(`package-lock.json version is not synchronized with v${version}`);
 }
 
 const checks = [
@@ -43,4 +53,4 @@ for (const check of checks) {
   }
 }
 
-console.log(`RhythmCoach version references are synchronized at v${version}`);
+console.log(`RhythmCoach package and version references are synchronized at v${version}`);
