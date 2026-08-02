@@ -2,6 +2,8 @@ import './RecordingsWidget.css';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Download, Edit3, Mic2, Pause, Play, Trash2, X } from 'lucide-react';
+import { canDownloadRecording, RECORDING_DOWNLOAD_ENTITLEMENT } from '../domain/recordingDownloadAccess';
+import { useMembership } from '../membership/MembershipProvider';
 import { useAppStore } from '../store';
 import type { Language, Recording } from '../types';
 
@@ -61,11 +63,16 @@ interface RecordingItemProps {
 function RecordingItem({ recording, lang, activeId, onPlaybackChange }: RecordingItemProps) {
   const deleteRecording = useAppStore((state) => state.deleteRecording);
   const setRecordings = useAppStore((state) => state.setRecordings);
+  const membership = useMembership();
   const text = copy[lang];
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(recording.name);
   const isPlaying = activeId === recording.id;
+  const downloadAllowed = canDownloadRecording({
+    enforceMembership: membership.enforcementEnabled,
+    hasEntitlement: membership.hasEntitlement(RECORDING_DOWNLOAD_ENTITLEMENT)
+  });
 
   useEffect(() => {
     if (!recording.url) {
@@ -178,7 +185,16 @@ function RecordingItem({ recording, lang, activeId, onPlaybackChange }: Recordin
           download={`${recording.name || text.unnamed}.${downloadExtension(recording.mimeType)}`}
           aria-label={text.download}
           aria-disabled={!recording.url}
-          onClick={(event) => { if (!recording.url) event.preventDefault(); }}
+          onClick={(event) => {
+            if (!recording.url) {
+              event.preventDefault();
+              return;
+            }
+            if (!downloadAllowed) {
+              event.preventDefault();
+              membership.openDialog();
+            }
+          }}
         >
           <Download size={16} />
         </a>
