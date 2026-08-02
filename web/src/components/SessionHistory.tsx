@@ -1,5 +1,5 @@
 import './SessionHistory.css';
-import { BarChart3, Clock3, Gauge, History, PauseCircle, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { BarChart3, Gauge, History, PauseCircle, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { compareSessions, createScriptKey } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PracticeSession, PrompterMode } from '../types';
@@ -14,7 +14,7 @@ const copy = {
   zh: {
     eyebrow: '训练复盘',
     title: '同稿练习记录',
-    subtitle: '比较最近两次练习，整体语速按实际训练用时计算，包含自然停顿和呼吸。',
+    subtitle: '比较最近两次练习，重点观察整体语速、长停顿和完成度。',
     attempts: (count: number) => `${count} 次练习`,
     emptyTitle: '还没有可比较的练习',
     emptyBody: '完成第一次训练后，这里会保存本稿件的表现；第二次开始会自动显示变化。',
@@ -23,7 +23,6 @@ const copy = {
     pace: '整体语速',
     completion: '完成度',
     pauses: '长停顿',
-    durationChange: '用时变化',
     paceChange: '整体语速变化',
     pauseChange: '停顿变化',
     completionChange: '完成度变化',
@@ -35,7 +34,7 @@ const copy = {
   en: {
     eyebrow: 'Rehearsal review',
     title: 'Repeat-session history',
-    subtitle: 'Compare the latest two attempts. Delivery pace uses total rehearsal time, including natural pauses and breaths.',
+    subtitle: 'Compare the latest two attempts across delivery pace, long pauses, and completion.',
     attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
     emptyTitle: 'No comparable rehearsal yet',
     emptyBody: 'Finish one rehearsal to save a baseline. The next attempt will automatically show the change.',
@@ -44,7 +43,6 @@ const copy = {
     pace: 'Delivery pace',
     completion: 'Completion',
     pauses: 'Long pauses',
-    durationChange: 'Duration change',
     paceChange: 'Delivery pace change',
     pauseChange: 'Pause change',
     completionChange: 'Completion change',
@@ -133,11 +131,6 @@ export function SessionHistory({ title, script, lang }: SessionHistoryProps) {
 
       {comparison && latest && (
         <div className="history-comparison" aria-label={lang === 'zh' ? '最近两次练习变化' : 'Latest attempt changes'}>
-          <div className="metric-card">
-            <span className="metric-icon"><Clock3 size={17} /></span>
-            <span>{text.durationChange}</span>
-            <Delta value={Math.round(comparison.durationDeltaMs / 1000)} suffix="s" inverse />
-          </div>
           <div className="metric-card">
             <span className="metric-icon"><Gauge size={17} /></span>
             <span>{text.paceChange}</span>
