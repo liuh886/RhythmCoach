@@ -19,6 +19,11 @@ interface TeleprompterProps {
 
 type VoiceState = 'SPEAKING' | 'SILENCE' | 'UNAVAILABLE';
 
+interface RecordingMeta {
+  sessionId?: string;
+  durationSec: number;
+}
+
 const LONG_PAUSE_MS = 1500;
 const SPEECH_GRACE_MS = 650;
 const createId = () => crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -31,7 +36,6 @@ const formatDuration = (milliseconds: number) => {
 function comparisonSentence(comparison: SessionComparison | null, lang: Language): string {
   if (!comparison) return lang === 'zh' ? '这是该稿件的第一次可比较练习。' : 'This is the first comparable rehearsal for this script.';
   const improvements: string[] = [];
-  if (comparison.durationDeltaMs < -1000) improvements.push(lang === 'zh' ? `用时缩短 ${Math.round(Math.abs(comparison.durationDeltaMs) / 1000)} 秒` : `${Math.round(Math.abs(comparison.durationDeltaMs) / 1000)}s faster`);
   if (comparison.longPauseDelta < 0) improvements.push(lang === 'zh' ? `长停顿减少 ${Math.abs(comparison.longPauseDelta)} 次` : `${Math.abs(comparison.longPauseDelta)} fewer long pauses`);
   if (comparison.completionDelta > 0.03) improvements.push(lang === 'zh' ? `完成度提高 ${Math.round(comparison.completionDelta * 100)}%` : `${Math.round(comparison.completionDelta * 100)}% higher completion`);
   if (improvements.length > 0) return improvements.join(lang === 'zh' ? '，' : ', ');
@@ -70,7 +74,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recordingMetaRef = useRef<RecordingMeta | null>(null);
   const audioRafRef = useRef(0);
   const clockRafRef = useRef(0);
   const scrollRafRef = useRef(0);
@@ -96,17 +100,25 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
   const timeMarkers = useMemo(() => buildTimeMarkers(targetDurationSeconds), [targetDurationSeconds]);
   const isRunning = status === 'running';
   const isPaused = status === 'paused';
-  const canResume = isPaused || status === 'ready';
 
   const updateStatus = useCallback((next: SessionStatus) => {
     statusRef.current = next;
     setStatus(next);
   }, []);
 
+  const captureRecordingMeta = useCallback(() => {
+    if (recordingMetaRef.current) return;
+    recordingMetaRef.current = {
+      sessionId: currentSessionIdRef.current || undefined,
+      durationSec: Math.round(totalTimeRef.current / 1000)
+    };
+  }, []);
+
   const cleanupAudio = useCallback(() => {
     if (audioRafRef.current) cancelAnimationFrame(audioRafRef.current);
     audioRafRef.current = 0;
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      captureRecordingMeta();
       try {
         recorderRef.current.stop();
       } catch {
@@ -118,7 +130,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     streamRef.current = null;
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') void audioContextRef.current.close();
     audioContextRef.current = null;
-  }, []);
+  }, [captureRecordingMeta]);
 
   useEffect(() => () => {
     if (clockRafRef.current) cancelAnimationFrame(clockRafRef.current);
@@ -219,24 +231,27 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         } catch {
           recorder = new MediaRecorder(recordingDestination.stream, mimeType ? { mimeType } : undefined);
         }
+        const recorderChunks: Blob[] = [];
         recorderRef.current = recorder;
         recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) chunksRef.current.push(event.data);
+          if (event.data.size > 0) recorderChunks.push(event.data);
         };
         recorder.onstop = () => {
-          if (chunksRef.current.length === 0) return;
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType || 'audio/webm' });
+          const meta = recordingMetaRef.current;
+          recordingMetaRef.current = null;
+          if (recorderChunks.length === 0) return;
+          const blob = new Blob(recorderChunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
           addRecording({
             id: createId(),
-            sessionId: currentSessionIdRef.current || undefined,
+            sessionId: meta?.sessionId,
             url: URL.createObjectURL(blob),
             name: `${title || 'RhythmCoach'}_${new Date().toLocaleTimeString().replace(/:/g, '-')}`,
-            durationSec: Math.round(totalTimeRef.current / 1000),
+            durationSec: meta?.durationSec ?? Math.round(totalTimeRef.current / 1000),
             blob,
             mimeType: blob.type,
             createdAt: Date.now()
           });
-          chunksRef.current = [];
+          recorderChunks.length = 0;
         };
       }
 
@@ -405,7 +420,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     const recorder = recorderRef.current;
     if (recorder) {
       if (recorder.state === 'inactive') {
-        chunksRef.current = [];
+        recordingMetaRef.current = null;
         recorder.start(1000);
       } else if (recorder.state === 'paused') {
         recorder.resume();
@@ -457,9 +472,39 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     addSession(session);
     savedRef.current = true;
     setCompletedSession(session);
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      captureRecordingMeta();
+      recorderRef.current.stop();
+    }
     updateStatus('completed');
-  }, [addSession, lang, prompterMode, script, scriptKey, sessions, targetPace, title, totalUnits, updateStatus]);
+  }, [addSession, captureRecordingMeta, lang, prompterMode, script, scriptKey, sessions, targetPace, title, totalUnits, updateStatus]);
+
+  const resetSession = useCallback(() => {
+    cleanupAudio();
+    totalTimeRef.current = 0;
+    speakingTimeRef.current = 0;
+    longPauseCountRef.current = 0;
+    silenceStartRef.current = 0;
+    longPauseCountedRef.current = false;
+    hasSpokenRef.current = false;
+    noiseFloorRef.current = 0.008;
+    startedAtRef.current = 0;
+    currentSessionIdRef.current = '';
+    savedRef.current = false;
+    manualScrollUntilRef.current = 0;
+    previousVoiceRef.current = 'UNAVAILABLE';
+    setElapsedMs(0);
+    setLiveEstimatedPace(0);
+    setLiveProgress(0);
+    setAudioLevel(0);
+    setAudioMessage('');
+    setInputLevelStatus('waiting');
+    setVoiceState('UNAVAILABLE');
+    setCompletedSession(null);
+    setComparison(null);
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    updateStatus('idle');
+  }, [cleanupAudio, updateStatus]);
 
   const close = useCallback(() => {
     if (statusRef.current === 'completed' || totalTimeRef.current < 1000) {
@@ -476,10 +521,15 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
       if (event.code === 'Space') {
         event.preventDefault();
         if (statusRef.current === 'running') pauseSession();
-        else void startOrResume();
+        else if (statusRef.current !== 'completed') void startOrResume();
       } else if (event.code === 'Escape') {
         event.preventDefault();
-        finishSession();
+        if (statusRef.current === 'completed') {
+          cleanupAudio();
+          onClose();
+        } else {
+          finishSession();
+        }
       } else if (event.code === 'ArrowDown' || event.code === 'ArrowUp') {
         event.preventDefault();
         manualScrollUntilRef.current = performance.now() + 1500;
@@ -488,7 +538,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [finishSession, pauseSession, startOrResume]);
+  }, [cleanupAudio, finishSession, onClose, pauseSession, startOrResume]);
 
   const manualScroll = () => {
     manualScrollUntilRef.current = performance.now() + 1500;
@@ -517,6 +567,10 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         hot: 'Input is hot; move back',
         noisy: 'Background noise is high'
       };
+  const isBusy = status === 'requesting_permission' || status === 'finishing';
+  const primaryActionLabel = isRunning || isPaused
+    ? (lang === 'zh' ? '完成训练' : 'Finish')
+    : (lang === 'zh' ? '开始训练' : 'Start');
 
   return (
     <motion.div className="prompter-shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -526,9 +580,8 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
           <div><strong>{title || modeLabel}</strong><span>{modeLabel} · {formatDuration(elapsedMs)} · {statusLabel}</span></div>
         </div>
         <div className="top-actions">
-          <button className="btn-icon" onClick={() => setIsMirrored((value) => !value)} title="Mirror"><FlipHorizontal size={19} /></button>
-          <button className="btn-icon finish-button" onClick={finishSession} title="Finish"><CheckCircle2 size={20} /></button>
-          <button className="btn-icon close-button" onClick={close} title="Close"><X size={20} /></button>
+          <button className="btn-icon" onClick={() => setIsMirrored((value) => !value)} title={lang === 'zh' ? '镜像文字' : 'Mirror text'} aria-label={lang === 'zh' ? '镜像文字' : 'Mirror text'}><FlipHorizontal size={19} /></button>
+          <button className="btn-icon close-button" onClick={close} title={lang === 'zh' ? '退出训练' : 'Exit rehearsal'} aria-label={lang === 'zh' ? '退出训练' : 'Exit rehearsal'}><X size={20} /></button>
         </div>
       </header>
 
@@ -538,9 +591,6 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
             <Activity size={15} />
             {voiceState === 'SPEAKING' ? (lang === 'zh' ? '讲话' : 'Speaking') : voiceState === 'SILENCE' ? (lang === 'zh' ? '停顿' : 'Silence') : (lang === 'zh' ? '无麦克风' : 'No mic')}
           </span>
-          <button className="btn-icon hud-toggle" onClick={() => isRunning ? pauseSession() : void startOrResume()}>
-            {isRunning ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
-          </button>
         </div>
         <div className="hud-readout">
           <div className="hud-metric primary">
@@ -555,15 +605,31 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         <div className="audio-meter" aria-label="audio level">{Array.from({ length: 14 }).map((_, index) => <span key={index} className={audioLevel * 14 > index ? 'active' : ''} />)}</div>
         {voiceState !== 'UNAVAILABLE' && <div className={`input-level-status ${inputLevelStatus}`}><Mic size={13} /> {inputLevelText[inputLevelStatus]}</div>}
         {audioMessage && <div className="audio-warning"><Mic size={14} /> {audioMessage}</div>}
+        <div className="session-controls">
+          {(isRunning || isPaused) && (
+            <button
+              type="button"
+              className="btn-icon session-control-secondary"
+              onClick={() => isRunning ? pauseSession() : void startOrResume()}
+              title={isRunning ? (lang === 'zh' ? '暂停训练' : 'Pause') : (lang === 'zh' ? '继续训练' : 'Resume')}
+              aria-label={isRunning ? (lang === 'zh' ? '暂停训练' : 'Pause') : (lang === 'zh' ? '继续训练' : 'Resume')}
+            >
+              {isRunning ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
+            </button>
+          )}
+          <button
+            type="button"
+            className={`session-control-primary ${isRunning || isPaused ? 'is-finish' : ''}`}
+            onClick={() => isRunning || isPaused ? finishSession() : void startOrResume()}
+            disabled={isBusy}
+          >
+            {isRunning || isPaused ? <CheckCircle2 size={18} /> : <Play size={18} fill="currentColor" />}
+            <span>{isBusy ? (lang === 'zh' ? '请稍候' : 'Please wait') : primaryActionLabel}</span>
+          </button>
+        </div>
       </motion.aside>
 
       <div className="prompter-frame">
-        {!isRunning && !completedSession && (
-          <button className="central-play" onClick={() => canResume || status === 'idle' || status === 'error' ? void startOrResume() : undefined}>
-            {isPaused ? <RotateCcw size={38} /> : <Play size={42} fill="currentColor" />}
-            <span>{isPaused ? (lang === 'zh' ? '继续训练' : 'Resume') : (lang === 'zh' ? '开始训练' : 'Start')}</span>
-          </button>
-        )}
         <div ref={scrollRef} className={`prompter-scroll ${isMirrored ? 'mirrored' : ''}`} onWheel={manualScroll} onTouchMove={manualScroll} onScroll={prompterMode === 'free' ? manualScroll : undefined}>
           <div className="prompter-padding">
             <div className={`prompter-script-stage ${prompterMode === 'timed' ? 'with-time-ruler' : ''}`}>
@@ -602,7 +668,10 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
                 <div><span>{lang === 'zh' ? '发声占比' : 'Speaking ratio'}</span><strong>{Math.round(completedSession.metrics.speakingRatio * 100)}%</strong></div>
               </div>
               <div className="comparison-callout"><strong>{lang === 'zh' ? '与上次相比' : 'Compared with previous'}</strong><span>{comparisonSentence(comparison, lang)}</span></div>
-              <button className="btn" onClick={() => { cleanupAudio(); onClose(); }} style={{ width: '100%', justifyContent: 'center' }}>{lang === 'zh' ? '返回并查看训练记录' : 'Return to history'}</button>
+              <div className="summary-actions">
+                <button className="btn btn-secondary" onClick={() => { cleanupAudio(); onClose(); }}>{lang === 'zh' ? '返回训练记录' : 'Return to history'}</button>
+                <button className="btn" onClick={resetSession}><RotateCcw size={18} />{lang === 'zh' ? '重新开始' : 'Restart'}</button>
+              </div>
             </motion.section>
           </motion.div>
         )}

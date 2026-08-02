@@ -49,7 +49,6 @@ export interface PracticeSession {
 }
 
 export interface SessionComparison {
-  durationDeltaMs: number;
   estimatedPaceDelta: number;
   longPauseDelta: number;
   completionDelta: number;
