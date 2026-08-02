@@ -30,6 +30,35 @@ html:not([data-theme='light']) .app-shell::after {
     linear-gradient(90deg, rgba(0, 0, 0, 0.17), transparent 16%, transparent 84%, rgba(0, 0, 0, 0.17));
 }
 
+/* Training mode uses the same three-point stage language with a darker reading zone. */
+html:not([data-theme='light']) .prompter-shell {
+  background:
+    radial-gradient(ellipse 52% 28% at 50% -3%, rgba(247, 249, 255, 0.15), rgba(196, 181, 253, 0.065) 34%, transparent 74%),
+    radial-gradient(ellipse 32% 25% at 7% -2%, rgba(196, 181, 253, 0.12), rgba(108, 92, 166, 0.035) 48%, transparent 76%),
+    radial-gradient(ellipse 32% 25% at 93% -2%, rgba(168, 215, 255, 0.11), rgba(74, 129, 173, 0.032) 48%, transparent 76%),
+    radial-gradient(ellipse 58% 36% at 50% 48%, rgba(100, 85, 150, 0.055), transparent 70%),
+    linear-gradient(180deg, #07070a 0%, #050507 72%, #040405 100%);
+}
+
+html:not([data-theme='light']) .prompter-shell::before {
+  background-image:
+    radial-gradient(ellipse 18% 11% at 8% 0%, rgba(221, 214, 254, 0.17), transparent 74%),
+    radial-gradient(ellipse 18% 11% at 92% 0%, rgba(186, 230, 253, 0.15), transparent 74%),
+    conic-gradient(from 0deg at 8% -7%, transparent 0deg 111deg, rgba(216, 224, 255, 0.028) 121deg, rgba(167, 139, 250, 0.095) 136deg, rgba(107, 132, 190, 0.035) 150deg, transparent 163deg 360deg),
+    conic-gradient(from 0deg at 92% -7%, transparent 0deg 198deg, rgba(186, 230, 253, 0.025) 211deg, rgba(94, 201, 255, 0.09) 226deg, rgba(126, 110, 238, 0.032) 239deg, transparent 252deg 360deg),
+    conic-gradient(from 0deg at 50% -11%, transparent 0deg 158deg, rgba(216, 224, 255, 0.018) 168deg, rgba(167, 139, 250, 0.055) 180deg, rgba(94, 201, 255, 0.018) 192deg, transparent 203deg 360deg),
+    linear-gradient(rgba(255, 255, 255, 0.008) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.008) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, auto, 52px 52px, 52px 52px;
+  mask-image: radial-gradient(ellipse 96% 78% at 50% 48%, black 0%, black 62%, transparent 94%);
+  opacity: 0.88;
+}
+
+html:not([data-theme='light']) .prompter-frame {
+  position: relative;
+  z-index: 1;
+}
+
 @media (max-width: 680px) {
   html:not([data-theme='light']) body {
     background-image:
@@ -48,5 +77,25 @@ html:not([data-theme='light']) .app-shell::after {
       conic-gradient(from 0deg at 98% -5%, transparent 0deg 205deg, rgba(186, 230, 253, 0.022) 216deg, rgba(94, 201, 255, 0.075) 232deg, transparent 253deg 360deg),
       conic-gradient(from 0deg at 50% -8%, transparent 0deg 160deg, rgba(167, 139, 250, 0.05) 180deg, transparent 201deg 360deg),
       radial-gradient(ellipse 94% 18% at 50% 88%, rgba(72, 98, 157, 0.055), transparent 76%);
+  }
+
+  html:not([data-theme='light']) .prompter-shell {
+    background:
+      radial-gradient(ellipse 82% 25% at 50% -2%, rgba(247, 249, 255, 0.13), rgba(196, 181, 253, 0.05) 36%, transparent 75%),
+      radial-gradient(ellipse 48% 20% at 3% -1%, rgba(196, 181, 253, 0.1), transparent 76%),
+      radial-gradient(ellipse 48% 20% at 97% -1%, rgba(168, 215, 255, 0.09), transparent 76%),
+      radial-gradient(ellipse 88% 34% at 50% 48%, rgba(100, 85, 150, 0.04), transparent 72%),
+      linear-gradient(180deg, #07070a 0%, #050507 72%, #040405 100%);
+  }
+
+  html:not([data-theme='light']) .prompter-shell::before {
+    background-image:
+      conic-gradient(from 0deg at 2% -6%, transparent 0deg 104deg, rgba(216, 224, 255, 0.02) 115deg, rgba(167, 139, 250, 0.07) 132deg, transparent 154deg 360deg),
+      conic-gradient(from 0deg at 98% -6%, transparent 0deg 205deg, rgba(186, 230, 253, 0.018) 216deg, rgba(94, 201, 255, 0.065) 232deg, transparent 254deg 360deg),
+      conic-gradient(from 0deg at 50% -9%, transparent 0deg 160deg, rgba(167, 139, 250, 0.045) 180deg, transparent 201deg 360deg),
+      linear-gradient(rgba(255, 255, 255, 0.006) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.006) 1px, transparent 1px);
+    background-size: auto, auto, auto, 48px 48px, 48px 48px;
+    opacity: 0.82;
   }
 }
