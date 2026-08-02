@@ -16,6 +16,7 @@ Versions use `MAJOR.MINOR.PATCH`:
 
 The in-product help dialog imports that value directly. The following references must remain synchronized:
 
+- Root and workspace package metadata in `web/package-lock.json`.
 - `web/public/sw.js` cache name.
 - `README.md` current-version label.
 - `CHANGELOG.md` release heading.
@@ -28,14 +29,14 @@ cd web
 npm run version:check
 ```
 
-The check also runs as part of `npm test`, so pull requests fail when version references drift.
+The check also runs as part of `npm test`, so pull requests fail when package metadata or version references drift.
 
 ## Release checklist
 
 1. Choose the next SemVer version.
-2. Update `web/package.json`.
+2. Update `web/package.json` and regenerate or synchronize `web/package-lock.json`.
 3. Update the Service Worker cache name to `rhythmcoach-vX.Y.Z`.
-4. Add a dated release entry to `CHANGELOG.md`.
+4. Add a dated release entry to `CHANGELOG.md` and return `Unreleased` to a clean state.
 5. Update the README and any version-specific policy text.
 6. Run `npm run version:check`, `npm test`, and `npm run build`.
 7. Merge the release pull request after CI passes.
