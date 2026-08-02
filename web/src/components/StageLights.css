@@ -1,0 +1,52 @@
+/* Dark-theme stage lighting: a central wash with two visible diagonal side beams. */
+html:not([data-theme='light']) body {
+  background-color: #050507;
+  background-image:
+    radial-gradient(ellipse 56% 40% at 50% -6%, rgba(246, 248, 255, 0.14) 0%, rgba(194, 181, 253, 0.085) 30%, rgba(96, 75, 150, 0.03) 55%, transparent 76%),
+    radial-gradient(ellipse 34% 30% at 8% -3%, rgba(196, 181, 253, 0.14), rgba(108, 92, 166, 0.045) 48%, transparent 76%),
+    radial-gradient(ellipse 34% 30% at 92% -3%, rgba(168, 215, 255, 0.12), rgba(74, 129, 173, 0.04) 48%, transparent 76%),
+    radial-gradient(ellipse 78% 28% at 50% 106%, rgba(68, 93, 145, 0.09), transparent 74%),
+    linear-gradient(rgba(255, 255, 255, 0.0035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.0035) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 54px 54px, 54px 54px;
+}
+
+html:not([data-theme='light']) .app-shell::before {
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 42% 22% at 50% 2%, rgba(247, 249, 255, 0.17), rgba(196, 181, 253, 0.07) 34%, transparent 72%),
+    radial-gradient(ellipse 20% 14% at 9% 0%, rgba(221, 214, 254, 0.19), transparent 74%),
+    radial-gradient(ellipse 20% 14% at 91% 0%, rgba(186, 230, 253, 0.17), transparent 74%),
+    conic-gradient(from 0deg at 9% -6%, transparent 0deg 111deg, rgba(216, 224, 255, 0.035) 121deg, rgba(167, 139, 250, 0.115) 136deg, rgba(107, 132, 190, 0.045) 149deg, transparent 162deg 360deg),
+    conic-gradient(from 0deg at 91% -6%, transparent 0deg 198deg, rgba(186, 230, 253, 0.03) 211deg, rgba(94, 201, 255, 0.105) 226deg, rgba(126, 110, 238, 0.04) 239deg, transparent 252deg 360deg),
+    conic-gradient(from 0deg at 50% -10%, transparent 0deg 158deg, rgba(216, 224, 255, 0.02) 168deg, rgba(167, 139, 250, 0.065) 180deg, rgba(94, 201, 255, 0.022) 192deg, transparent 203deg 360deg),
+    radial-gradient(ellipse 72% 25% at 50% 86%, rgba(72, 98, 157, 0.075), transparent 74%);
+  opacity: 1;
+}
+
+html:not([data-theme='light']) .app-shell::after {
+  background:
+    radial-gradient(ellipse 64% 48% at 50% 36%, transparent 0%, rgba(0, 0, 0, 0.02) 52%, rgba(0, 0, 0, 0.28) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.17), transparent 16%, transparent 84%, rgba(0, 0, 0, 0.17));
+}
+
+@media (max-width: 680px) {
+  html:not([data-theme='light']) body {
+    background-image:
+      radial-gradient(ellipse 86% 36% at 50% -4%, rgba(246, 248, 255, 0.13) 0%, rgba(194, 181, 253, 0.07) 32%, transparent 76%),
+      radial-gradient(ellipse 48% 24% at 4% -2%, rgba(196, 181, 253, 0.11), transparent 76%),
+      radial-gradient(ellipse 48% 24% at 96% -2%, rgba(168, 215, 255, 0.1), transparent 76%),
+      radial-gradient(ellipse 96% 24% at 50% 104%, rgba(68, 93, 145, 0.07), transparent 76%),
+      linear-gradient(rgba(255, 255, 255, 0.003) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.003) 1px, transparent 1px);
+  }
+
+  html:not([data-theme='light']) .app-shell::before {
+    background:
+      radial-gradient(ellipse 72% 18% at 50% 1%, rgba(247, 249, 255, 0.145), rgba(196, 181, 253, 0.055) 36%, transparent 74%),
+      conic-gradient(from 0deg at 2% -5%, transparent 0deg 104deg, rgba(216, 224, 255, 0.025) 115deg, rgba(167, 139, 250, 0.08) 132deg, transparent 153deg 360deg),
+      conic-gradient(from 0deg at 98% -5%, transparent 0deg 205deg, rgba(186, 230, 253, 0.022) 216deg, rgba(94, 201, 255, 0.075) 232deg, transparent 253deg 360deg),
+      conic-gradient(from 0deg at 50% -8%, transparent 0deg 160deg, rgba(167, 139, 250, 0.05) 180deg, transparent 201deg 360deg),
+      radial-gradient(ellipse 94% 18% at 50% 88%, rgba(72, 98, 157, 0.055), transparent 76%);
+  }
+}
