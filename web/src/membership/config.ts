@@ -1,4 +1,15 @@
-export const membershipConfig = Object.freeze({
+export interface MembershipConfig {
+  enabled: boolean;
+  supabaseUrl: string;
+  supabasePublishableKey: string;
+  entitlementCode: string;
+  redirectUrl: string;
+  checkoutFunctionUrl: string;
+  portalFunctionUrl: string;
+  enforceRecordingDownload: boolean;
+}
+
+export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
   enabled: true,
   supabaseUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co',
   supabasePublishableKey: 'sb_publishable_n1Va-c_alpkQ0zNuJYUaxA_J0u68RVW',
@@ -8,5 +19,3 @@ export const membershipConfig = Object.freeze({
   portalFunctionUrl: '',
   enforceRecordingDownload: false
 });
-
-export type MembershipConfig = typeof membershipConfig;
