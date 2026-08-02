@@ -11,6 +11,7 @@ import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { TrainingFocus } from './components/TrainingFocus';
 import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
+import { MembershipDialog } from './membership/MembershipDialog';
 import { useAppStore } from './store';
 import type { Language, PrompterMode } from './types';
 
@@ -196,6 +197,7 @@ export default function App() {
         sessions={sessions}
         onClose={() => setIsFocusOpen(false)}
       />
+      <MembershipDialog lang={globalLang} />
     </div>
   );
 }
