@@ -24,6 +24,9 @@ All notable changes to RhythmCoach are documented here.
 - Remove the non-actionable duration-change card from repeat-session comparison while retaining absolute duration for each attempt.
 - Place start, pause or resume, and finish controls in one consistent bottom-right rehearsal control area.
 - Add a restart action to the completed-session summary and safely reset timing, progress, microphone state, and recording context.
+- Discard the completed attempt's audio file when the user chooses Restart, including recordings that are still finishing asynchronously.
+- Add restrained pause, breath, and emphasis cues to all curated Chinese practice scripts without inserting marker characters into the editable text.
+- Automatically remove delivery cues after the script text is edited so guidance cannot drift out of alignment.
 
 ## [1.0.0] - 2026-08-02
 

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import './components/AudioInputStatus.css';
+import './components/DeliveryCues.css';
 import './theme.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

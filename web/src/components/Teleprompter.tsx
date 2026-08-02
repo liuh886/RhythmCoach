@@ -1,8 +1,10 @@
 import './Teleprompter.css';
+import './DeliveryCues.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CheckCircle2, FlipHorizontal, Gauge, Mic, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DSP_PRESETS, classifyInputLevel, getExpanderTargetGain, getRecorderOptions, type InputLevelStatus } from '../domain/audioDsp';
+import { isDeliveryMarkupAligned, parseDeliveryMarkup, stripDeliveryMarkup, type DeliveryCueKind } from '../domain/deliveryMarkup';
 import { buildTimeMarkers } from '../domain/prompterTimeline';
 import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, estimateDeliveryPace, getScrollCompletion } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
@@ -11,6 +13,7 @@ import type { Language, PracticeSession, PrompterMode, SessionComparison, Sessio
 interface TeleprompterProps {
   title: string;
   script: string;
+  deliveryMarkup: string;
   targetPace: number;
   lang: Language;
   prompterMode: PrompterMode;
@@ -42,6 +45,29 @@ function comparisonSentence(comparison: SessionComparison | null, lang: Language
   return lang === 'zh' ? '本次与上次整体接近，可继续关注长停顿和完成度。' : 'This attempt is close to the previous one; focus on long pauses and completion.';
 }
 
+function cueLabel(cue: DeliveryCueKind, lang: Language): string {
+  if (lang === 'zh') {
+    return cue === 'short-pause' ? '短停顿' : cue === 'long-pause' ? '长停顿' : '建议换气';
+  }
+  return cue === 'short-pause' ? 'Short pause' : cue === 'long-pause' ? 'Long pause' : 'Suggested breath';
+}
+
+function DeliveryLine({ markup, lang }: { markup: string; lang: Language }) {
+  return (
+    <>
+      {parseDeliveryMarkup(markup).map((token, index) => {
+        if (token.kind === 'text') {
+          return token.emphasis
+            ? <span key={`${index}_${token.text.slice(0, 8)}`} className="delivery-emphasis">{token.text}</span>
+            : <span key={`${index}_${token.text.slice(0, 8)}`}>{token.text}</span>;
+        }
+        const label = cueLabel(token.cue, lang);
+        return <span key={`${index}_${token.cue}`} className={`delivery-cue delivery-cue-${token.cue}`} role="img" aria-label={label} title={label} />;
+      })}
+    </>
+  );
+}
+
 function configureCompressor(node: DynamicsCompressorNode, preset: NonNullable<(typeof DSP_PRESETS)['podcast']['compressor']>) {
   node.threshold.value = preset.threshold;
   node.knee.value = preset.knee;
@@ -50,8 +76,9 @@ function configureCompressor(node: DynamicsCompressorNode, preset: NonNullable<(
   node.release.value = preset.release;
 }
 
-export function Teleprompter({ title, script, targetPace, lang, prompterMode, onClose }: TeleprompterProps) {
+export function Teleprompter({ title, script, deliveryMarkup, targetPace, lang, prompterMode, onClose }: TeleprompterProps) {
   const addRecording = useAppStore((state) => state.addRecording);
+  const discardRecordingsForSession = useAppStore((state) => state.discardRecordingsForSession);
   const addSession = useAppStore((state) => state.addSession);
   const sessions = useAppStore((state) => state.sessions);
   const audioProfile = useAppStore((state) => state.audioProfile);
@@ -75,6 +102,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
   const audioContextRef = useRef<AudioContext | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingMetaRef = useRef<RecordingMeta | null>(null);
+  const discardedRecordingSessionIdsRef = useRef(new Set<string>());
   const audioRafRef = useRef(0);
   const clockRafRef = useRef(0);
   const scrollRafRef = useRef(0);
@@ -93,6 +121,15 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
 
   const totalUnits = useMemo(() => countScriptUnits(script, lang), [lang, script]);
   const scriptKey = useMemo(() => createScriptKey(title, script, lang), [lang, script, title]);
+  const activeDeliveryMarkup = useMemo(
+    () => isDeliveryMarkupAligned(deliveryMarkup, script) ? deliveryMarkup : script,
+    [deliveryMarkup, script]
+  );
+  const hasDeliveryCues = activeDeliveryMarkup !== script;
+  const deliveryParagraphs = useMemo(
+    () => activeDeliveryMarkup.split('\n').filter((line) => stripDeliveryMarkup(line).trim()),
+    [activeDeliveryMarkup]
+  );
   const targetDurationSeconds = useMemo(
     () => prompterMode === 'timed' && targetPace > 0 ? (totalUnits / targetPace) * 60 : 0,
     [prompterMode, targetPace, totalUnits]
@@ -239,11 +276,17 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         recorder.onstop = () => {
           const meta = recordingMetaRef.current;
           recordingMetaRef.current = null;
+          const sessionId = meta?.sessionId;
+          if (sessionId && discardedRecordingSessionIdsRef.current.has(sessionId)) {
+            discardedRecordingSessionIdsRef.current.delete(sessionId);
+            recorderChunks.length = 0;
+            return;
+          }
           if (recorderChunks.length === 0) return;
           const blob = new Blob(recorderChunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
           addRecording({
             id: createId(),
-            sessionId: meta?.sessionId,
+            sessionId,
             url: URL.createObjectURL(blob),
             name: `${title || 'RhythmCoach'}_${new Date().toLocaleTimeString().replace(/:/g, '-')}`,
             durationSec: meta?.durationSec ?? Math.round(totalTimeRef.current / 1000),
@@ -480,6 +523,11 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
   }, [addSession, captureRecordingMeta, lang, prompterMode, script, scriptKey, sessions, targetPace, title, totalUnits, updateStatus]);
 
   const resetSession = useCallback(() => {
+    const completedSessionId = completedSession?.id;
+    if (completedSessionId) {
+      discardedRecordingSessionIdsRef.current.add(completedSessionId);
+      discardRecordingsForSession(completedSessionId);
+    }
     cleanupAudio();
     totalTimeRef.current = 0;
     speakingTimeRef.current = 0;
@@ -504,7 +552,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     setComparison(null);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     updateStatus('idle');
-  }, [cleanupAudio, updateStatus]);
+  }, [cleanupAudio, completedSession, discardRecordingsForSession, updateStatus]);
 
   const close = useCallback(() => {
     if (statusRef.current === 'completed' || totalTimeRef.current < 1000) {
@@ -591,6 +639,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
             <Activity size={15} />
             {voiceState === 'SPEAKING' ? (lang === 'zh' ? '讲话' : 'Speaking') : voiceState === 'SILENCE' ? (lang === 'zh' ? '停顿' : 'Silence') : (lang === 'zh' ? '无麦克风' : 'No mic')}
           </span>
+          {hasDeliveryCues && <span className="delivery-cue-active">{lang === 'zh' ? '朗读标注' : 'Cues'}</span>}
         </div>
         <div className="hud-readout">
           <div className="hud-metric primary">
@@ -647,7 +696,11 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
                   ))}
                 </div>
               )}
-              <div className="prompter-text">{script.split('\n').filter((line) => line.trim()).map((line, index) => <p key={`${index}_${line.slice(0, 12)}`}>{line}</p>)}</div>
+              <div className="prompter-text">
+                {deliveryParagraphs.map((line, index) => (
+                  <p key={`${index}_${stripDeliveryMarkup(line).slice(0, 12)}`}><DeliveryLine markup={line} lang={lang} /></p>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -670,7 +723,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
               <div className="comparison-callout"><strong>{lang === 'zh' ? '与上次相比' : 'Compared with previous'}</strong><span>{comparisonSentence(comparison, lang)}</span></div>
               <div className="summary-actions">
                 <button className="btn btn-secondary" onClick={() => { cleanupAudio(); onClose(); }}>{lang === 'zh' ? '返回训练记录' : 'Return to history'}</button>
-                <button className="btn" onClick={resetSession}><RotateCcw size={18} />{lang === 'zh' ? '重新开始' : 'Restart'}</button>
+                <button className="btn" onClick={resetSession} title={lang === 'zh' ? '重新开始并丢弃本次录音' : 'Restart and discard this recording'}><RotateCcw size={18} />{lang === 'zh' ? '重新开始' : 'Restart'}</button>
               </div>
             </motion.section>
           </motion.div>

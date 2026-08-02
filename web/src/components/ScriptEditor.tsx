@@ -1,7 +1,8 @@
 import './ScriptEditor.css';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Activity, CheckCircle2, ChevronRight, Download, FileText, Library, Play, Save, Trash2, Upload, X } from 'lucide-react';
+import { Activity, CheckCircle2, ChevronRight, Download, FileText, Library, Play, Save, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isDeliveryMarkupAligned } from '../domain/deliveryMarkup';
 import { countScriptUnits } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PrompterMode } from '../types';
@@ -9,7 +10,7 @@ import { defaultMaterials, type ScriptMaterial } from './materials';
 import { SessionHistory } from './SessionHistory';
 
 interface ScriptEditorProps {
-  onStart: (title: string, script: string, pace: number, lang: Language, mode: PrompterMode) => void;
+  onStart: (title: string, script: string, pace: number, lang: Language, mode: PrompterMode, deliveryMarkup: string) => void;
 }
 
 const ZH_DEFAULT = '大家好，欢迎来到节奏教练。\n\n在这里，你可以选择定时提词、语音跟随或自由演讲。完成练习后，系统会保存本次会话，并与同一稿件的上一次练习进行比较。';
@@ -58,14 +59,17 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const activeTitle = useAppStore((state) => state.activeTitle);
   const activeScript = useAppStore((state) => state.activeScript);
   const activeTip = useAppStore((state) => state.activeTip);
+  const activeDeliveryMarkup = useAppStore((state) => state.activeDeliveryMarkup);
   const setActiveTitle = useAppStore((state) => state.setActiveTitle);
   const setActiveScript = useAppStore((state) => state.setActiveScript);
   const setActiveTip = useAppStore((state) => state.setActiveTip);
+  const setActiveDeliveryMarkup = useAppStore((state) => state.setActiveDeliveryMarkup);
   const isPersistedDataLoaded = useAppStore((state) => state.isPersistedDataLoaded);
 
   const [title, setTitle] = useState(activeTitle);
   const [content, setContent] = useState(activeScript || (globalLang === 'zh' ? ZH_DEFAULT : EN_DEFAULT));
   const [tip, setTip] = useState(activeTip);
+  const [deliveryMarkup, setDeliveryMarkup] = useState(activeDeliveryMarkup);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [customMaterials, setCustomMaterials] = useState<ScriptMaterial[]>([]);
@@ -85,23 +89,29 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     if (activeTitle) setTitle(activeTitle);
     if (activeScript) setContent(activeScript);
     if (activeTip) setTip(activeTip);
+    if (isDeliveryMarkupAligned(activeDeliveryMarkup, activeScript)) setDeliveryMarkup(activeDeliveryMarkup);
     workspaceHydratedRef.current = true;
-  }, [activeScript, activeTip, activeTitle, isPersistedDataLoaded]);
+  }, [activeDeliveryMarkup, activeScript, activeTip, activeTitle, isPersistedDataLoaded]);
 
   useEffect(() => {
     if (globalLang === 'en' && content === ZH_DEFAULT) {
       setContent(EN_DEFAULT);
       setActiveScript(EN_DEFAULT);
+      setDeliveryMarkup('');
+      setActiveDeliveryMarkup('');
       setStoredPace(150);
     } else if (globalLang === 'zh' && content === EN_DEFAULT) {
       setContent(ZH_DEFAULT);
       setActiveScript(ZH_DEFAULT);
+      setDeliveryMarkup('');
+      setActiveDeliveryMarkup('');
       setStoredPace(220);
     }
-  }, [content, globalLang, setActiveScript, setStoredPace]);
+  }, [content, globalLang, setActiveDeliveryMarkup, setActiveScript, setStoredPace]);
 
   const unitCount = useMemo(() => countScriptUnits(content, globalLang), [content, globalLang]);
   const estimatedSeconds = storedMode === 'free' || storedPace <= 0 ? 0 : Math.round((unitCount / storedPace) * 60);
+  const hasDeliveryCues = isDeliveryMarkupAligned(deliveryMarkup, content);
 
   const updateTitle = (value: string) => {
     setTitle(value);
@@ -111,6 +121,18 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const updateContent = (value: string) => {
     setContent(value);
     setActiveScript(value);
+    if (deliveryMarkup) {
+      setDeliveryMarkup('');
+      setActiveDeliveryMarkup('');
+    }
+  };
+
+  const applyMaterialContent = (value: string, markup = '') => {
+    setContent(value);
+    setActiveScript(value);
+    const alignedMarkup = isDeliveryMarkupAligned(markup, value) ? markup : '';
+    setDeliveryMarkup(alignedMarkup);
+    setActiveDeliveryMarkup(alignedMarkup);
   };
 
   const updateTip = (value: string) => {
@@ -125,7 +147,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
   const importMaterial = (material: ScriptMaterial) => {
     updateTitle(material.title);
-    updateContent(material.content);
+    applyMaterialContent(material.content, material.deliveryMarkup);
     updateTip(material.tip || '');
     setGlobalLang('zh');
     setStoredPace(220);
@@ -141,7 +163,8 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
       id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
       title: title.trim() || fallbackTitle,
       content: content.trim(),
-      tip: tip.trim() || undefined
+      tip: tip.trim() || undefined,
+      deliveryMarkup: hasDeliveryCues ? deliveryMarkup : undefined
     };
     persistDrafts([draft, ...customMaterials]);
     setIsSaving(true);
@@ -169,12 +192,18 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
         if (!Array.isArray(parsed)) throw new Error('Expected an array');
         const valid = parsed
           .filter((item) => item && typeof item.title === 'string' && typeof item.content === 'string')
-          .map((item) => ({
-            id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-            title: item.title,
-            content: item.content,
-            tip: typeof item.tip === 'string' ? item.tip : undefined
-          }));
+          .map((item) => {
+            const markup = typeof item.deliveryMarkup === 'string' && isDeliveryMarkupAligned(item.deliveryMarkup, item.content)
+              ? item.deliveryMarkup
+              : undefined;
+            return {
+              id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              title: item.title,
+              content: item.content,
+              tip: typeof item.tip === 'string' ? item.tip : undefined,
+              deliveryMarkup: markup
+            };
+          });
         persistDrafts([...valid, ...customMaterials]);
       } catch (error) {
         console.error('Failed to import drafts:', error);
@@ -188,9 +217,13 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const start = () => {
     if (!content.trim()) return;
     const finalTitle = title.trim() || (globalLang === 'zh' ? '未命名稿件' : 'Untitled script');
+    const finalContent = content.trim();
+    const finalMarkup = isDeliveryMarkupAligned(deliveryMarkup, finalContent) ? deliveryMarkup : '';
     updateTitle(finalTitle);
-    updateContent(content.trim());
-    onStart(finalTitle, content.trim(), storedPace, globalLang, storedMode);
+    setContent(finalContent);
+    setActiveScript(finalContent);
+    setActiveDeliveryMarkup(finalMarkup);
+    onStart(finalTitle, finalContent, storedPace, globalLang, storedMode, finalMarkup);
   };
 
   const durationLabel = storedMode === 'free'
@@ -281,7 +314,10 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                     {defaultMaterials.map((material) => (
                       <button type="button" key={material.id} className="library-item" onClick={() => importMaterial(material)}>
                         <div>
-                          <strong>{material.title}</strong>
+                          <div className="library-item-title">
+                            <strong>{material.title}</strong>
+                            <span className="library-cue-tag"><Sparkles size={11} /> {globalLang === 'zh' ? '朗读标注' : 'Delivery cues'}</span>
+                          </div>
                           <p>{material.content}</p>
                         </div>
                         <ChevronRight size={16} color="var(--text-muted)" />
@@ -313,6 +349,12 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             </label>
             <label className="script-field">
               <span className="field-label">{globalLang === 'zh' ? '稿件正文' : 'Script'}</span>
+              {hasDeliveryCues && (
+                <span className="delivery-cue-status">
+                  <Sparkles size={13} />
+                  <span>{globalLang === 'zh' ? '已附加朗读标注：下划线为重音，轻点为停顿，波纹为换气。编辑正文后将自动关闭。' : 'Delivery cues are active. Editing the script removes them to prevent misalignment.'}</span>
+                </span>
+              )}
               <textarea value={content} onChange={(event) => updateContent(event.target.value)} />
             </label>
             {tip && <div className="practice-tip">💡 {tip}</div>}
