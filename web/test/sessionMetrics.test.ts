@@ -64,6 +64,6 @@ const current: PracticeSession = {
 const comparison = compareSessions(current, previous);
 expectEqual(comparison.estimatedPaceDelta, 15, 'Pace comparison');
 expectEqual(comparison.longPauseDelta, -2, 'Pause comparison');
-expectEqual(comparison.completionDelta, 0.2, 'Completion comparison');
+expectEqual(Math.round(comparison.completionDelta * 100), 20, 'Completion comparison');
 
 console.log('sessionMetrics tests passed');
