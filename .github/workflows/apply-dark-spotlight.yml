@@ -3,6 +3,9 @@ name: Apply dark spotlight design
 on:
   push:
     branches: ["ui/dark-spotlight-atmosphere"]
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, ready_for_review]
 
 permissions:
   contents: write
