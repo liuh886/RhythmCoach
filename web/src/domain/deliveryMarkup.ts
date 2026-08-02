@@ -1,11 +1,10 @@
 export type DeliveryCueKind = 'short-pause' | 'long-pause' | 'breath';
-export type ArticulationCueKind = 'flat' | 'retroflex';
 
 export type DeliveryToken =
-  | { kind: 'text'; text: string; emphasis: boolean; articulation?: ArticulationCueKind }
+  | { kind: 'text'; text: string; emphasis: boolean }
   | { kind: 'cue'; cue: DeliveryCueKind };
 
-const MARKUP_PATTERN = /(\[\[[\s\S]*?\]\]|\{\{(?:flat|retro):[\s\S]*?\}\}|\{\/\/\}|\{\/\}|\{b\})/g;
+const MARKUP_PATTERN = /(\[\[[\s\S]*?\]\]|\{\/\/\}|\{\/\}|\{b\})/g;
 
 export function parseDeliveryMarkup(markup: string): DeliveryToken[] {
   if (!markup) return [];
@@ -17,17 +16,6 @@ export function parseDeliveryMarkup(markup: string): DeliveryToken[] {
       if (part === '{/}') return { kind: 'cue', cue: 'short-pause' };
       if (part === '{//}') return { kind: 'cue', cue: 'long-pause' };
       if (part === '{b}') return { kind: 'cue', cue: 'breath' };
-
-      const articulationMatch = part.match(/^\{\{(flat|retro):([\s\S]*?)\}\}$/);
-      if (articulationMatch) {
-        return {
-          kind: 'text',
-          text: articulationMatch[2],
-          emphasis: false,
-          articulation: articulationMatch[1] === 'flat' ? 'flat' : 'retroflex'
-        };
-      }
-
       if (part.startsWith('[[') && part.endsWith(']]')) {
         return { kind: 'text', text: part.slice(2, -2), emphasis: true };
       }
