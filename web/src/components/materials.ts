@@ -1,4 +1,4 @@
-import { stripDeliveryMarkup } from '../domain/deliveryMarkup';
+import { stripDeliveryMarkup } from '../domain/deliveryMarkup.js';
 
 export interface ScriptMaterial {
   id: string;
