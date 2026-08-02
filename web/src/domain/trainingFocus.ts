@@ -28,13 +28,13 @@ export function getTrainingFocus(session: PracticeSession, lang: Language): Trai
   }
   if (metrics.targetDelta !== null && metrics.targetDelta < -20) {
     return lang === 'zh'
-      ? { kind: 'speed-up', title: '轻微提速', body: '估算语速低于目标。下一遍只提高约 10–15 CPM/WPM，不要一次拉得太快。' }
-      : { kind: 'speed-up', title: 'Increase pace slightly', body: 'Estimated pace was below target. Raise it by only 10–15 CPM/WPM next time.' };
+      ? { kind: 'speed-up', title: '轻微提速', body: '整体估算语速低于目标。下一遍只提高约 10–15 CPM/WPM，不要一次拉得太快。' }
+      : { kind: 'speed-up', title: 'Increase pace slightly', body: 'Estimated delivery pace was below target. Raise it by only 10–15 CPM/WPM next time.' };
   }
   if (metrics.targetDelta !== null && metrics.targetDelta > 20) {
     return lang === 'zh'
-      ? { kind: 'slow-down', title: '稍微放慢', body: '估算语速高于目标。下一遍把重点放在清楚收尾和句间呼吸。' }
-      : { kind: 'slow-down', title: 'Slow down slightly', body: 'Estimated pace was above target. Focus on clear endings and breathing between sentences.' };
+      ? { kind: 'slow-down', title: '稍微放慢', body: '整体估算语速高于目标。下一遍把重点放在清楚收尾和句间呼吸。' }
+      : { kind: 'slow-down', title: 'Slow down slightly', body: 'Estimated delivery pace was above target. Focus on clear endings and breathing between sentences.' };
   }
   return lang === 'zh'
     ? { kind: 'steady', title: '保持当前节奏', body: '本次完成度和节奏已经稳定。下一遍只选择一个细节继续改善。' }

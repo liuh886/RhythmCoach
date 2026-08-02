@@ -4,7 +4,7 @@ import { Activity, CheckCircle2, FlipHorizontal, Gauge, Mic, Pause, Play, Rotate
 import { AnimatePresence, motion } from 'framer-motion';
 import { DSP_PRESETS, classifyInputLevel, getExpanderTargetGain, getRecorderOptions, type InputLevelStatus } from '../domain/audioDsp';
 import { buildTimeMarkers } from '../domain/prompterTimeline';
-import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, getScrollCompletion } from '../domain/sessionMetrics';
+import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, estimateDeliveryPace, getScrollCompletion } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PracticeSession, PrompterMode, SessionComparison, SessionStatus } from '../types';
 
@@ -341,8 +341,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
         const progress = getScrollCompletion(scrollRef.current);
         setLiveProgress(progress);
         const completedUnits = Math.round(totalUnits * progress);
-        const speakingMinutes = speakingTimeRef.current / 60_000;
-        setLiveEstimatedPace(speakingMinutes > 0.03 ? Math.round(completedUnits / speakingMinutes) : 0);
+        setLiveEstimatedPace(estimateDeliveryPace(completedUnits, totalTimeRef.current));
         lastUi = time;
       }
       clockRafRef.current = requestAnimationFrame(tick);
@@ -499,7 +498,7 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
     ? prompterMode === 'timed' ? '定时提词' : prompterMode === 'follow' ? '语音跟随' : '自由演讲'
     : prompterMode === 'timed' ? 'Timed' : prompterMode === 'follow' ? 'Voice Follow' : 'Free';
   const paceValue = prompterMode === 'free' ? liveEstimatedPace : targetPace;
-  const paceLabel = prompterMode === 'free' ? (lang === 'zh' ? '进度估算' : 'Progress estimate') : (lang === 'zh' ? '目标语速' : 'Target pace');
+  const paceLabel = prompterMode === 'free' ? (lang === 'zh' ? '整体语速' : 'Delivery pace') : (lang === 'zh' ? '目标语速' : 'Target pace');
   const statusLabel = lang === 'zh'
     ? ({ idle: '待开始', requesting_permission: '请求权限', ready: '已就绪', running: '训练中', paused: '已暂停', finishing: '生成复盘', completed: '已完成', error: '麦克风不可用' } as Record<SessionStatus, string>)[status]
     : status.replaceAll('_', ' ');
@@ -593,13 +592,13 @@ export function Teleprompter({ title, script, targetPace, lang, prompterMode, on
           <motion.div className="summary-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.section className="summary-modal glass-panel" initial={{ scale: .94, y: 16 }} animate={{ scale: 1, y: 0 }}>
               <h2>{lang === 'zh' ? '本次训练完成' : 'Rehearsal complete'}</h2>
-              <p className="summary-note">{lang === 'zh' ? '估算语速基于文本滚动进度与有效发声时长，不等同于逐字语音识别结果。' : 'Estimated pace uses text progress and speaking time; it is not word-level speech recognition.'}</p>
+              <p className="summary-note">{lang === 'zh' ? '整体估算语速按已完成文本与实际训练用时计算，包含自然停顿和呼吸；它仍不等同于逐字语音识别结果。' : 'Estimated delivery pace uses completed text and total rehearsal time, including natural pauses and breaths; it is still not word-level speech recognition.'}</p>
               <div className="summary-grid">
                 <div><span>{lang === 'zh' ? '实际用时' : 'Total time'}</span><strong>{formatDuration(completedSession.metrics.totalTimeMs)}</strong></div>
                 <div><span>{lang === 'zh' ? '有效发声' : 'Speaking time'}</span><strong>{formatDuration(completedSession.metrics.speakingTimeMs)}</strong></div>
                 <div><span>{lang === 'zh' ? '完成度' : 'Completion'}</span><strong>{Math.round(completedSession.metrics.completionRatio * 100)}%</strong></div>
                 <div><span>{lang === 'zh' ? '长停顿' : 'Long pauses'}</span><strong>{completedSession.metrics.longPauseCount}</strong></div>
-                <div><span>{lang === 'zh' ? '估算语速' : 'Estimated pace'}</span><strong>{completedSession.metrics.estimatedPace || '—'} {completedSession.metrics.paceUnit}</strong></div>
+                <div><span>{lang === 'zh' ? '整体估算语速' : 'Estimated delivery pace'}</span><strong>{completedSession.metrics.estimatedPace || '—'} {completedSession.metrics.paceUnit}</strong></div>
                 <div><span>{lang === 'zh' ? '发声占比' : 'Speaking ratio'}</span><strong>{Math.round(completedSession.metrics.speakingRatio * 100)}%</strong></div>
               </div>
               <div className="comparison-callout"><strong>{lang === 'zh' ? '与上次相比' : 'Compared with previous'}</strong><span>{comparisonSentence(comparison, lang)}</span></div>

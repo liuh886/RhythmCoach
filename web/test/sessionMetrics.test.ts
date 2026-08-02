@@ -1,4 +1,4 @@
-import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey } from '../src/domain/sessionMetrics.js';
+import { buildSessionMetrics, compareSessions, countScriptUnits, createScriptKey, normalizePracticeSessionPace } from '../src/domain/sessionMetrics.js';
 import type { PracticeSession } from '../src/types.js';
 
 function expectEqual<T>(actual: T, expected: T, label: string) {
@@ -21,9 +21,35 @@ const partial = buildSessionMetrics({
   lang: 'zh'
 });
 expectEqual(partial.completedUnits, 100, 'Partial completion uses progress, not full text');
-expectEqual(partial.estimatedPace, 150, 'Estimated pace uses completed units');
-expectEqual(partial.targetDelta, -30, 'Target delta');
+expectEqual(partial.estimatedPace, 100, 'Estimated pace uses elapsed rehearsal time');
+expectEqual(partial.targetDelta, -80, 'Target delta uses elapsed-time pace');
 expectEqual(partial.silenceTimeMs, 20_000, 'Silence duration');
+
+const sameDeliveryDifferentVad = buildSessionMetrics({
+  totalTimeMs: 60_000,
+  speakingTimeMs: 25_000,
+  longPauseCount: 4,
+  completionRatio: 0.5,
+  totalUnits: 200,
+  targetPace: 180,
+  lang: 'zh'
+});
+expectEqual(sameDeliveryDifferentVad.estimatedPace, partial.estimatedPace, 'Voice-activity classification does not distort delivery pace');
+
+const legacySession: PracticeSession = {
+  id: 'legacy',
+  scriptKey: 'same',
+  scriptTitle: 'Demo',
+  scriptSnapshot: 'x',
+  lang: 'zh',
+  mode: 'timed',
+  startedAt: 0,
+  endedAt: 60_000,
+  metrics: { ...partial, estimatedPace: 150, targetDelta: -30 }
+};
+const normalizedLegacy = normalizePracticeSessionPace(legacySession);
+expectEqual(normalizedLegacy.metrics.estimatedPace, 100, 'Legacy pace is normalized from stored elapsed time');
+expectEqual(normalizedLegacy.metrics.targetDelta, -80, 'Legacy target delta is normalized');
 
 const previous: PracticeSession = {
   id: 'a', scriptKey: 'same', scriptTitle: 'Demo', scriptSnapshot: 'x', lang: 'zh', mode: 'timed',

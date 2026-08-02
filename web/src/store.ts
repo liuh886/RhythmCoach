@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import localforage from 'localforage';
+import { normalizePracticeSessionPace } from './domain/sessionMetrics';
 import type { Language, PracticeSession, PrompterMode, Recording } from './types';
 
 export type AudioProfile = 'raw' | 'podcast' | 'broadcast';
@@ -223,7 +224,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         createdAt: recording.createdAt || Date.now(),
         url: recording.blob ? URL.createObjectURL(recording.blob) : ''
       }));
-      const sessions = Array.isArray(savedSessions) ? savedSessions.slice(0, MAX_SESSIONS) : [];
+      const sourceSessions = Array.isArray(savedSessions) ? savedSessions.slice(0, MAX_SESSIONS) : [];
+      const sessions = sourceSessions.map(normalizePracticeSessionPace);
+      const sessionsWereNormalized = sessions.some((session, index) => session !== sourceSessions[index]);
 
       set({
         recordings,
@@ -240,6 +243,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       if (!Array.isArray(savedRecordings) && recordings.length > 0) {
         await persistRecordings(recordings);
+      }
+      if (sessionsWereNormalized) {
+        await localforage.setItem(SESSIONS_KEY, sessions);
       }
     } catch (error) {
       console.error('Failed to load persisted RhythmCoach data:', error);
