@@ -4,31 +4,33 @@ All notable changes to RhythmCoach are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-02
+
+### Added
+
+- Add restrained emphasis, short-pause, long-pause, and suggested-breath guidance to curated Chinese practice materials without placing marker syntax in editable text.
+- Add the contextual “平翘舌专项｜四十本杂志” story with minimal-pair vocabulary, low-contrast “平／翘” position markers, and articulation hover guidance.
+
+### Changed
+
+- Replace scattered utility controls with a unified application header and a calmer two-panel workspace.
+- Add persistent dark and light appearances across the editor, library, dialogs, history, recordings, and rehearsal view.
+- Consolidate start, pause or resume, finish, and restart actions in a consistent lower-right rehearsal control area.
+- Move pause guidance above the reading line and breath guidance below it so annotations no longer interrupt the script.
+- Remove delivery cues automatically after the script is edited, preventing guidance from drifting out of alignment.
+- Discard the completed attempt's audio file when Restart is selected, including recordings still finishing asynchronously, while retaining session metrics for comparison.
+- Remove the non-actionable duration-change comparison and keep repeat-session feedback focused on pace, long pauses, and completion.
+
 ### Fixed
 
-- Align the primary estimated pace with target pace by dividing completed text units by total running rehearsal time rather than microphone-detected speaking time.
-- Keep natural pauses and breathing inside the delivery-pace denominator so voice-activity sensitivity cannot inflate the result.
-- Recalculate saved legacy session pace and target deltas from their stored completion and elapsed-time data during local load.
-- Use the same elapsed-time definition for free-mode live pace, rehearsal summaries, history comparisons, and coaching guidance.
+- Calculate estimated delivery pace from completed text units and total rehearsal time so natural pauses and breathing cannot inflate the result.
+- Recalculate legacy saved pace values from stored completion and elapsed-time data during local load.
+- Use the same elapsed-time definition for free-mode live pace, summaries, history comparisons, and coaching guidance.
 
-### Experience
+### Quality
 
-- Replace the scattered floating utility controls with a unified commercial application header.
-- Add a clear brand lockup, version badge, and structured primary and utility navigation.
-- Remove the duplicated local-first and stable-release status block from the center of the header.
-- Add a persistent light/dark appearance switch that restores before first paint and updates the browser theme color.
-- Apply the light appearance across the editor, library, dialogs, recordings, history, and rehearsal view rather than only recoloring the header.
-- Refine the workspace into a calmer two-panel production layout with a sticky rehearsal setup surface on desktop.
-- Improve panel density, hierarchy, primary-action emphasis, drawer layering, and mobile safe-area behavior.
-- Keep one compact trust footer covering local storage, account requirements, audio upload behavior, source access, and version status.
-- Remove the non-actionable duration-change card from repeat-session comparison while retaining absolute duration for each attempt.
-- Place start, pause or resume, and finish controls in one consistent bottom-right rehearsal control area.
-- Add a restart action to the completed-session summary and safely reset timing, progress, microphone state, and recording context.
-- Discard the completed attempt's audio file when the user chooses Restart, including recordings that are still finishing asynchronously.
-- Add restrained pause, breath, and emphasis cues to all curated Chinese practice scripts without inserting marker characters into the editable text.
-- Automatically remove delivery cues after the script text is edited so guidance cannot drift out of alignment.
-- Add a contextual flat-tongue and retroflex specialty story built around minimal-pair vocabulary rather than an isolated word list.
-- Place low-contrast “平” markers below target characters and “翘” markers above them, with hover explanations for articulation and existing delivery cues.
+- Extend automated coverage for theme behavior, delivery-markup parsing, curated-material alignment, specialty target vocabulary, and hidden marker syntax.
+- Refresh current-version documentation and rotate the PWA cache for the patch release.
 
 ## [1.0.0] - 2026-08-02
 
