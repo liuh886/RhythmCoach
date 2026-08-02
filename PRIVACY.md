@@ -17,7 +17,7 @@ This data is stored through browser storage such as IndexedDB. RhythmCoach does 
 
 ## Microphone access
 
-Microphone permission is requested only when a rehearsal needs speech activity analysis or recording. Audio is used in the browser for voice activity detection and recording. RhythmCoach does not perform speech-content recognition in version 1.0.0.
+Microphone permission is requested only when a rehearsal needs speech activity analysis or recording. Audio is used in the browser for voice activity detection and recording. RhythmCoach does not perform speech-content recognition in version 1.0.1.
 
 ## Usage analytics
 
@@ -45,4 +45,4 @@ RhythmCoach may include links to third-party websites, such as the project repos
 
 ## Scope
 
-These notes describe the stable version 1.0.0 implementation in this repository. If future versions add optional cloud synchronization, external speech services, or additional analytics providers, those features must be disclosed separately.
+These notes describe the stable version 1.0.1 implementation in this repository. If future versions add optional cloud synchronization, external speech services, or additional analytics providers, those features must be disclosed separately.
