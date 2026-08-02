@@ -167,7 +167,7 @@
   width: 1px;
   height: 23px;
   margin: 0 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-border);
 }
 
 .app-footer {
