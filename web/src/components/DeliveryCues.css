@@ -73,23 +73,57 @@
   width: 0;
   min-width: 0;
   height: 1em;
-  margin: 0;
+  margin: 0 -0.28em;
+  padding: 0 0.28em;
   font-size: 1em;
   font-style: normal;
   line-height: 1;
   vertical-align: baseline;
-  pointer-events: none;
+  cursor: help;
 }
 
 .delivery-cue::before {
   position: absolute;
-  left: 0;
+  left: 50%;
   display: block;
   color: var(--accent-secondary);
   line-height: 1;
   white-space: nowrap;
   transform: translateX(-50%);
   opacity: 0.36;
+}
+
+.delivery-cue::after {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 0.72em);
+  left: 50%;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(12, 12, 17, 0.94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+  content: attr(aria-label);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px) scale(0.96);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.delivery-cue:hover::before {
+  opacity: 0.62;
+}
+
+.delivery-cue:hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
 }
 
 .delivery-cue-short-pause::before {
@@ -115,6 +149,108 @@
   opacity: 0.32;
 }
 
+/*
+ * Articulation targets reuse a unique internal sequence:
+ * [[字]]{/}{b} = flat tongue; [[字]]{//}{b} = retroflex.
+ * The two cue anchors are hidden and the visible character owns the marker.
+ */
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath),
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath) {
+  position: relative;
+  font-weight: inherit;
+  text-decoration: none;
+  cursor: help;
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::before,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::before {
+  position: absolute;
+  left: 50%;
+  color: var(--accent-secondary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.18em;
+  font-weight: 720;
+  letter-spacing: 0;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  opacity: 0.36;
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::before {
+  top: calc(100% + 0.14em);
+  content: '平';
+}
+
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::before {
+  bottom: calc(100% + 0.12em);
+  content: '翘';
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::after,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::after {
+  position: absolute;
+  z-index: 42;
+  bottom: calc(100% + 0.72em);
+  left: 50%;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(12, 12, 17, 0.94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px) scale(0.96);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::after {
+  content: '平舌音 · 舌尖靠近上齿背';
+}
+
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::after {
+  content: '翘舌音 · 舌尖轻抬向硬腭';
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath):hover::before,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath):hover::before {
+  opacity: 0.64;
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath):hover::after,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath):hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath) + .delivery-cue-short-pause,
+.delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath) + .delivery-cue-short-pause + .delivery-cue-breath,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath) + .delivery-cue-long-pause,
+.delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath) + .delivery-cue-long-pause + .delivery-cue-breath {
+  display: none;
+}
+
+.prompter-scroll.mirrored .delivery-cue::after,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::before,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::before,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::after,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::after {
+  transform: translateX(-50%) scaleX(-1);
+}
+
+.prompter-scroll.mirrored .delivery-cue:hover::after,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath):hover::after,
+.prompter-scroll.mirrored .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath):hover::after {
+  transform: translate(-50%, 0) scaleX(-1);
+}
+
 html[data-theme='light'] .library-cue-tag,
 html[data-theme='light'] .delivery-cue-active {
   border-color: rgba(20, 125, 166, 0.12);
@@ -133,6 +269,14 @@ html[data-theme='light'] .delivery-cue-breath::before {
   opacity: 0.36;
 }
 
+html[data-theme='light'] .delivery-cue::after,
+html[data-theme='light'] .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::after,
+html[data-theme='light'] .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::after {
+  border-color: rgba(16, 33, 48, 0.13);
+  color: #f8fafc;
+  background: rgba(23, 32, 42, 0.96);
+}
+
 @media (max-width: 620px) {
   .delivery-cue-status {
     font-size: 0.68rem;
@@ -144,7 +288,7 @@ html[data-theme='light'] .delivery-cue-breath::before {
 
   .prompter-text p:has(.delivery-cue),
   .prompter-text p:has(.delivery-emphasis) {
-    line-height: 1.66;
+    line-height: 1.68;
   }
 
   .delivery-cue-short-pause::before,
@@ -154,5 +298,18 @@ html[data-theme='light'] .delivery-cue-breath::before {
 
   .delivery-cue-breath::before {
     bottom: -0.38em;
+  }
+
+  .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::before,
+  .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::before {
+    font-size: 0.2em;
+  }
+}
+
+@media (hover: none) {
+  .delivery-cue::after,
+  .delivery-emphasis:has(+ .delivery-cue-short-pause + .delivery-cue-breath)::after,
+  .delivery-emphasis:has(+ .delivery-cue-long-pause + .delivery-cue-breath)::after {
+    display: none;
   }
 }

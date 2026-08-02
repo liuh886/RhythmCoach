@@ -27,6 +27,8 @@ All notable changes to RhythmCoach are documented here.
 - Discard the completed attempt's audio file when the user chooses Restart, including recordings that are still finishing asynchronously.
 - Add restrained pause, breath, and emphasis cues to all curated Chinese practice scripts without inserting marker characters into the editable text.
 - Automatically remove delivery cues after the script text is edited so guidance cannot drift out of alignment.
+- Add a contextual flat-tongue and retroflex specialty story built around minimal-pair vocabulary rather than an isolated word list.
+- Place low-contrast “平” markers below target characters and “翘” markers above them, with hover explanations for articulation and existing delivery cues.
 
 ## [1.0.0] - 2026-08-02
 
