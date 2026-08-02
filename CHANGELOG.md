@@ -4,6 +4,13 @@ All notable changes to RhythmCoach are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Align the primary estimated pace with target pace by dividing completed text units by total running rehearsal time rather than microphone-detected speaking time.
+- Keep natural pauses and breathing inside the delivery-pace denominator so voice-activity sensitivity cannot inflate the result.
+- Recalculate saved legacy session pace and target deltas from their stored completion and elapsed-time data during local load.
+- Use the same elapsed-time definition for free-mode live pace, rehearsal summaries, history comparisons, and coaching guidance.
+
 ### Experience
 
 - Replace the scattered floating utility controls with a unified commercial application header.
