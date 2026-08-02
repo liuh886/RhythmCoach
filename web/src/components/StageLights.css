@@ -1,11 +1,17 @@
-/* Dark-theme stage lighting: a central wash with two visible diagonal side beams. */
+/* Dark-theme stage lighting: three beams share one cool lavender-white color system. */
+html:not([data-theme='light']) {
+  --stage-light-core: 236, 232, 255;
+  --stage-light-mid: 181, 169, 224;
+  --stage-light-edge: 124, 112, 166;
+}
+
 html:not([data-theme='light']) body {
   background-color: #050507;
   background-image:
-    radial-gradient(ellipse 56% 40% at 50% -6%, rgba(246, 248, 255, 0.14) 0%, rgba(194, 181, 253, 0.085) 30%, rgba(96, 75, 150, 0.03) 55%, transparent 76%),
-    radial-gradient(ellipse 34% 30% at 8% -3%, rgba(196, 181, 253, 0.14), rgba(108, 92, 166, 0.045) 48%, transparent 76%),
-    radial-gradient(ellipse 34% 30% at 92% -3%, rgba(168, 215, 255, 0.12), rgba(74, 129, 173, 0.04) 48%, transparent 76%),
-    radial-gradient(ellipse 78% 28% at 50% 106%, rgba(68, 93, 145, 0.09), transparent 74%),
+    radial-gradient(ellipse 56% 40% at 50% -6%, rgba(var(--stage-light-core), 0.14) 0%, rgba(var(--stage-light-mid), 0.085) 30%, rgba(var(--stage-light-edge), 0.03) 55%, transparent 76%),
+    radial-gradient(ellipse 34% 30% at 8% -3%, rgba(var(--stage-light-core), 0.13), rgba(var(--stage-light-edge), 0.045) 48%, transparent 76%),
+    radial-gradient(ellipse 34% 30% at 92% -3%, rgba(var(--stage-light-core), 0.13), rgba(var(--stage-light-edge), 0.045) 48%, transparent 76%),
+    radial-gradient(ellipse 78% 28% at 50% 106%, rgba(var(--stage-light-edge), 0.08), transparent 74%),
     linear-gradient(rgba(255, 255, 255, 0.0035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.0035) 1px, transparent 1px);
   background-size: auto, auto, auto, auto, 54px 54px, 54px 54px;
@@ -14,13 +20,13 @@ html:not([data-theme='light']) body {
 html:not([data-theme='light']) .app-shell::before {
   z-index: -2;
   background:
-    radial-gradient(ellipse 42% 22% at 50% 2%, rgba(247, 249, 255, 0.17), rgba(196, 181, 253, 0.07) 34%, transparent 72%),
-    radial-gradient(ellipse 20% 14% at 9% 0%, rgba(221, 214, 254, 0.19), transparent 74%),
-    radial-gradient(ellipse 20% 14% at 91% 0%, rgba(186, 230, 253, 0.17), transparent 74%),
-    conic-gradient(from 0deg at 9% -6%, transparent 0deg 111deg, rgba(216, 224, 255, 0.035) 121deg, rgba(167, 139, 250, 0.115) 136deg, rgba(107, 132, 190, 0.045) 149deg, transparent 162deg 360deg),
-    conic-gradient(from 0deg at 91% -6%, transparent 0deg 198deg, rgba(186, 230, 253, 0.03) 211deg, rgba(94, 201, 255, 0.105) 226deg, rgba(126, 110, 238, 0.04) 239deg, transparent 252deg 360deg),
-    conic-gradient(from 0deg at 50% -10%, transparent 0deg 158deg, rgba(216, 224, 255, 0.02) 168deg, rgba(167, 139, 250, 0.065) 180deg, rgba(94, 201, 255, 0.022) 192deg, transparent 203deg 360deg),
-    radial-gradient(ellipse 72% 25% at 50% 86%, rgba(72, 98, 157, 0.075), transparent 74%);
+    radial-gradient(ellipse 42% 22% at 50% 2%, rgba(var(--stage-light-core), 0.17), rgba(var(--stage-light-mid), 0.07) 34%, transparent 72%),
+    radial-gradient(ellipse 20% 14% at 9% 0%, rgba(var(--stage-light-core), 0.18), transparent 74%),
+    radial-gradient(ellipse 20% 14% at 91% 0%, rgba(var(--stage-light-core), 0.18), transparent 74%),
+    conic-gradient(from 0deg at 9% -6%, transparent 0deg 111deg, rgba(var(--stage-light-core), 0.035) 121deg, rgba(var(--stage-light-mid), 0.11) 136deg, rgba(var(--stage-light-edge), 0.045) 149deg, transparent 162deg 360deg),
+    conic-gradient(from 0deg at 91% -6%, transparent 0deg 198deg, rgba(var(--stage-light-core), 0.035) 211deg, rgba(var(--stage-light-mid), 0.11) 226deg, rgba(var(--stage-light-edge), 0.045) 239deg, transparent 252deg 360deg),
+    conic-gradient(from 0deg at 50% -10%, transparent 0deg 158deg, rgba(var(--stage-light-core), 0.02) 168deg, rgba(var(--stage-light-mid), 0.065) 180deg, rgba(var(--stage-light-edge), 0.022) 192deg, transparent 203deg 360deg),
+    radial-gradient(ellipse 72% 25% at 50% 86%, rgba(var(--stage-light-edge), 0.07), transparent 74%);
   opacity: 1;
 }
 
@@ -30,23 +36,23 @@ html:not([data-theme='light']) .app-shell::after {
     linear-gradient(90deg, rgba(0, 0, 0, 0.17), transparent 16%, transparent 84%, rgba(0, 0, 0, 0.17));
 }
 
-/* Training mode uses the same three-point stage language with a darker reading zone. */
+/* Training mode uses the same unified three-point light color with a darker reading zone. */
 html:not([data-theme='light']) .prompter-shell {
   background:
-    radial-gradient(ellipse 52% 28% at 50% -3%, rgba(247, 249, 255, 0.15), rgba(196, 181, 253, 0.065) 34%, transparent 74%),
-    radial-gradient(ellipse 32% 25% at 7% -2%, rgba(196, 181, 253, 0.12), rgba(108, 92, 166, 0.035) 48%, transparent 76%),
-    radial-gradient(ellipse 32% 25% at 93% -2%, rgba(168, 215, 255, 0.11), rgba(74, 129, 173, 0.032) 48%, transparent 76%),
-    radial-gradient(ellipse 58% 36% at 50% 48%, rgba(100, 85, 150, 0.055), transparent 70%),
+    radial-gradient(ellipse 52% 28% at 50% -3%, rgba(var(--stage-light-core), 0.15), rgba(var(--stage-light-mid), 0.065) 34%, transparent 74%),
+    radial-gradient(ellipse 32% 25% at 7% -2%, rgba(var(--stage-light-core), 0.115), rgba(var(--stage-light-edge), 0.035) 48%, transparent 76%),
+    radial-gradient(ellipse 32% 25% at 93% -2%, rgba(var(--stage-light-core), 0.115), rgba(var(--stage-light-edge), 0.035) 48%, transparent 76%),
+    radial-gradient(ellipse 58% 36% at 50% 48%, rgba(var(--stage-light-edge), 0.05), transparent 70%),
     linear-gradient(180deg, #07070a 0%, #050507 72%, #040405 100%);
 }
 
 html:not([data-theme='light']) .prompter-shell::before {
   background-image:
-    radial-gradient(ellipse 18% 11% at 8% 0%, rgba(221, 214, 254, 0.17), transparent 74%),
-    radial-gradient(ellipse 18% 11% at 92% 0%, rgba(186, 230, 253, 0.15), transparent 74%),
-    conic-gradient(from 0deg at 8% -7%, transparent 0deg 111deg, rgba(216, 224, 255, 0.028) 121deg, rgba(167, 139, 250, 0.095) 136deg, rgba(107, 132, 190, 0.035) 150deg, transparent 163deg 360deg),
-    conic-gradient(from 0deg at 92% -7%, transparent 0deg 198deg, rgba(186, 230, 253, 0.025) 211deg, rgba(94, 201, 255, 0.09) 226deg, rgba(126, 110, 238, 0.032) 239deg, transparent 252deg 360deg),
-    conic-gradient(from 0deg at 50% -11%, transparent 0deg 158deg, rgba(216, 224, 255, 0.018) 168deg, rgba(167, 139, 250, 0.055) 180deg, rgba(94, 201, 255, 0.018) 192deg, transparent 203deg 360deg),
+    radial-gradient(ellipse 18% 11% at 8% 0%, rgba(var(--stage-light-core), 0.16), transparent 74%),
+    radial-gradient(ellipse 18% 11% at 92% 0%, rgba(var(--stage-light-core), 0.16), transparent 74%),
+    conic-gradient(from 0deg at 8% -7%, transparent 0deg 111deg, rgba(var(--stage-light-core), 0.028) 121deg, rgba(var(--stage-light-mid), 0.095) 136deg, rgba(var(--stage-light-edge), 0.035) 150deg, transparent 163deg 360deg),
+    conic-gradient(from 0deg at 92% -7%, transparent 0deg 198deg, rgba(var(--stage-light-core), 0.028) 211deg, rgba(var(--stage-light-mid), 0.095) 226deg, rgba(var(--stage-light-edge), 0.035) 239deg, transparent 252deg 360deg),
+    conic-gradient(from 0deg at 50% -11%, transparent 0deg 158deg, rgba(var(--stage-light-core), 0.018) 168deg, rgba(var(--stage-light-mid), 0.055) 180deg, rgba(var(--stage-light-edge), 0.018) 192deg, transparent 203deg 360deg),
     linear-gradient(rgba(255, 255, 255, 0.008) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.008) 1px, transparent 1px);
   background-size: auto, auto, auto, auto, auto, 52px 52px, 52px 52px;
@@ -62,37 +68,37 @@ html:not([data-theme='light']) .prompter-frame {
 @media (max-width: 680px) {
   html:not([data-theme='light']) body {
     background-image:
-      radial-gradient(ellipse 86% 36% at 50% -4%, rgba(246, 248, 255, 0.13) 0%, rgba(194, 181, 253, 0.07) 32%, transparent 76%),
-      radial-gradient(ellipse 48% 24% at 4% -2%, rgba(196, 181, 253, 0.11), transparent 76%),
-      radial-gradient(ellipse 48% 24% at 96% -2%, rgba(168, 215, 255, 0.1), transparent 76%),
-      radial-gradient(ellipse 96% 24% at 50% 104%, rgba(68, 93, 145, 0.07), transparent 76%),
+      radial-gradient(ellipse 86% 36% at 50% -4%, rgba(var(--stage-light-core), 0.13) 0%, rgba(var(--stage-light-mid), 0.07) 32%, transparent 76%),
+      radial-gradient(ellipse 48% 24% at 4% -2%, rgba(var(--stage-light-core), 0.1), transparent 76%),
+      radial-gradient(ellipse 48% 24% at 96% -2%, rgba(var(--stage-light-core), 0.1), transparent 76%),
+      radial-gradient(ellipse 96% 24% at 50% 104%, rgba(var(--stage-light-edge), 0.065), transparent 76%),
       linear-gradient(rgba(255, 255, 255, 0.003) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.003) 1px, transparent 1px);
   }
 
   html:not([data-theme='light']) .app-shell::before {
     background:
-      radial-gradient(ellipse 72% 18% at 50% 1%, rgba(247, 249, 255, 0.145), rgba(196, 181, 253, 0.055) 36%, transparent 74%),
-      conic-gradient(from 0deg at 2% -5%, transparent 0deg 104deg, rgba(216, 224, 255, 0.025) 115deg, rgba(167, 139, 250, 0.08) 132deg, transparent 153deg 360deg),
-      conic-gradient(from 0deg at 98% -5%, transparent 0deg 205deg, rgba(186, 230, 253, 0.022) 216deg, rgba(94, 201, 255, 0.075) 232deg, transparent 253deg 360deg),
-      conic-gradient(from 0deg at 50% -8%, transparent 0deg 160deg, rgba(167, 139, 250, 0.05) 180deg, transparent 201deg 360deg),
-      radial-gradient(ellipse 94% 18% at 50% 88%, rgba(72, 98, 157, 0.055), transparent 76%);
+      radial-gradient(ellipse 72% 18% at 50% 1%, rgba(var(--stage-light-core), 0.145), rgba(var(--stage-light-mid), 0.055) 36%, transparent 74%),
+      conic-gradient(from 0deg at 2% -5%, transparent 0deg 104deg, rgba(var(--stage-light-core), 0.025) 115deg, rgba(var(--stage-light-mid), 0.08) 132deg, transparent 153deg 360deg),
+      conic-gradient(from 0deg at 98% -5%, transparent 0deg 205deg, rgba(var(--stage-light-core), 0.025) 216deg, rgba(var(--stage-light-mid), 0.08) 232deg, transparent 253deg 360deg),
+      conic-gradient(from 0deg at 50% -8%, transparent 0deg 160deg, rgba(var(--stage-light-mid), 0.05) 180deg, transparent 201deg 360deg),
+      radial-gradient(ellipse 94% 18% at 50% 88%, rgba(var(--stage-light-edge), 0.05), transparent 76%);
   }
 
   html:not([data-theme='light']) .prompter-shell {
     background:
-      radial-gradient(ellipse 82% 25% at 50% -2%, rgba(247, 249, 255, 0.13), rgba(196, 181, 253, 0.05) 36%, transparent 75%),
-      radial-gradient(ellipse 48% 20% at 3% -1%, rgba(196, 181, 253, 0.1), transparent 76%),
-      radial-gradient(ellipse 48% 20% at 97% -1%, rgba(168, 215, 255, 0.09), transparent 76%),
-      radial-gradient(ellipse 88% 34% at 50% 48%, rgba(100, 85, 150, 0.04), transparent 72%),
+      radial-gradient(ellipse 82% 25% at 50% -2%, rgba(var(--stage-light-core), 0.13), rgba(var(--stage-light-mid), 0.05) 36%, transparent 75%),
+      radial-gradient(ellipse 48% 20% at 3% -1%, rgba(var(--stage-light-core), 0.09), transparent 76%),
+      radial-gradient(ellipse 48% 20% at 97% -1%, rgba(var(--stage-light-core), 0.09), transparent 76%),
+      radial-gradient(ellipse 88% 34% at 50% 48%, rgba(var(--stage-light-edge), 0.035), transparent 72%),
       linear-gradient(180deg, #07070a 0%, #050507 72%, #040405 100%);
   }
 
   html:not([data-theme='light']) .prompter-shell::before {
     background-image:
-      conic-gradient(from 0deg at 2% -6%, transparent 0deg 104deg, rgba(216, 224, 255, 0.02) 115deg, rgba(167, 139, 250, 0.07) 132deg, transparent 154deg 360deg),
-      conic-gradient(from 0deg at 98% -6%, transparent 0deg 205deg, rgba(186, 230, 253, 0.018) 216deg, rgba(94, 201, 255, 0.065) 232deg, transparent 254deg 360deg),
-      conic-gradient(from 0deg at 50% -9%, transparent 0deg 160deg, rgba(167, 139, 250, 0.045) 180deg, transparent 201deg 360deg),
+      conic-gradient(from 0deg at 2% -6%, transparent 0deg 104deg, rgba(var(--stage-light-core), 0.02) 115deg, rgba(var(--stage-light-mid), 0.07) 132deg, transparent 154deg 360deg),
+      conic-gradient(from 0deg at 98% -6%, transparent 0deg 205deg, rgba(var(--stage-light-core), 0.02) 216deg, rgba(var(--stage-light-mid), 0.07) 232deg, transparent 254deg 360deg),
+      conic-gradient(from 0deg at 50% -9%, transparent 0deg 160deg, rgba(var(--stage-light-mid), 0.045) 180deg, transparent 201deg 360deg),
       linear-gradient(rgba(255, 255, 255, 0.006) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.006) 1px, transparent 1px);
     background-size: auto, auto, auto, 48px 48px, 48px 48px;
