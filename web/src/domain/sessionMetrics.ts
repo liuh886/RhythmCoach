@@ -86,7 +86,6 @@ export function buildSessionMetrics(input: BuildSessionMetricsInput): SessionMet
 
 export function compareSessions(current: PracticeSession, previous: PracticeSession): SessionComparison {
   return {
-    durationDeltaMs: current.metrics.totalTimeMs - previous.metrics.totalTimeMs,
     estimatedPaceDelta: current.metrics.estimatedPace - previous.metrics.estimatedPace,
     longPauseDelta: current.metrics.longPauseCount - previous.metrics.longPauseCount,
     completionDelta: current.metrics.completionRatio - previous.metrics.completionRatio,
