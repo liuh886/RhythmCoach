@@ -14,9 +14,11 @@
     "src/domain/trainingFocus.ts",
     "src/domain/audioDsp.ts",
     "src/domain/prompterTimeline.ts",
+    "src/domain/theme.ts",
     "test/sessionMetrics.test.ts",
     "test/trainingFocus.test.ts",
     "test/audioDsp.test.ts",
-    "test/prompterTimeline.test.ts"
+    "test/prompterTimeline.test.ts",
+    "test/theme.test.ts"
   ]
 }
