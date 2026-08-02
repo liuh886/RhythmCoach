@@ -10,6 +10,7 @@ import { RecordingsWidget } from './components/RecordingsWidget';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { TrainingFocus } from './components/TrainingFocus';
+import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
 import { useAppStore } from './store';
 import type { Language, PrompterMode } from './types';
 
@@ -19,6 +20,14 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const GUIDE_KEY = 'rhythmcoach_product_guide_v1';
+
+function getInitialTheme(): AppTheme {
+  try {
+    return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return 'dark';
+  }
+}
 
 export default function App() {
   const {
@@ -37,6 +46,7 @@ export default function App() {
     sessions,
     loadPersistedData
   } = useAppStore();
+  const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem(GUIDE_KEY) !== 'complete');
   const [isFocusOpen, setIsFocusOpen] = useState(false);
@@ -45,6 +55,17 @@ export default function App() {
   useEffect(() => {
     void loadPersistedData();
   }, [loadPersistedData]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', getThemeColor(theme));
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // The selected theme still applies for this session when storage is unavailable.
+    }
+  }, [theme]);
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -105,12 +126,14 @@ export default function App() {
       {mode === 'editor' && (
         <AppHeader
           lang={globalLang}
+          theme={theme}
           canInstall={Boolean(installPrompt)}
           isFullscreen={isFullscreen}
           onOpenLibrary={openLibrary}
           onOpenGuide={() => setIsGuideOpen(true)}
           onOpenFocus={() => setIsFocusOpen(true)}
           onInstall={() => void installApp()}
+          onToggleTheme={() => setTheme((current) => toggleTheme(current))}
           onToggleLanguage={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
           onToggleFullscreen={() => void toggleFullscreen()}
         />
@@ -144,7 +167,7 @@ export default function App() {
             <a href="https://github.com/liuh886/RhythmCoach" target="_blank" rel="noopener noreferrer">
               <ExternalLink size={14} /> RhythmCoach
             </a>
-            <span>v{packageJson.version} · Stable</span>
+            <span>v{packageJson.version}</span>
           </div>
         </footer>
       )}
