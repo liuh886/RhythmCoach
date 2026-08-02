@@ -29,6 +29,34 @@ export function createScriptKey(title: string, script: string, lang: Language): 
   return `script_${(hash >>> 0).toString(36)}`;
 }
 
+export function estimateDeliveryPace(completedUnits: number, totalTimeMs: number): number {
+  const safeUnits = Math.max(0, Math.round(completedUnits));
+  const elapsedMinutes = Math.max(0, totalTimeMs) / 60_000;
+  return elapsedMinutes > 0.03 && safeUnits > 0
+    ? Math.round(safeUnits / elapsedMinutes)
+    : 0;
+}
+
+export function normalizePracticeSessionPace(session: PracticeSession): PracticeSession {
+  const estimatedPace = estimateDeliveryPace(session.metrics.completedUnits, session.metrics.totalTimeMs);
+  const targetDelta = session.metrics.targetPace !== null && estimatedPace > 0
+    ? estimatedPace - session.metrics.targetPace
+    : null;
+
+  if (session.metrics.estimatedPace === estimatedPace && session.metrics.targetDelta === targetDelta) {
+    return session;
+  }
+
+  return {
+    ...session,
+    metrics: {
+      ...session.metrics,
+      estimatedPace,
+      targetDelta
+    }
+  };
+}
+
 export function buildSessionMetrics(input: BuildSessionMetricsInput): SessionMetrics {
   const totalTimeMs = Math.max(0, Math.round(input.totalTimeMs));
   const speakingTimeMs = clamp(Math.round(input.speakingTimeMs), 0, totalTimeMs);
@@ -37,10 +65,7 @@ export function buildSessionMetrics(input: BuildSessionMetricsInput): SessionMet
   const completedUnits = completionRatio >= 0.995
     ? totalUnits
     : Math.min(totalUnits, Math.round(totalUnits * completionRatio));
-  const speakingMinutes = speakingTimeMs / 60_000;
-  const estimatedPace = speakingMinutes > 0.03 && completedUnits > 0
-    ? Math.round(completedUnits / speakingMinutes)
-    : 0;
+  const estimatedPace = estimateDeliveryPace(completedUnits, totalTimeMs);
   const targetPace = input.targetPace && input.targetPace > 0 ? Math.round(input.targetPace) : null;
 
   return {
