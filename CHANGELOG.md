@@ -14,10 +14,13 @@ All notable changes to RhythmCoach are documented here.
 ### Experience
 
 - Replace the scattered floating utility controls with a unified commercial application header.
-- Add a clear brand lockup, stable-version badge, local-first trust signal, and structured primary and utility navigation.
+- Add a clear brand lockup, version badge, and structured primary and utility navigation.
+- Remove the duplicated local-first and stable-release status block from the center of the header.
+- Add a persistent light/dark appearance switch that restores before first paint and updates the browser theme color.
+- Apply the light appearance across the editor, library, dialogs, recordings, history, and rehearsal view rather than only recoloring the header.
 - Refine the workspace into a calmer two-panel production layout with a sticky rehearsal setup surface on desktop.
 - Improve panel density, hierarchy, primary-action emphasis, drawer layering, and mobile safe-area behavior.
-- Add a compact trust footer covering local storage, account requirements, audio upload behavior, source access, and version status.
+- Keep one compact trust footer covering local storage, account requirements, audio upload behavior, source access, and version status.
 
 ## [1.0.0] - 2026-08-02
 
