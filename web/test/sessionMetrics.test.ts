@@ -62,8 +62,8 @@ const current: PracticeSession = {
   metrics: { ...previous.metrics, totalTimeMs: 55_000, estimatedPace: 165, longPauseCount: 1, completionRatio: 1, speakingRatio: 0.75 }
 };
 const comparison = compareSessions(current, previous);
-expectEqual(comparison.durationDeltaMs, -5_000, 'Duration comparison');
 expectEqual(comparison.estimatedPaceDelta, 15, 'Pace comparison');
 expectEqual(comparison.longPauseDelta, -2, 'Pause comparison');
+expectEqual(comparison.completionDelta, 0.2, 'Completion comparison');
 
 console.log('sessionMetrics tests passed');
