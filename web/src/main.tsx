@@ -6,6 +6,7 @@ import './index.css';
 import './components/AudioInputStatus.css';
 import './components/DeliveryCues.css';
 import './theme.css';
+import './components/StageLights.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
