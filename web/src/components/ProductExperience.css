@@ -281,3 +281,51 @@
     width: 100%;
   }
 }
+
+/* Dark theme: a static stage-light atmosphere that keeps the workspace in focus. */
+html:not([data-theme='light']) body {
+  background-color: #050507;
+  background-image:
+    radial-gradient(ellipse 56% 40% at 50% -6%, rgba(246, 248, 255, 0.12) 0%, rgba(194, 181, 253, 0.072) 30%, rgba(96, 75, 150, 0.026) 54%, transparent 76%),
+    radial-gradient(ellipse 76% 28% at 50% 106%, rgba(68, 93, 145, 0.085), transparent 74%),
+    linear-gradient(rgba(255, 255, 255, 0.004) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.004) 1px, transparent 1px);
+  background-size: auto, auto, 54px 54px, 54px 54px;
+}
+
+html:not([data-theme='light']) .app-shell::before {
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 42% 22% at 50% 2%, rgba(247, 249, 255, 0.15), rgba(196, 181, 253, 0.06) 34%, transparent 72%),
+    conic-gradient(from 145deg at 50% -10%, transparent 0deg 8deg, rgba(216, 224, 255, 0.015) 15deg, rgba(167, 139, 250, 0.05) 34deg, rgba(94, 201, 255, 0.018) 52deg, transparent 62deg 360deg),
+    radial-gradient(ellipse 70% 24% at 50% 86%, rgba(72, 98, 157, 0.07), transparent 74%);
+  opacity: 0.94;
+}
+
+html:not([data-theme='light']) .app-shell::after {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(ellipse 60% 44% at 50% 34%, transparent 0%, rgba(0, 0, 0, 0.035) 54%, rgba(0, 0, 0, 0.34) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.22));
+}
+
+@media (max-width: 680px) {
+  html:not([data-theme='light']) body {
+    background-image:
+      radial-gradient(ellipse 86% 36% at 50% -4%, rgba(246, 248, 255, 0.11) 0%, rgba(194, 181, 253, 0.06) 32%, transparent 76%),
+      radial-gradient(ellipse 96% 24% at 50% 104%, rgba(68, 93, 145, 0.07), transparent 76%),
+      linear-gradient(rgba(255, 255, 255, 0.003) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.003) 1px, transparent 1px);
+  }
+
+  html:not([data-theme='light']) .app-shell::before {
+    background:
+      radial-gradient(ellipse 72% 18% at 50% 1%, rgba(247, 249, 255, 0.13), rgba(196, 181, 253, 0.05) 36%, transparent 74%),
+      conic-gradient(from 148deg at 50% -8%, transparent 0deg 7deg, rgba(216, 224, 255, 0.012) 15deg, rgba(167, 139, 250, 0.042) 31deg, rgba(94, 201, 255, 0.014) 47deg, transparent 56deg 360deg),
+      radial-gradient(ellipse 94% 18% at 50% 88%, rgba(72, 98, 157, 0.055), transparent 76%);
+  }
+}
