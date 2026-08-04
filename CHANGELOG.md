@@ -4,6 +4,18 @@ All notable changes to RhythmCoach are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Add a bilingual opening–outline–closing starter template for Podcast rehearsal.
+- Add focused tests that verify the podcast template is seeded only for empty or untouched starter workspaces.
+
+### Changed
+
+- Reposition RhythmCoach as a pre-recording rehearsal tool for speakers and podcasters.
+- Rename the user-facing Free speaking mode to Podcast rehearsal while retaining the internal `free` identifier for persisted-session compatibility.
+- Keep Podcast rehearsal fully manual: creators control content progress while recording, long-pause, completion, and repeat-session metrics continue unchanged.
+- Update the editor, first-run guide, header, rehearsal HUD, history, metadata, and documentation to use the new product positioning.
+
 ## [1.0.1] - 2026-08-02
 
 ### Added
@@ -78,13 +90,3 @@ All notable changes to RhythmCoach are documented here.
 - Core session metric tests.
 - Rule-based training focus tests.
 - DSP parameter, soft-expander timing, bitrate, and input-level classification tests.
-- Adaptive timed-script marker tests.
-- TypeScript and Vite production builds in GitHub Actions.
-- GitHub Pages deployment after validation.
-
-### Known limitations
-
-- Voice-follow responds to speech activity and silence; it does not align spoken words to the script.
-- Estimated pace is intended for rehearsal comparison and is not a speech-recognition measurement.
-- Local data may be removed when browser site data is cleared.
-- Final tonal quality still depends on the microphone, distance, room, operating-system gain, and browser implementation.
