@@ -32,7 +32,7 @@ interface AppHeaderProps {
 
 const copy = {
   zh: {
-    product: '口播训练工作台',
+    product: '演讲与播客排练工具',
     library: '素材库',
     focus: '训练建议',
     install: '安装',
@@ -45,7 +45,7 @@ const copy = {
     support: '支持 RhythmCoach'
   },
   en: {
-    product: 'Voice rehearsal workspace',
+    product: 'Speaker & podcast rehearsal',
     library: 'Library',
     focus: 'Coaching',
     install: 'Install',

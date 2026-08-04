@@ -17,6 +17,7 @@
     "src/domain/theme.ts",
     "src/domain/deliveryMarkup.ts",
     "src/domain/recordingDownloadAccess.ts",
+    "src/domain/podcastMode.ts",
     "src/components/materials.ts",
     "test/sessionMetrics.test.ts",
     "test/trainingFocus.test.ts",
@@ -24,6 +25,7 @@
     "test/prompterTimeline.test.ts",
     "test/theme.test.ts",
     "test/deliveryMarkup.test.ts",
-    "test/recordingDownloadAccess.test.ts"
+    "test/recordingDownloadAccess.test.ts",
+    "test/podcastMode.test.ts"
   ]
 }

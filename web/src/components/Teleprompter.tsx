@@ -381,7 +381,7 @@ export function Teleprompter({ title, script, deliveryMarkup, targetPace, lang, 
     } catch (error) {
       console.error('Microphone setup failed:', error);
       setVoiceState('UNAVAILABLE');
-      setAudioMessage(lang === 'zh' ? '无法使用麦克风。定时和自由模式仍可继续，但语音跟随不可用。' : 'Microphone unavailable. Timed and free modes can continue; voice-follow mode cannot.');
+      setAudioMessage(lang === 'zh' ? '无法使用麦克风。定时和播客模式仍可继续，但语音跟随不可用。' : 'Microphone unavailable. Timed and podcast modes can continue; voice-follow mode cannot.');
       updateStatus('error');
       return false;
     }
@@ -593,8 +593,8 @@ export function Teleprompter({ title, script, deliveryMarkup, targetPace, lang, 
   };
 
   const modeLabel = lang === 'zh'
-    ? prompterMode === 'timed' ? '定时提词' : prompterMode === 'follow' ? '语音跟随' : '自由演讲'
-    : prompterMode === 'timed' ? 'Timed' : prompterMode === 'follow' ? 'Voice Follow' : 'Free';
+    ? prompterMode === 'timed' ? '定时提词' : prompterMode === 'follow' ? '语音跟随' : '播客训练'
+    : prompterMode === 'timed' ? 'Timed' : prompterMode === 'follow' ? 'Voice Follow' : 'Podcast';
   const paceValue = prompterMode === 'free' ? liveEstimatedPace : targetPace;
   const paceLabel = prompterMode === 'free' ? (lang === 'zh' ? '整体语速' : 'Delivery pace') : (lang === 'zh' ? '目标语速' : 'Target pace');
   const statusLabel = lang === 'zh'
@@ -647,7 +647,9 @@ export function Teleprompter({ title, script, deliveryMarkup, targetPace, lang, 
             <div><strong>{paceValue || '—'}</strong><small>{lang === 'zh' ? 'CPM' : 'WPM'}</small></div>
           </div>
           <div className="hud-metric">
-            <span>{lang === 'zh' ? '正文进度' : 'Progress'}</span>
+            <span>{prompterMode === 'free'
+              ? (lang === 'zh' ? '内容进度' : 'Content progress')
+              : (lang === 'zh' ? '正文进度' : 'Progress')}</span>
             <strong>{Math.round(liveProgress * 100)}%</strong>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Activity, CheckCircle2, ChevronRight, Download, FileText, Library, Play, Save, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isDeliveryMarkupAligned } from '../domain/deliveryMarkup';
+import { getStarterScript, shouldSeedPodcastTemplate } from '../domain/podcastMode';
 import { countScriptUnits } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PrompterMode } from '../types';
@@ -13,8 +14,6 @@ interface ScriptEditorProps {
   onStart: (title: string, script: string, pace: number, lang: Language, mode: PrompterMode, deliveryMarkup: string) => void;
 }
 
-const ZH_DEFAULT = '大家好，欢迎来到节奏教练。\n\n在这里，你可以选择定时提词、语音跟随或自由演讲。完成练习后，系统会保存本次会话，并与同一稿件的上一次练习进行比较。';
-const EN_DEFAULT = 'Hello everyone, welcome to RhythmCoach.\n\nChoose timed prompting, voice-follow prompting, or free speaking. After each rehearsal, the session is saved and compared with your previous attempt on the same script.';
 const DRAFTS_KEY = 'rhythm_custom_materials';
 
 const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
@@ -27,8 +26,8 @@ const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
     en: 'Scrolls while you speak and pauses during silence. Best for guided rehearsal.'
   },
   free: {
-    zh: '不自动滚动，由你手动控制。系统记录发声、长停顿和文本进度。',
-    en: 'Manual scrolling. RhythmCoach records speech activity, long pauses, and progress.'
+    zh: '使用“开场—大纲—结尾”组织播客脚本，由你手动下滑并把握内容进度。',
+    en: 'Structure the episode as opening, outline, and closing, then scroll manually to control progress.'
   }
 };
 
@@ -67,13 +66,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const isPersistedDataLoaded = useAppStore((state) => state.isPersistedDataLoaded);
 
   const [title, setTitle] = useState(activeTitle);
-  const [content, setContent] = useState(activeScript || (globalLang === 'zh' ? ZH_DEFAULT : EN_DEFAULT));
+  const [content, setContent] = useState(activeScript || getStarterScript(globalLang, storedMode === 'free'));
   const [tip, setTip] = useState(activeTip);
   const [deliveryMarkup, setDeliveryMarkup] = useState(activeDeliveryMarkup);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [customMaterials, setCustomMaterials] = useState<ScriptMaterial[]>([]);
   const workspaceHydratedRef = useRef(false);
+  const isPodcastMode = storedMode === 'free';
 
   useEffect(() => {
     try {
@@ -94,23 +94,25 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   }, [activeDeliveryMarkup, activeScript, activeTip, activeTitle, isPersistedDataLoaded]);
 
   useEffect(() => {
-    if (globalLang === 'en' && content === ZH_DEFAULT) {
-      setContent(EN_DEFAULT);
-      setActiveScript(EN_DEFAULT);
+    const zhStarter = getStarterScript('zh', isPodcastMode);
+    const enStarter = getStarterScript('en', isPodcastMode);
+    if (globalLang === 'en' && content === zhStarter) {
+      setContent(enStarter);
+      setActiveScript(enStarter);
       setDeliveryMarkup('');
       setActiveDeliveryMarkup('');
       setStoredPace(150);
-    } else if (globalLang === 'zh' && content === EN_DEFAULT) {
-      setContent(ZH_DEFAULT);
-      setActiveScript(ZH_DEFAULT);
+    } else if (globalLang === 'zh' && content === enStarter) {
+      setContent(zhStarter);
+      setActiveScript(zhStarter);
       setDeliveryMarkup('');
       setActiveDeliveryMarkup('');
       setStoredPace(220);
     }
-  }, [content, globalLang, setActiveDeliveryMarkup, setActiveScript, setStoredPace]);
+  }, [content, globalLang, isPodcastMode, setActiveDeliveryMarkup, setActiveScript, setStoredPace]);
 
   const unitCount = useMemo(() => countScriptUnits(content, globalLang), [content, globalLang]);
-  const estimatedSeconds = storedMode === 'free' || storedPace <= 0 ? 0 : Math.round((unitCount / storedPace) * 60);
+  const estimatedSeconds = isPodcastMode || storedPace <= 0 ? 0 : Math.round((unitCount / storedPace) * 60);
   const hasDeliveryCues = isDeliveryMarkupAligned(deliveryMarkup, content);
 
   const updateTitle = (value: string) => {
@@ -138,6 +140,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const updateTip = (value: string) => {
     setTip(value);
     setActiveTip(value);
+  };
+
+  const selectMode = (nextMode: PrompterMode) => {
+    setStoredMode(nextMode);
+    if (nextMode !== 'free' || !shouldSeedPodcastTemplate(content)) return;
+    const template = getStarterScript(globalLang, true);
+    applyMaterialContent(template);
+    if (!title.trim()) updateTitle(globalLang === 'zh' ? '我的播客排练' : 'My podcast rehearsal');
   };
 
   const persistDrafts = (drafts: ScriptMaterial[]) => {
@@ -216,7 +226,9 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
   const start = () => {
     if (!content.trim()) return;
-    const finalTitle = title.trim() || (globalLang === 'zh' ? '未命名稿件' : 'Untitled script');
+    const finalTitle = title.trim() || (globalLang === 'zh'
+      ? isPodcastMode ? '未命名播客' : '未命名稿件'
+      : isPodcastMode ? 'Untitled podcast' : 'Untitled script');
     const finalContent = content.trim();
     const finalMarkup = isDeliveryMarkupAligned(deliveryMarkup, finalContent) ? deliveryMarkup : '';
     updateTitle(finalTitle);
@@ -226,8 +238,8 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     onStart(finalTitle, finalContent, storedPace, globalLang, storedMode, finalMarkup);
   };
 
-  const durationLabel = storedMode === 'free'
-    ? '--:--'
+  const durationLabel = isPodcastMode
+    ? (globalLang === 'zh' ? '手动' : 'Manual')
     : `${Math.floor(estimatedSeconds / 60)}:${String(estimatedSeconds % 60).padStart(2, '0')}`;
 
   return (
@@ -336,26 +348,45 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
           <section className="glass-panel editor-script-panel" aria-labelledby="editor-title">
             <div className="editor-hero">
               <div>
-                <span className={`editor-kicker ${globalLang === 'zh' ? 'is-zh' : ''}`}>{globalLang === 'zh' ? '口播工作区' : 'REHEARSAL WORKSPACE'}</span>
+                <span className={`editor-kicker ${globalLang === 'zh' ? 'is-zh' : ''}`}>{globalLang === 'zh' ? '录制前排练工作区' : 'PRE-RECORDING REHEARSAL'}</span>
                 <h1 id="editor-title">RhythmCoach</h1>
-                <p>{globalLang === 'zh' ? '把一次口播变成可复盘、可比较的训练。' : 'Turn every rehearsal into measurable progress.'}</p>
+                <p>{globalLang === 'zh'
+                  ? 'RhythmCoach 是演讲者、播客创作者的录制前排练工具。用提纲、提词、录音和可解释的节奏反馈，帮助你减少无效停顿与重复，控制节目时长，并让逐字稿听起来更像自然表达。'
+                  : 'RhythmCoach is a pre-recording rehearsal tool for speakers and podcasters. Use outlines, prompting, recording, and explainable pacing feedback to reduce unhelpful pauses and repetition, control duration, and make scripted delivery sound more natural.'}</p>
               </div>
               <span className="workspace-status" aria-live="polite"><CheckCircle2 size={15} /> {globalLang === 'zh' ? '当前稿件已自动保存' : 'Workspace autosaved'}</span>
             </div>
 
             <label>
-              <span className="field-label"><FileText size={16} /> {globalLang === 'zh' ? '稿件标题' : 'Script title'}</span>
-              <input type="text" value={title} onChange={(event) => updateTitle(event.target.value)} placeholder={globalLang === 'zh' ? '例如：60 秒项目介绍' : 'e.g. 60-second project introduction'} />
+              <span className="field-label"><FileText size={16} /> {isPodcastMode
+                ? (globalLang === 'zh' ? '播客标题' : 'Episode title')
+                : (globalLang === 'zh' ? '稿件标题' : 'Script title')}</span>
+              <input
+                type="text"
+                value={title}
+                onChange={(event) => updateTitle(event.target.value)}
+                placeholder={isPodcastMode
+                  ? (globalLang === 'zh' ? '例如：为什么我们总是高估效率工具' : 'e.g. Why we overestimate productivity tools')
+                  : (globalLang === 'zh' ? '例如：60 秒项目介绍' : 'e.g. 60-second project introduction')}
+              />
             </label>
             <label className="script-field">
-              <span className="field-label">{globalLang === 'zh' ? '稿件正文' : 'Script'}</span>
+              <span className="field-label">{isPodcastMode
+                ? (globalLang === 'zh' ? '播客脚本（开场 / 大纲 / 结尾）' : 'Podcast script (opening / outline / closing)')
+                : (globalLang === 'zh' ? '稿件正文' : 'Script')}</span>
               {hasDeliveryCues && (
                 <span className="delivery-cue-status">
                   <Sparkles size={13} />
                   <span>{globalLang === 'zh' ? '已附加朗读标注：下划线为重音，轻点为停顿，波纹为换气。编辑正文后将自动关闭。' : 'Delivery cues are active. Editing the script removes them to prevent misalignment.'}</span>
                 </span>
               )}
-              <textarea value={content} onChange={(event) => updateContent(event.target.value)} />
+              <textarea
+                value={content}
+                onChange={(event) => updateContent(event.target.value)}
+                placeholder={isPodcastMode
+                  ? (globalLang === 'zh' ? '按开场、大纲和结尾组织内容；训练时由你手动下滑。' : 'Organize the episode as opening, outline, and closing; scroll manually during rehearsal.')
+                  : undefined}
+              />
             </label>
             {tip && <div className="practice-tip">💡 {tip}</div>}
           </section>
@@ -371,7 +402,9 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
 
             <div className="summary-row">
               <div className="summary-tile"><span>{globalLang === 'zh' ? '有效字数' : 'Words'}</span><strong>{unitCount}</strong></div>
-              <div className="summary-tile"><span>{globalLang === 'zh' ? '目标时长' : 'Target time'}</span><strong>{durationLabel}</strong></div>
+              <div className="summary-tile"><span>{isPodcastMode
+                ? (globalLang === 'zh' ? '推进方式' : 'Progress')
+                : (globalLang === 'zh' ? '目标时长' : 'Target time')}</span><strong>{durationLabel}</strong></div>
             </div>
 
             <div className="settings-group">
@@ -382,12 +415,12 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                     type="button"
                     key={mode}
                     className={`mode-button ${storedMode === mode ? 'active' : ''}`}
-                    onClick={() => setStoredMode(mode)}
+                    onClick={() => selectMode(mode)}
                     aria-pressed={storedMode === mode}
                   >
                     {globalLang === 'zh'
-                      ? mode === 'timed' ? '定时' : mode === 'follow' ? '跟随' : '自由'
-                      : mode === 'timed' ? 'Timed' : mode === 'follow' ? 'Follow' : 'Free'}
+                      ? mode === 'timed' ? '定时' : mode === 'follow' ? '跟随' : '播客'
+                      : mode === 'timed' ? 'Timed' : mode === 'follow' ? 'Follow' : 'Podcast'}
                   </button>
                 ))}
               </div>
@@ -414,7 +447,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               <p className="setting-help compact">{audioProfileCopy[audioProfile][globalLang]}</p>
             </div>
 
-            {storedMode !== 'free' && (
+            {!isPodcastMode && (
               <div className="settings-group pace-setting">
                 <div className="pace-setting-header">
                   <span className="field-label">{globalLang === 'zh' ? '目标语速' : 'Target pace'}</span>

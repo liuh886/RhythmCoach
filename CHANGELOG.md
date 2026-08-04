@@ -4,6 +4,18 @@ All notable changes to RhythmCoach are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Add a bilingual opening–outline–closing starter template for Podcast rehearsal.
+- Add focused tests that verify the podcast template is seeded only for empty or untouched starter workspaces.
+
+### Changed
+
+- Reposition RhythmCoach as a pre-recording rehearsal tool for speakers and podcasters.
+- Rename the user-facing Free speaking mode to Podcast rehearsal while retaining the internal `free` identifier for persisted-session compatibility.
+- Keep Podcast rehearsal fully manual: creators control content progress while recording, long-pause, completion, and repeat-session metrics continue unchanged.
+- Update the editor, first-run guide, header, rehearsal HUD, history, metadata, and documentation to use the new product positioning.
+
 ## [1.0.1] - 2026-08-02
 
 ### Added
