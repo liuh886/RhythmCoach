@@ -29,7 +29,7 @@ const copy = {
     remove: '删除训练记录',
     confirmRemove: '确定删除这条训练记录吗？',
     untitled: '未命名稿件',
-    modes: { timed: '定时提词', follow: '语音跟随', free: '自由演讲' }
+    modes: { timed: '定时提词', follow: '语音跟随', free: '播客训练' }
   },
   en: {
     eyebrow: 'Rehearsal review',
@@ -49,7 +49,7 @@ const copy = {
     remove: 'Delete rehearsal record',
     confirmRemove: 'Delete this rehearsal record?',
     untitled: 'Untitled script',
-    modes: { timed: 'Timed', follow: 'Voice follow', free: 'Free speaking' }
+    modes: { timed: 'Timed', follow: 'Voice follow', free: 'Podcast' }
   }
 } as const;
 
