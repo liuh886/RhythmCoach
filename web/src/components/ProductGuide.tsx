@@ -13,11 +13,11 @@ interface ProductGuideProps {
 const copy = {
   zh: {
     eyebrow: '快速开始',
-    title: '把口播练稳，而不只是读完',
-    subtitle: '三步完成一次可复盘的练习。稿件、训练记录和录音默认只保存在当前浏览器。',
+    title: '演讲和播客，录制前先练稳',
+    subtitle: 'RhythmCoach 用提纲、提词、录音和可解释的节奏反馈，帮助演讲者和播客创作者减少无效停顿与重复，让逐字稿听起来更像自然表达。',
     steps: [
-      { title: '准备稿件', body: '粘贴或选择稿件，设定训练模式与目标语速。', icon: FileText },
-      { title: '开始训练', body: '跟随提词完成口播，必要时暂停、调整或重新开始。', icon: Mic2 },
+      { title: '准备内容', body: '粘贴演讲稿，或用“开场—大纲—结尾”组织播客脚本。', icon: FileText },
+      { title: '开始训练', body: '选择自动提词或手动推进，完成一次录制前排练。', icon: Mic2 },
       { title: '查看进步', body: '回听录音，查看完成度、停顿和同稿对比。', icon: BarChart3 }
     ],
     privacy: '本地优先：无需账户，不主动上传麦克风音频。',
@@ -27,11 +27,11 @@ const copy = {
   },
   en: {
     eyebrow: 'Quick start',
-    title: 'Practice the delivery, not just the script',
-    subtitle: 'Complete a measurable rehearsal in three steps. Scripts, sessions, and recordings stay in this browser by default.',
+    title: 'Rehearse before you record',
+    subtitle: 'RhythmCoach helps speakers and podcasters use outlines, prompting, recording, and explainable pacing feedback to reduce unhelpful pauses and repetition and make scripted delivery sound more natural.',
     steps: [
-      { title: 'Prepare', body: 'Paste or choose a script, then set a mode and target pace.', icon: FileText },
-      { title: 'Rehearse', body: 'Use the teleprompter, pause when needed, and keep the delivery focused.', icon: Mic2 },
+      { title: 'Prepare', body: 'Paste a speech, or structure a podcast as opening, outline, and closing.', icon: FileText },
+      { title: 'Rehearse', body: 'Choose automatic prompting or manual progress for a pre-recording run-through.', icon: Mic2 },
       { title: 'Review', body: 'Replay the recording and compare completion, pauses, and repeat attempts.', icon: BarChart3 }
     ],
     privacy: 'Local-first: no account and no automatic microphone upload.',
