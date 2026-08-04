@@ -90,3 +90,13 @@ All notable changes to RhythmCoach are documented here.
 - Core session metric tests.
 - Rule-based training focus tests.
 - DSP parameter, soft-expander timing, bitrate, and input-level classification tests.
+- Adaptive timed-script marker tests.
+- TypeScript and Vite production builds in GitHub Actions.
+- GitHub Pages deployment after validation.
+
+### Known limitations
+
+- Voice-follow responds to speech activity and silence; it does not align spoken words to the script.
+- Estimated pace is intended for rehearsal comparison and is not a speech-recognition measurement.
+- Local data may be removed when browser site data is cleared.
+- Final tonal quality still depends on the microphone, distance, room, operating-system gain, and browser implementation.
