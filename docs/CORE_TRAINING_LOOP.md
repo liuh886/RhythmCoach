@@ -16,7 +16,7 @@ A rehearsal follows a single lifecycle:
 
 `idle → requesting_permission → ready → running ↔ paused → finishing → completed`
 
-A microphone failure enters `error`. Timed and free modes may continue without microphone-derived metrics; voice-follow mode requires microphone access.
+A microphone failure enters `error`. Timed and podcast modes may continue without microphone-derived metrics; voice-follow mode requires microphone access.
 
 ## Mode behavior
 
@@ -24,7 +24,17 @@ A microphone failure enters `error`. Timed and free modes may continue without m
 |---|---|---|---|
 | Timed | Yes | Continues | Fixed-duration delivery |
 | Voice follow | Yes | Pauses after speech grace period | Guided rehearsal |
-| Free | No | Metrics only | Unscripted/manual delivery |
+| Podcast (`free` internally) | No | Metrics only | Manual progress through an opening, outline, and closing |
+
+The internal `free` identifier is retained so existing local sessions remain readable. Product copy and user-facing labels call this mode **Podcast rehearsal**.
+
+## Podcast template behavior
+
+- Selecting Podcast rehearsal seeds an opening–outline–closing template only when the workspace is empty or still contains the default starter copy.
+- Creator-authored content is never overwritten when modes are switched.
+- The user controls progress through wheel, touch, scrollbar, or arrow-key scrolling.
+- Podcast rehearsal keeps the existing recording, speaking-time, long-pause, completion, and repeat-session comparison behavior.
+- Target pace and automatic scrolling remain disabled in Podcast rehearsal.
 
 ## Metric definitions
 
@@ -51,10 +61,12 @@ Sessions created before the elapsed-time pace correction may contain an estimate
 - Two sessions with the same completion and total time produce the same estimated delivery pace even if voice-activity detection reports different speaking times.
 - Timed mode continues scrolling during silence.
 - Voice-follow mode pauses during sustained silence.
-- Free mode never auto-scrolls.
+- Podcast mode never auto-scrolls and uses manual content progress.
+- Selecting Podcast mode seeds the structured template only for an empty or untouched starter workspace.
+- Creator-authored content survives mode switching unchanged.
 - Target pace is labeled as target pace.
 - Estimated delivery pace is explicitly labeled as an estimate that includes natural pauses and breathing.
 - A completed session is persisted locally.
 - Older persisted sessions are normalized to the current pace definition during load.
 - The editor displays the latest two comparable sessions and their deltas.
-- CI runs metric tests and a production build before deployment.
+- CI runs metric tests, podcast-template tests, and a production build before deployment.
