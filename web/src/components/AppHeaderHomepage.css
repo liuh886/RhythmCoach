@@ -1,0 +1,23 @@
+.brand-lockup-button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.brand-lockup-button .brand-name-row strong,
+.brand-lockup-button img {
+  transition: color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.brand-lockup-button:hover .brand-name-row strong {
+  color: var(--accent-secondary);
+}
+
+.brand-lockup-button:hover img {
+  transform: translateY(-1px);
+  box-shadow: 0 11px 28px rgba(80, 72, 170, 0.3);
+}
