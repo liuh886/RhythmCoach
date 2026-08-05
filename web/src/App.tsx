@@ -10,6 +10,7 @@ import { RecordingsWidget } from './components/RecordingsWidget';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { TrainingFocus } from './components/TrainingFocus';
+import { toHtmlLanguage } from './domain/language';
 import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
 import { MembershipDialog } from './membership/MembershipDialog';
 import { useAppStore } from './store';
@@ -58,6 +59,10 @@ export default function App() {
   useEffect(() => {
     void loadPersistedData();
   }, [loadPersistedData]);
+
+  useEffect(() => {
+    document.documentElement.lang = toHtmlLanguage(globalLang);
+  }, [globalLang]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
