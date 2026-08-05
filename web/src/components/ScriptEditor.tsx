@@ -7,7 +7,8 @@ import { getStarterScript, shouldSeedPodcastTemplate } from '../domain/podcastMo
 import { countScriptUnits } from '../domain/sessionMetrics';
 import { useAppStore } from '../store';
 import type { Language, PrompterMode } from '../types';
-import { defaultMaterials, type ScriptMaterial } from './materials';
+import { getCuratedMaterials, localizePracticeTip } from './localizedMaterials';
+import type { ScriptMaterial } from './materials';
 import { SessionHistory } from './SessionHistory';
 
 interface ScriptEditorProps {
@@ -48,7 +49,6 @@ const audioProfileCopy = {
 
 export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const globalLang = useAppStore((state) => state.globalLang);
-  const setGlobalLang = useAppStore((state) => state.setGlobalLang);
   const storedPace = useAppStore((state) => state.targetPace);
   const setStoredPace = useAppStore((state) => state.setTargetPace);
   const storedMode = useAppStore((state) => state.prompterMode);
@@ -114,6 +114,8 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const unitCount = useMemo(() => countScriptUnits(content, globalLang), [content, globalLang]);
   const estimatedSeconds = isPodcastMode || storedPace <= 0 ? 0 : Math.round((unitCount / storedPace) * 60);
   const hasDeliveryCues = isDeliveryMarkupAligned(deliveryMarkup, content);
+  const practiceMaterials = useMemo(() => getCuratedMaterials(globalLang), [globalLang]);
+  const displayTip = localizePracticeTip(tip, globalLang);
 
   const updateTitle = (value: string) => {
     setTitle(value);
@@ -159,8 +161,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     updateTitle(material.title);
     applyMaterialContent(material.content, material.deliveryMarkup);
     updateTip(material.tip || '');
-    setGlobalLang('zh');
-    setStoredPace(220);
+    setStoredPace(globalLang === 'zh' ? 220 : 150);
     setIsDrawerOpen(false);
   };
 
@@ -323,7 +324,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                 <div className="library-section">
                   <h4>{globalLang === 'zh' ? '精选练习' : 'Practice scripts'}</h4>
                   <div className="library-list">
-                    {defaultMaterials.map((material) => (
+                    {practiceMaterials.map((material) => (
                       <button type="button" key={material.id} className="library-item" onClick={() => importMaterial(material)}>
                         <div>
                           <div className="library-item-title">
@@ -388,7 +389,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                   : undefined}
               />
             </label>
-            {tip && <div className="practice-tip">💡 {tip}</div>}
+            {displayTip && <div className="practice-tip">💡 {displayTip}</div>}
           </section>
 
           <section className="glass-panel editor-controls-panel" aria-labelledby="session-setup-title">
