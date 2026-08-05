@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "version:check": "node scripts/check-version.mjs",
-    "test": "npm run version:check && tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js && node .tmp-test/test/trainingFocus.test.js && node .tmp-test/test/audioDsp.test.js && node .tmp-test/test/prompterTimeline.test.js && node .tmp-test/test/theme.test.js && node .tmp-test/test/deliveryMarkup.test.js && node .tmp-test/test/recordingDownloadAccess.test.js && node .tmp-test/test/podcastMode.test.js && node .tmp-test/test/language.test.js && node .tmp-test/test/localizedMaterials.test.js",
+    "test": "npm run version:check && tsc -p tsconfig.test.json && node .tmp-test/test/sessionMetrics.test.js && node .tmp-test/test/trainingFocus.test.js && node .tmp-test/test/audioDsp.test.js && node .tmp-test/test/prompterTimeline.test.js && node .tmp-test/test/theme.test.js && node .tmp-test/test/deliveryMarkup.test.js && node .tmp-test/test/recordingDownloadAccess.test.js && node .tmp-test/test/podcastMode.test.js && node .tmp-test/test/language.test.js && node .tmp-test/test/localizedMaterials.test.js && node .tmp-test/test/productSurface.test.js",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
