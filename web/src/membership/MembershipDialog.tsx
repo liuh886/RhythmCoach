@@ -42,6 +42,16 @@ const copy = {
   }
 } as const;
 
+const localizedServiceErrors: Record<string, string> = {
+  'Membership service failed to load. Training remains available.': '会员服务加载失败，但训练功能仍可使用。',
+  'Membership access could not be refreshed.': '无法刷新会员权益。'
+};
+
+function localizeMembershipError(error: string, lang: Language): string {
+  if (lang === 'en') return error;
+  return localizedServiceErrors[error] ?? error;
+}
+
 export function MembershipButton({ lang }: { lang: Language }) {
   const membership = useMembership();
   if (!membership.configured) return null;
@@ -142,7 +152,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
 
         {!membership.enforcementEnabled && <small>{text.coming}</small>}
         {membership.loading && <small>{text.loading}</small>}
-        {membership.error && <div className="membership-error">{membership.error}</div>}
+        {membership.error && <div className="membership-error">{localizeMembershipError(membership.error, lang)}</div>}
       </section>
     </div>
   );
