@@ -66,68 +66,30 @@ jobs:
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$CHROME"
 
-          timeout 45s "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-gpu \
-            --hide-scrollbars \
-            --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=3500 \
-            --window-size=1440,1000 \
-            --screenshot=visual-evidence/home-desktop.png \
-            'http://127.0.0.1:4173/#/'
+          capture() {
+            local output="$1"
+            local size="$2"
+            local url="$3"
+            timeout 45s "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --disable-gpu \
+              --hide-scrollbars \
+              --run-all-compositor-stages-before-draw \
+              --virtual-time-budget=4000 \
+              --window-size="$size" \
+              --force-device-scale-factor=1 \
+              --screenshot="visual-evidence/$output" \
+              "$url"
+            test -s "visual-evidence/$output"
+          }
 
-          timeout 45s "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-gpu \
-            --hide-scrollbars \
-            --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=4000 \
-            --window-size=1440,2400 \
-            --screenshot=visual-evidence/home-long.png \
-            'http://127.0.0.1:4173/#/'
-
-          timeout 45s "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-gpu \
-            --hide-scrollbars \
-            --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=3500 \
-            --window-size=390,844 \
-            --force-device-scale-factor=1 \
-            --screenshot=visual-evidence/home-mobile.png \
-            'http://127.0.0.1:4173/#/'
-
-          timeout 45s "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-gpu \
-            --hide-scrollbars \
-            --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=4000 \
-            --window-size=390,1500 \
-            --force-device-scale-factor=1 \
-            --screenshot=visual-evidence/home-mobile-long.png \
-            'http://127.0.0.1:4173/#/'
-
-          timeout 45s "$CHROME" \
-            --headless=new \
-            --no-sandbox \
-            --disable-gpu \
-            --hide-scrollbars \
-            --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=3500 \
-            --window-size=1440,1000 \
-            --screenshot=visual-evidence/app-desktop.png \
-            'http://127.0.0.1:4173/#/app'
-
-          test -s visual-evidence/home-desktop.png
-          test -s visual-evidence/home-long.png
-          test -s visual-evidence/home-mobile.png
-          test -s visual-evidence/home-mobile-long.png
-          test -s visual-evidence/app-desktop.png
+          capture home-desktop.png 1440,1000 'http://127.0.0.1:4173/#/'
+          capture workflow-desktop.png 1440,1000 'http://127.0.0.1:4173/#landing-workflow'
+          capture feedback-desktop.png 1440,1000 'http://127.0.0.1:4173/#landing-feedback'
+          capture home-mobile.png 390,844 'http://127.0.0.1:4173/#/'
+          capture workflow-mobile.png 390,844 'http://127.0.0.1:4173/#landing-workflow'
+          capture app-desktop.png 1440,1000 'http://127.0.0.1:4173/#/app'
 
       - name: Upload visual evidence
         if: always()
