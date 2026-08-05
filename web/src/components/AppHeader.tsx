@@ -21,6 +21,7 @@ interface AppHeaderProps {
   theme: AppTheme;
   canInstall: boolean;
   isFullscreen: boolean;
+  onOpenHome: () => void;
   onOpenLibrary: () => void;
   onOpenGuide: () => void;
   onOpenFocus: () => void;
@@ -33,6 +34,7 @@ interface AppHeaderProps {
 const copy = {
   zh: {
     product: '演讲与播客排练工具',
+    home: '返回 RhythmCoach 首页',
     library: '素材库',
     focus: '训练建议',
     install: '安装',
@@ -46,6 +48,7 @@ const copy = {
   },
   en: {
     product: 'Speaker & podcast rehearsal',
+    home: 'Return to the RhythmCoach homepage',
     library: 'Library',
     focus: 'Coaching',
     install: 'Install',
@@ -64,6 +67,7 @@ export function AppHeader({
   theme,
   canInstall,
   isFullscreen,
+  onOpenHome,
   onOpenLibrary,
   onOpenGuide,
   onOpenFocus,
@@ -78,7 +82,13 @@ export function AppHeader({
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <div className="brand-lockup" aria-label={`RhythmCoach v${packageJson.version}`}>
+        <button
+          type="button"
+          className="brand-lockup brand-lockup-button"
+          aria-label={text.home}
+          title={text.home}
+          onClick={onOpenHome}
+        >
           <img src="./rhythmcoach.svg" alt="" width="40" height="40" />
           <div className="brand-copy">
             <div className="brand-name-row">
@@ -87,7 +97,7 @@ export function AppHeader({
             </div>
             <span>{text.product}</span>
           </div>
-        </div>
+        </button>
 
         <nav className="app-header-actions" aria-label={lang === 'zh' ? '应用导航' : 'Application navigation'}>
           <button type="button" className="header-action header-action-primary" onClick={onOpenLibrary} title={text.library}>
