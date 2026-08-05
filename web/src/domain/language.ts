@@ -11,8 +11,10 @@ export function normalizeSupportedLanguage(locale: string | null | undefined): L
 }
 
 export function detectPreferredLanguage(languages?: readonly string[]): Language {
-  const candidates = languages
-    ?? (typeof navigator !== 'undefined' ? navigator.languages : []);
+  const browserLanguages = typeof navigator !== 'undefined'
+    ? (navigator.languages.length > 0 ? navigator.languages : [navigator.language])
+    : [];
+  const candidates = languages ?? browserLanguages;
   for (const candidate of candidates) {
     const supported = normalizeSupportedLanguage(candidate);
     if (supported) return supported;
