@@ -1,8 +1,7 @@
 {
-  "name": "RhythmCoach · 节奏教练",
+  "name": "RhythmCoach",
   "short_name": "RhythmCoach",
-  "description": "本地优先的口播排练与节奏复盘工具。",
-  "lang": "zh-CN",
+  "description": "A private pre-recording rehearsal tool for speakers and podcasters.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
