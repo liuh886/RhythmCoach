@@ -82,13 +82,14 @@ jobs:
               --screenshot="visual-evidence/$output" \
               "$url"
             test -s "visual-evidence/$output"
+            test "$(stat -c%s "visual-evidence/$output")" -gt 10000
           }
 
           capture home-desktop.png 1440,1000 'http://127.0.0.1:4173/#/'
-          capture workflow-desktop.png 1440,1000 'http://127.0.0.1:4173/#landing-workflow'
-          capture feedback-desktop.png 1440,1000 'http://127.0.0.1:4173/#landing-feedback'
+          capture workflow-desktop.png 1440,1000 'http://127.0.0.1:4173/?section=workflow#/'
+          capture feedback-desktop.png 1440,1000 'http://127.0.0.1:4173/?section=feedback#/'
           capture home-mobile.png 390,844 'http://127.0.0.1:4173/#/'
-          capture workflow-mobile.png 390,844 'http://127.0.0.1:4173/#landing-workflow'
+          capture workflow-mobile.png 390,844 'http://127.0.0.1:4173/?section=workflow#/'
           capture app-desktop.png 1440,1000 'http://127.0.0.1:4173/#/app'
 
       - name: Upload visual evidence
