@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import localforage from 'localforage';
+import { detectPreferredLanguage, persistLanguage, readStoredLanguage, resolveInitialLanguage } from './domain/language';
 import { normalizePracticeSessionPace } from './domain/sessionMetrics';
 import type { Language, PracticeSession, PrompterMode, Recording } from './types';
 
@@ -98,14 +99,16 @@ function saveCurrentWorkspace(state: AppState) {
   });
 }
 
+const initialLanguage = resolveInitialLanguage();
+
 export const useAppStore = create<AppState>((set, get) => ({
   mode: 'editor',
   activeTitle: '',
   activeScript: '',
   activeTip: '',
   activeDeliveryMarkup: '',
-  targetPace: 220,
-  globalLang: 'zh',
+  targetPace: initialLanguage === 'zh' ? 220 : 150,
+  globalLang: initialLanguage,
   prompterMode: 'timed',
   audioProfile: 'raw',
   recordings: [],
@@ -140,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
   setGlobalLang: (globalLang) => {
+    persistLanguage(globalLang);
     set({ globalLang });
     const state = get();
     void persistSettings({
@@ -250,6 +254,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const sourceSessions = Array.isArray(savedSessions) ? savedSessions.slice(0, MAX_SESSIONS) : [];
       const sessions = sourceSessions.map(normalizePracticeSessionPace);
       const sessionsWereNormalized = sessions.some((session, index) => session !== sourceSessions[index]);
+      const resolvedLanguage = readStoredLanguage()
+        ?? savedSettings?.globalLang
+        ?? detectPreferredLanguage();
+      persistLanguage(resolvedLanguage);
 
       set({
         recordings,
@@ -258,8 +266,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeScript: savedWorkspace?.activeScript ?? '',
         activeTip: savedWorkspace?.activeTip ?? '',
         activeDeliveryMarkup: savedWorkspace?.activeDeliveryMarkup ?? '',
-        globalLang: savedSettings?.globalLang ?? 'zh',
-        targetPace: savedSettings?.targetPace ?? 220,
+        globalLang: resolvedLanguage,
+        targetPace: savedSettings?.targetPace ?? (resolvedLanguage === 'zh' ? 220 : 150),
         prompterMode: savedSettings?.prompterMode ?? 'timed',
         audioProfile: savedSettings?.audioProfile ?? 'raw',
         isPersistedDataLoaded: true
