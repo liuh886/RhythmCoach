@@ -8,6 +8,7 @@ import './components/AudioInputStatus.css';
 import './components/DeliveryCues.css';
 import './theme.css';
 import './components/StageLights.css';
+import './components/AppHeaderHomepage.css';
 
 document.documentElement.lang = toHtmlLanguage(resolveInitialLanguage());
 
