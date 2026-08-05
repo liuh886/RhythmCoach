@@ -1,0 +1,114 @@
+name: Homepage visual smoke
+
+on:
+  pull_request:
+    paths:
+      - 'web/index.html'
+      - 'web/package.json'
+      - 'web/package-lock.json'
+      - 'web/public/manifest.webmanifest'
+      - 'web/src/App.tsx'
+      - 'web/src/main.tsx'
+      - 'web/src/components/AppHeader.tsx'
+      - 'web/src/components/AppHeaderHomepage.css'
+      - 'web/src/components/LandingPage.tsx'
+      - 'web/src/components/LandingPage.css'
+      - 'web/src/domain/productSurface.ts'
+      - 'web/test/productSurface.test.ts'
+      - '.github/workflows/homepage-visual-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Test and build
+        working-directory: web
+        run: |
+          npm test
+          npm run build
+
+      - name: Start static preview
+        run: |
+          python3 -m http.server 4173 --directory web/dist > /tmp/rhythmcoach-preview.log 2>&1 &
+          echo $! > /tmp/rhythmcoach-preview.pid
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/rhythmcoach-preview.log
+          exit 1
+
+      - name: Capture product surfaces
+        run: |
+          mkdir -p visual-evidence
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --run-all-compositor-stages-before-draw \
+            --virtual-time-budget=3500 \
+            --window-size=1440,1000 \
+            --screenshot=visual-evidence/home-desktop.png \
+            'http://127.0.0.1:4173/#/'
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --run-all-compositor-stages-before-draw \
+            --virtual-time-budget=3500 \
+            --window-size=390,844 \
+            --force-device-scale-factor=1 \
+            --screenshot=visual-evidence/home-mobile.png \
+            'http://127.0.0.1:4173/#/'
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --run-all-compositor-stages-before-draw \
+            --virtual-time-budget=3500 \
+            --window-size=1440,1000 \
+            --screenshot=visual-evidence/app-desktop.png \
+            'http://127.0.0.1:4173/#/app'
+
+          test -s visual-evidence/home-desktop.png
+          test -s visual-evidence/home-mobile.png
+          test -s visual-evidence/app-desktop.png
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhythmcoach-homepage-visual-evidence
+          path: visual-evidence
+          if-no-files-found: error
+          retention-days: 14
