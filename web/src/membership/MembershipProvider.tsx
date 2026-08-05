@@ -22,6 +22,7 @@ interface MembershipUser {
 
 interface MembershipSession {
   user: MembershipUser;
+  access_token?: string;
 }
 
 interface AuthSubscription {
@@ -90,11 +91,13 @@ declare global {
 
 interface MembershipContextValue {
   configured: boolean;
+  billingEnabled: boolean;
   loading: boolean;
   user: MembershipUser | null;
   error: string;
   dialogOpen: boolean;
   enforcementEnabled: boolean;
+  isPro: boolean;
   hasEntitlement: (code: string) => boolean;
   openDialog: () => void;
   closeDialog: () => void;
@@ -102,6 +105,8 @@ interface MembershipContextValue {
   sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
+  startCheckout: () => Promise<void>;
+  openPortal: () => Promise<void>;
 }
 
 const MembershipContext = createContext<MembershipContextValue | null>(null);
@@ -197,6 +202,18 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     });
   }, [refreshEntitlements]);
 
+  useEffect(() => {
+    if (!user || new URLSearchParams(window.location.search).get('billing') !== 'success') return;
+    const timer = window.setTimeout(() => {
+      void refreshEntitlements().catch((refreshError: unknown) => {
+        setError(refreshError instanceof Error
+          ? refreshError.message
+          : 'Membership access could not be refreshed.');
+      });
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [refreshEntitlements, user]);
+
   const signInWithGoogle = useCallback(async () => {
     const client = clientRef.current;
     if (!client) return;
@@ -229,29 +246,81 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     if (authError) setError(authError.message);
   }, []);
 
+  const callMembershipFunction = useCallback(async (url: string) => {
+    const client = clientRef.current;
+    if (!membershipConfig.billingEnabled || !client || !url || !user) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data, error: sessionError } = await client.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+      const token = data.session?.access_token;
+      if (!token) throw new Error('Authentication session is unavailable.');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: membershipConfig.supabasePublishableKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ product_code: membershipConfig.productCode })
+      });
+      const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error ?? `Membership request failed (${response.status}).`);
+      }
+      window.location.assign(payload.url);
+    } catch (requestError: unknown) {
+      setError(requestError instanceof Error
+        ? requestError.message
+        : 'Membership request failed.');
+      setLoading(false);
+    }
+  }, [user]);
+
+  const startCheckout = useCallback(
+    () => callMembershipFunction(membershipConfig.checkoutFunctionUrl),
+    [callMembershipFunction]
+  );
+  const openPortal = useCallback(
+    () => callMembershipFunction(membershipConfig.portalFunctionUrl),
+    [callMembershipFunction]
+  );
+
+  const isPro = entitlements.has(membershipConfig.entitlementCode)
+    || entitlements.has('rhythmcoach.recording_download');
+
   const value = useMemo<MembershipContextValue>(() => ({
     configured: membershipConfig.enabled,
+    billingEnabled: membershipConfig.billingEnabled,
     loading,
     user,
     error,
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
+    isPro,
     hasEntitlement: (code: string) => entitlements.has(code),
     openDialog: () => setDialogOpen(true),
     closeDialog: () => setDialogOpen(false),
     signInWithGoogle,
     sendMagicLink,
     signOut,
-    refreshEntitlements
+    refreshEntitlements,
+    startCheckout,
+    openPortal
   }), [
     dialogOpen,
     entitlements,
     error,
+    isPro,
     loading,
+    openPortal,
     refreshEntitlements,
     sendMagicLink,
     signInWithGoogle,
     signOut,
+    startCheckout,
     user
   ]);
 
