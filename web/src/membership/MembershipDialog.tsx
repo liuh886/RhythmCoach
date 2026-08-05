@@ -22,6 +22,7 @@ const copy = {
     upgrade: '升级 · US$1/月',
     manage: '管理订阅',
     coming: '支付开关尚未启用，现阶段下载录音仍保持免费。',
+    canary: '会员购买现已开放。首轮支付与权益验收期间，录音下载暂不限制。',
     close: '关闭账户窗口'
   },
   en: {
@@ -41,6 +42,7 @@ const copy = {
     upgrade: 'Upgrade · US$1/month',
     manage: 'Manage subscription',
     coming: 'Billing is not enabled yet, so recording downloads remain free for now.',
+    canary: 'Membership purchases are now open. Recording downloads remain unrestricted during the first billing and entitlement validation.',
     close: 'Close account dialog'
   }
 } as const;
@@ -162,6 +164,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
         )}
 
         {!membership.billingEnabled && <small>{text.coming}</small>}
+        {membership.billingEnabled && !membership.enforcementEnabled && <small>{text.canary}</small>}
         {membership.loading && <small>{text.loading}</small>}
         {membership.error && <div className="membership-error">{localizeMembershipError(membership.error, lang)}</div>}
       </section>
