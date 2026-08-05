@@ -3,7 +3,7 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
-  Github,
+  ExternalLink,
   Languages,
   Mic2,
   Moon,
@@ -158,7 +158,7 @@ export function LandingPage({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Github size={16} /> {text.github}
+              <ExternalLink size={16} /> {text.github}
             </a>
             <button type="button" className="landing-icon-button" onClick={onToggleTheme} aria-label={themeLabel} title={themeLabel}>
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
