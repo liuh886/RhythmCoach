@@ -10,6 +10,7 @@ import { RecordingsWidget } from './components/RecordingsWidget';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { TrainingFocus } from './components/TrainingFocus';
+import { toHtmlLanguage } from './domain/language';
 import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
 import { MembershipDialog } from './membership/MembershipDialog';
 import { useAppStore } from './store';
@@ -58,6 +59,20 @@ export default function App() {
   useEffect(() => {
     void loadPersistedData();
   }, [loadPersistedData]);
+
+  useEffect(() => {
+    const isChinese = globalLang === 'zh';
+    document.documentElement.lang = toHtmlLanguage(globalLang);
+    document.title = isChinese
+      ? 'RhythmCoach · 录制前排练'
+      : 'RhythmCoach · Pre-recording rehearsal';
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
+      'content',
+      isChinese
+        ? 'RhythmCoach 是演讲者、播客创作者的录制前排练工具，支持提纲、提词、录音和可解释的节奏反馈。'
+        : 'RhythmCoach is a pre-recording rehearsal tool for speakers and podcasters, with outlines, prompting, recording, and explainable pacing feedback.'
+    );
+  }, [globalLang]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
