@@ -21,6 +21,7 @@
     "src/domain/language.ts",
     "src/components/materials.ts",
     "src/components/localizedMaterials.ts",
+    "src/membership/config.ts",
     "test/sessionMetrics.test.ts",
     "test/trainingFocus.test.ts",
     "test/audioDsp.test.ts",
@@ -30,6 +31,7 @@
     "test/recordingDownloadAccess.test.ts",
     "test/podcastMode.test.ts",
     "test/language.test.ts",
-    "test/localizedMaterials.test.ts"
+    "test/localizedMaterials.test.ts",
+    "test/membershipCanary.test.ts"
   ]
 }
