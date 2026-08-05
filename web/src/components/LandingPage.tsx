@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -47,7 +48,7 @@ const copy = {
     outlineText: '为什么重要 · 一个真实例子 · 可以采取的行动',
     closing: '结尾',
     closingText: '把观点收回来，留下一个清晰的问题。',
-    startRehearsal: '开始排练',
+    startRehearsal: '开始练习',
     workflowTitle: '不是照着稿子念。是把稿子练成自然表达。',
     workflowBody: '用“开场—大纲—结尾”组织播客，也可以按目标时长自动提词，或让文本跟随你的声音。你负责表达，界面只保留当下真正需要的信息。',
     modeTimed: '定时提词',
@@ -122,6 +123,8 @@ const copy = {
   }
 } as const;
 
+const LANDING_SECTION_IDS = new Set(['landing-workflow', 'landing-feedback']);
+
 function scrollToWorkflow() {
   document.getElementById('landing-workflow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -135,6 +138,15 @@ export function LandingPage({
 }: LandingPageProps) {
   const text = copy[lang];
   const themeLabel = theme === 'dark' ? text.lightTheme : text.darkTheme;
+
+  useEffect(() => {
+    const targetId = window.location.hash.replace(/^#/, '');
+    if (!LANDING_SECTION_IDS.has(targetId)) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <div className="landing-page">
@@ -165,7 +177,7 @@ export function LandingPage({
             </button>
             <button type="button" className="landing-language-button" onClick={onToggleLanguage} aria-label={text.language} title={text.language}>
               <Languages size={17} />
-              <span>{lang === 'zh' ? 'EN' : '中'}</span>
+              <span>{lang === 'zh' ? 'EN' : 'ZH'}</span>
             </button>
             <button type="button" className="landing-open-button" onClick={onOpenApp}>
               {text.openApp} <ArrowRight size={16} />
@@ -276,7 +288,7 @@ export function LandingPage({
           </div>
         </section>
 
-        <section className="landing-feature-section landing-feedback-section" aria-labelledby="feedback-title">
+        <section className="landing-feature-section landing-feedback-section" id="landing-feedback" aria-labelledby="feedback-title">
           <div className="landing-window landing-feedback-window" aria-label={lang === 'zh' ? 'RhythmCoach 训练反馈预览' : 'RhythmCoach rehearsal feedback preview'}>
             <div className="landing-feedback-head">
               <div>
