@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import packageJson from '../package.json';
 import { AppHeader } from './components/AppHeader';
 import './components/CommercialTheme.css';
+import { LandingPage } from './components/LandingPage';
 import { ProductGuide } from './components/ProductGuide';
 import './components/ProductExperience.css';
 import { RecordingsWidget } from './components/RecordingsWidget';
@@ -11,6 +12,11 @@ import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
 import { TrainingFocus } from './components/TrainingFocus';
 import { toHtmlLanguage } from './domain/language';
+import {
+  hashForProductSurface,
+  resolveProductSurface,
+  type ProductSurface
+} from './domain/productSurface';
 import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
 import { MembershipDialog } from './membership/MembershipDialog';
 import { useAppStore } from './store';
@@ -50,6 +56,7 @@ export default function App() {
     sessions,
     loadPersistedData
   } = useAppStore();
+  const [surface, setSurface] = useState<ProductSurface>(() => resolveProductSurface(window.location.hash));
   const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem(GUIDE_KEY) !== 'complete');
@@ -61,8 +68,36 @@ export default function App() {
   }, [loadPersistedData]);
 
   useEffect(() => {
+    const syncSurface = () => setSurface(resolveProductSurface(window.location.hash));
+    syncSurface();
+    window.addEventListener('hashchange', syncSurface);
+    return () => window.removeEventListener('hashchange', syncSurface);
+  }, []);
+
+  useEffect(() => {
+    document.body.dataset.surface = surface;
+    return () => {
+      delete document.body.dataset.surface;
+    };
+  }, [surface]);
+
+  useEffect(() => {
     const isChinese = globalLang === 'zh';
     document.documentElement.lang = toHtmlLanguage(globalLang);
+
+    if (surface === 'landing') {
+      document.title = isChinese
+        ? 'RhythmCoach · 把表达练稳，再开始录制'
+        : 'RhythmCoach · Rehearse before you record';
+      document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
+        'content',
+        isChinese
+          ? 'RhythmCoach 为演讲者和播客创作者提供提纲、提词、录音与可解释的节奏反馈，让你在正式录制前完整排练。'
+          : 'RhythmCoach helps speakers and podcasters rehearse with outlines, prompting, recording, and explainable pacing feedback before the real take.'
+      );
+      return;
+    }
+
     document.title = isChinese
       ? 'RhythmCoach · 录制前排练'
       : 'RhythmCoach · Pre-recording rehearsal';
@@ -72,7 +107,7 @@ export default function App() {
         ? 'RhythmCoach 是演讲者、播客创作者的录制前排练工具，支持提纲、提词、录音和可解释的节奏反馈。'
         : 'RhythmCoach is a pre-recording rehearsal tool for speakers and podcasters, with outlines, prompting, recording, and explainable pacing feedback.'
     );
-  }, [globalLang]);
+  }, [globalLang, surface]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -104,6 +139,15 @@ export default function App() {
       window.removeEventListener('appinstalled', handleInstalled);
     };
   }, []);
+
+  const navigateToSurface = (nextSurface: ProductSurface) => {
+    const nextHash = hashForProductSurface(nextSurface);
+    if (window.location.hash === nextHash) {
+      setSurface(nextSurface);
+      return;
+    }
+    window.location.hash = nextHash;
+  };
 
   const startSession = (
     title: string,
@@ -147,6 +191,18 @@ export default function App() {
     document.querySelector<HTMLButtonElement>('.library-launcher')?.click();
   };
 
+  if (surface === 'landing') {
+    return (
+      <LandingPage
+        lang={globalLang}
+        theme={theme}
+        onOpenApp={() => navigateToSurface('app')}
+        onToggleLanguage={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
+        onToggleTheme={() => setTheme((current) => toggleTheme(current))}
+      />
+    );
+  }
+
   return (
     <div className={mode === 'editor' ? 'app-shell' : undefined}>
       {mode === 'editor' && (
@@ -155,6 +211,7 @@ export default function App() {
           theme={theme}
           canInstall={Boolean(installPrompt)}
           isFullscreen={isFullscreen}
+          onOpenHome={() => navigateToSurface('landing')}
           onOpenLibrary={openLibrary}
           onOpenGuide={() => setIsGuideOpen(true)}
           onOpenFocus={() => setIsFocusOpen(true)}
