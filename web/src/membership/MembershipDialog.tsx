@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Crown, LogIn, LogOut, Mail, RefreshCw, UserCircle, X } from 'lucide-react';
+import { Crown, CreditCard, LogIn, LogOut, Mail, RefreshCw, UserCircle, X } from 'lucide-react';
 import type { Language } from '../types';
-import { RECORDING_DOWNLOAD_ENTITLEMENT } from '../domain/recordingDownloadAccess';
 import { useMembership } from './MembershipProvider';
 import './membership.css';
 
@@ -19,8 +18,10 @@ const copy = {
     signedIn: '已登录',
     loading: '正在加载…',
     free: 'Free',
-    pro: '录音下载会员',
-    coming: '支付尚未启用，现阶段下载录音仍保持免费。',
+    pro: 'RhythmCoach Pro',
+    upgrade: '升级 · US$1/月',
+    manage: '管理订阅',
+    coming: '支付开关尚未启用，现阶段下载录音仍保持免费。',
     close: '关闭账户窗口'
   },
   en: {
@@ -36,8 +37,10 @@ const copy = {
     signedIn: 'Signed in',
     loading: 'Loading…',
     free: 'Free',
-    pro: 'Recording download member',
-    coming: 'Payments are not enabled yet, so recording downloads remain free for now.',
+    pro: 'RhythmCoach Pro',
+    upgrade: 'Upgrade · US$1/month',
+    manage: 'Manage subscription',
+    coming: 'Billing is not enabled yet, so recording downloads remain free for now.',
     close: 'Close account dialog'
   }
 } as const;
@@ -55,18 +58,17 @@ function localizeMembershipError(error: string, lang: Language): string {
 export function MembershipButton({ lang }: { lang: Language }) {
   const membership = useMembership();
   if (!membership.configured) return null;
-  const isPro = membership.hasEntitlement(RECORDING_DOWNLOAD_ENTITLEMENT);
   const text = copy[lang];
 
   return (
     <button
       type="button"
-      className={`header-icon-action membership-header-action ${isPro ? 'is-pro' : ''}`}
+      className={`header-icon-action membership-header-action ${membership.isPro ? 'is-pro' : ''}`}
       onClick={membership.openDialog}
       title={text.account}
       aria-label={text.account}
     >
-      {isPro ? <Crown size={18} /> : <UserCircle size={18} />}
+      {membership.isPro ? <Crown size={18} /> : <UserCircle size={18} />}
     </button>
   );
 }
@@ -77,7 +79,6 @@ export function MembershipDialog({ lang }: { lang: Language }) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const text = copy[lang];
-  const isPro = membership.hasEntitlement(RECORDING_DOWNLOAD_ENTITLEMENT);
 
   if (!membership.dialogOpen) return null;
 
@@ -105,7 +106,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
       >
         <header>
           <div>
-            <span className="membership-eyebrow">{isPro ? text.pro : text.free}</span>
+            <span className="membership-eyebrow">{membership.isPro ? text.pro : text.free}</span>
             <h2 id="membership-title">{text.title}</h2>
           </div>
           <button type="button" className="membership-close" onClick={membership.closeDialog} aria-label={text.close}>
@@ -118,8 +119,18 @@ export function MembershipDialog({ lang }: { lang: Language }) {
         {membership.user ? (
           <div className="membership-signed-in">
             <strong>{membership.user.email ?? text.signedIn}</strong>
-            <span>{isPro ? text.pro : text.free}</span>
+            <span>{membership.isPro ? text.pro : text.free}</span>
             <div className="membership-actions-row">
+              {membership.billingEnabled && !membership.isPro && (
+                <button type="button" onClick={() => void membership.startCheckout()}>
+                  <CreditCard size={16} /> {text.upgrade}
+                </button>
+              )}
+              {membership.billingEnabled && membership.isPro && (
+                <button type="button" onClick={() => void membership.openPortal()}>
+                  <CreditCard size={16} /> {text.manage}
+                </button>
+              )}
               <button type="button" onClick={() => void membership.refreshEntitlements()}>
                 <RefreshCw size={16} /> {text.refresh}
               </button>
@@ -150,7 +161,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
           </div>
         )}
 
-        {!membership.enforcementEnabled && <small>{text.coming}</small>}
+        {!membership.billingEnabled && <small>{text.coming}</small>}
         {membership.loading && <small>{text.loading}</small>}
         {membership.error && <div className="membership-error">{localizeMembershipError(membership.error, lang)}</div>}
       </section>
