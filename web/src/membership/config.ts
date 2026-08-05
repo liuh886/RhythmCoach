@@ -13,7 +13,7 @@ export interface MembershipConfig {
 
 export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
   enabled: true,
-  billingEnabled: false,
+  billingEnabled: true,
   productCode: 'rhythmcoach',
   supabaseUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co',
   supabasePublishableKey: 'sb_publishable_n1Va-c_alpkQ0zNuJYUaxA_J0u68RVW',
