@@ -1,6 +1,6 @@
-import type { Language } from '../types';
-import { stripDeliveryMarkup } from '../domain/deliveryMarkup';
-import { defaultMaterials, type ScriptMaterial } from './materials';
+import type { Language } from '../types.js';
+import { stripDeliveryMarkup } from '../domain/deliveryMarkup.js';
+import { defaultMaterials, type ScriptMaterial } from './materials.js';
 
 function createEnglishMaterial(id: string, title: string, deliveryMarkup: string, tip: string): ScriptMaterial {
   return {
