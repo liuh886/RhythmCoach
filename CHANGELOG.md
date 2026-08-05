@@ -8,6 +8,8 @@ All notable changes to RhythmCoach are documented here.
 
 - Add a bilingual opening–outline–closing starter template for Podcast rehearsal.
 - Add focused tests that verify the podcast template is seeded only for empty or untouched starter workspaces.
+- Add browser-language detection, persisted manual language preference, and localization regression tests.
+- Add dedicated English curated practice materials instead of exposing the Chinese library in the English interface.
 
 ### Changed
 
@@ -15,6 +17,13 @@ All notable changes to RhythmCoach are documented here.
 - Rename the user-facing Free speaking mode to Podcast rehearsal while retaining the internal `free` identifier for persisted-session compatibility.
 - Keep Podcast rehearsal fully manual: creators control content progress while recording, long-pause, completion, and repeat-session metrics continue unchanged.
 - Update the editor, first-run guide, header, rehearsal HUD, history, metadata, and documentation to use the new product positioning.
+- Resolve the initial interface language from the user's saved choice first, then browser preferences, with English as the fallback.
+- Keep document language, title, description, curated materials, and interface copy synchronized with the active language.
+
+### Fixed
+
+- Prevent persisted Chinese practice tips from appearing untranslated in the English interface.
+- Localize membership loading, signed-in, and application-generated service-error states.
 
 ## [1.0.1] - 2026-08-02
 
