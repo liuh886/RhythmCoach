@@ -19,6 +19,7 @@
     "src/domain/recordingDownloadAccess.ts",
     "src/domain/podcastMode.ts",
     "src/domain/language.ts",
+    "src/domain/productSurface.ts",
     "src/components/materials.ts",
     "src/components/localizedMaterials.ts",
     "src/membership/config.ts",
@@ -32,6 +33,7 @@
     "test/podcastMode.test.ts",
     "test/language.test.ts",
     "test/localizedMaterials.test.ts",
-    "test/membershipCanary.test.ts"
+    "test/membershipCanary.test.ts",
+    "test/productSurface.test.ts"
   ]
 }

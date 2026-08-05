@@ -1,8 +1,11 @@
 {
+  "id": "./",
   "name": "RhythmCoach",
   "short_name": "RhythmCoach",
   "description": "A private pre-recording rehearsal tool for speakers and podcasters.",
-  "start_url": "./",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./#/app?source=pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
