@@ -15,16 +15,12 @@ interface OrientationController {
   unlock?: () => void;
 }
 
-interface ScreenWithOptionalOrientation extends Screen {
-  orientation?: OrientationController;
-}
-
 interface FullscreenRoot extends HTMLElement {
   webkitRequestFullscreen?: () => Promise<void> | void;
 }
 
 function getOrientationController(): OrientationController | undefined {
-  return (screen as ScreenWithOptionalOrientation).orientation;
+  return (screen as unknown as { orientation?: OrientationController }).orientation;
 }
 
 function getStoredFontSize(): string | null {
