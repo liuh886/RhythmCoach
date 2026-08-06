@@ -15,8 +15,16 @@ interface OrientationController {
   unlock?: () => void;
 }
 
+interface ScreenWithOptionalOrientation extends Screen {
+  orientation?: OrientationController;
+}
+
 interface FullscreenRoot extends HTMLElement {
   webkitRequestFullscreen?: () => Promise<void> | void;
+}
+
+function getOrientationController(): OrientationController | undefined {
+  return (screen as ScreenWithOptionalOrientation).orientation;
 }
 
 function getStoredFontSize(): string | null {
@@ -104,8 +112,7 @@ export function PrompterDisplayControls({ lang }: { lang: Language }) {
 
   useEffect(() => () => {
     if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
-    const orientation = screen.orientation as unknown as OrientationController;
-    orientation.unlock?.();
+    getOrientationController()?.unlock?.();
     if (enteredFullscreenRef.current && document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
     }
@@ -122,8 +129,8 @@ export function PrompterDisplayControls({ lang }: { lang: Language }) {
   };
 
   const toggleOrientation = async () => {
-    const orientation = screen.orientation as unknown as OrientationController;
-    if (!orientation.lock) {
+    const orientation = getOrientationController();
+    if (!orientation?.lock) {
       showOrientationMessage(text.unsupported);
       return;
     }
