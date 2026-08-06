@@ -7,6 +7,7 @@ import './components/CommercialTheme.css';
 import { LandingPage } from './components/LandingPage';
 import { ProductGuide } from './components/ProductGuide';
 import './components/ProductExperience.css';
+import { PrompterDisplayControls } from './components/PrompterDisplayControls';
 import { RecordingsWidget } from './components/RecordingsWidget';
 import { ScriptEditor } from './components/ScriptEditor';
 import { Teleprompter } from './components/Teleprompter';
@@ -223,6 +224,7 @@ export default function App() {
       )}
 
       {mode === 'editor' && <RecordingsWidget />}
+      {mode === 'teleprompter' && <PrompterDisplayControls lang={globalLang} />}
       <AnimatePresence mode="wait">
         {mode === 'editor' ? (
           <ScriptEditor key="editor" onStart={startSession} />

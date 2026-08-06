@@ -20,6 +20,7 @@
     "src/domain/podcastMode.ts",
     "src/domain/language.ts",
     "src/domain/productSurface.ts",
+    "src/domain/prompterDisplay.ts",
     "src/components/materials.ts",
     "src/components/localizedMaterials.ts",
     "src/membership/config.ts",
@@ -34,6 +35,7 @@
     "test/language.test.ts",
     "test/localizedMaterials.test.ts",
     "test/membershipCanary.test.ts",
-    "test/productSurface.test.ts"
+    "test/productSurface.test.ts",
+    "test/prompterDisplay.test.ts"
   ]
 }
