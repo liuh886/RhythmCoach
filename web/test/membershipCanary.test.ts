@@ -6,20 +6,20 @@ function expectEqual<T>(actual: T, expected: T, label: string) {
   }
 }
 
-expectEqual(membershipConfig.enabled, true, 'Membership account client');
-expectEqual(membershipConfig.billingEnabled, true, 'Billing canary');
-expectEqual(membershipConfig.productCode, 'rhythmcoach', 'Server-resolved product code');
+expectEqual(membershipConfig.enabled, true, 'Shared account client');
+expectEqual(membershipConfig.billingEnabled, false, 'Paid actions remain closed');
+expectEqual(membershipConfig.productCode, 'rhythmcoach', 'Shared product code');
 expectEqual(membershipConfig.entitlementCode, 'rhythmcoach.pro', 'Primary entitlement');
-expectEqual(membershipConfig.enforceRecordingDownload, false, 'Download enforcement stays disabled during canary');
+expectEqual(membershipConfig.enforceRecordingDownload, false, 'Recording downloads remain available');
 
 if (!membershipConfig.checkoutFunctionUrl.endsWith('/create-checkout-session')) {
-  throw new Error('Checkout must use the shared Supabase Edge Function.');
+  throw new Error('Future checkout must continue to use the shared Supabase Edge Function.');
 }
 if (!membershipConfig.portalFunctionUrl.endsWith('/create-portal-session')) {
-  throw new Error('Portal must use the shared Supabase Edge Function.');
+  throw new Error('Future portal access must continue to use the shared Supabase Edge Function.');
 }
 if (/sk_(live|test)_|whsec_|sb_secret_|service_role/.test(JSON.stringify(membershipConfig))) {
-  throw new Error('Client membership configuration contains a server secret.');
+  throw new Error('Client account configuration contains a server secret.');
 }
 
-console.log('RhythmCoach billing canary contract passed');
+console.log('RhythmCoach shared account foundation contract passed');
