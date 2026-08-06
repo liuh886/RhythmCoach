@@ -48,24 +48,31 @@ interface AuthApi {
   signOut: () => Promise<{ error: SupabaseErrorLike | null }>;
 }
 
-interface EntitlementRow {
-  entitlement_code: string;
-  active: boolean;
-  valid_until: string | null;
+interface QueryResult<T> {
+  data: T | null;
+  error: SupabaseErrorLike | null;
 }
 
-interface EntitlementQuery {
-  eq: (
-    column: string,
-    value: string
-  ) => Promise<{ data: EntitlementRow[] | null; error: SupabaseErrorLike | null }>;
+interface FilterBuilder<T> extends PromiseLike<QueryResult<T[]>> {
+  eq: (column: string, value: string) => FilterBuilder<T>;
+  select: (columns: string) => FilterBuilder<T>;
+  maybeSingle: () => Promise<QueryResult<T>>;
+  single: () => Promise<QueryResult<T>>;
+}
+
+interface TableBuilder<T> {
+  select: (columns: string) => FilterBuilder<T>;
+  insert: (values: Record<string, unknown>) => FilterBuilder<T>;
+  update: (values: Record<string, unknown>) => FilterBuilder<T>;
+  upsert: (
+    values: Record<string, unknown>,
+    options?: { onConflict?: string }
+  ) => FilterBuilder<T>;
 }
 
 interface SupabaseClientLike {
   auth: AuthApi;
-  from: (table: 'entitlements') => {
-    select: (columns: string) => EntitlementQuery;
-  };
+  from: <T>(table: string) => TableBuilder<T>;
 }
 
 interface SupabaseBrowserSdk {
@@ -89,11 +96,36 @@ declare global {
   }
 }
 
+interface EntitlementRow {
+  entitlement_code: string;
+  active: boolean;
+  valid_until: string | null;
+}
+
+export interface MembershipProfile {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  locale: string | null;
+  last_seen_at: string | null;
+}
+
+interface ProductAccountRow {
+  user_id: string;
+  product_code: string;
+  preferences: Record<string, unknown>;
+  state: Record<string, unknown>;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
 interface MembershipContextValue {
   configured: boolean;
   billingEnabled: boolean;
   loading: boolean;
   user: MembershipUser | null;
+  profile: MembershipProfile | null;
+  productAccount: ProductAccountRow | null;
   error: string;
   dialogOpen: boolean;
   enforcementEnabled: boolean;
@@ -105,6 +137,7 @@ interface MembershipContextValue {
   sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
+  saveDisplayName: (displayName: string) => Promise<void>;
   startCheckout: () => Promise<void>;
   openPortal: () => Promise<void>;
 }
@@ -118,10 +151,24 @@ function isEntitlementCurrent(row: EntitlementRow): boolean {
   return Number.isFinite(validUntil) && validUntil > Date.now();
 }
 
+function metadataText(user: MembershipUser, key: string): string | null {
+  const value = user.user_metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function defaultDisplayName(user: MembershipUser): string | null {
+  return metadataText(user, 'full_name')
+    ?? metadataText(user, 'name')
+    ?? user.email?.split('@')[0]
+    ?? null;
+}
+
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<SupabaseClientLike | null>(null);
   const [loading, setLoading] = useState(membershipConfig.enabled);
   const [user, setUser] = useState<MembershipUser | null>(null);
+  const [profile, setProfile] = useState<MembershipProfile | null>(null);
+  const [productAccount, setProductAccount] = useState<ProductAccountRow | null>(null);
   const [entitlements, setEntitlements] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -129,18 +176,65 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const refreshEntitlements = useCallback(async () => {
     const client = clientRef.current;
     if (!client || !user) {
+      setProfile(null);
+      setProductAccount(null);
       setEntitlements(new Set());
       return;
     }
 
-    const { data, error: queryError } = await client
-      .from('entitlements')
+    const now = new Date().toISOString();
+    const existingProfile = await client
+      .from<MembershipProfile>('profiles')
+      .select('id,display_name,avatar_url,locale,last_seen_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (existingProfile.error) throw new Error(existingProfile.error.message);
+
+    let nextProfile = existingProfile.data;
+    if (!nextProfile) {
+      const createdProfile = await client
+        .from<MembershipProfile>('profiles')
+        .insert({
+          id: user.id,
+          display_name: defaultDisplayName(user),
+          avatar_url: metadataText(user, 'avatar_url') ?? metadataText(user, 'picture'),
+          locale: document.documentElement.lang.startsWith('zh') ? 'zh' : 'en',
+          last_seen_at: now
+        })
+        .select('id,display_name,avatar_url,locale,last_seen_at')
+        .single();
+      if (createdProfile.error) throw new Error(createdProfile.error.message);
+      nextProfile = createdProfile.data;
+    } else {
+      const refreshedProfile = await client
+        .from<MembershipProfile>('profiles')
+        .update({ last_seen_at: now })
+        .eq('id', user.id)
+        .select('id,display_name,avatar_url,locale,last_seen_at')
+        .single();
+      if (!refreshedProfile.error && refreshedProfile.data) nextProfile = refreshedProfile.data;
+    }
+    setProfile(nextProfile);
+
+    const touchedProduct = await client
+      .from<ProductAccountRow>('product_accounts')
+      .upsert({
+        user_id: user.id,
+        product_code: membershipConfig.productCode,
+        last_seen_at: now
+      }, { onConflict: 'user_id,product_code' })
+      .select('user_id,product_code,preferences,state,first_seen_at,last_seen_at')
+      .single();
+    if (touchedProduct.error) throw new Error(touchedProduct.error.message);
+    setProductAccount(touchedProduct.data);
+
+    const entitlementResult = await client
+      .from<EntitlementRow>('entitlements')
       .select('entitlement_code,active,valid_until')
       .eq('user_id', user.id);
-
-    if (queryError) throw new Error(queryError.message);
+    if (entitlementResult.error) throw new Error(entitlementResult.error.message);
     setEntitlements(new Set(
-      (data ?? [])
+      (entitlementResult.data ?? [])
         .filter(isEntitlementCurrent)
         .map((row) => row.entitlement_code)
     ));
@@ -194,24 +288,15 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshEntitlements().catch((refreshError: unknown) => {
-      const message = refreshError instanceof Error
-        ? refreshError.message
-        : 'Membership access could not be refreshed.';
-      setError(message);
-    });
-  }, [refreshEntitlements]);
-
-  useEffect(() => {
-    if (!user || new URLSearchParams(window.location.search).get('billing') !== 'success') return;
-    const timer = window.setTimeout(() => {
-      void refreshEntitlements().catch((refreshError: unknown) => {
-        setError(refreshError instanceof Error
+    setLoading(Boolean(user));
+    void refreshEntitlements()
+      .catch((refreshError: unknown) => {
+        const message = refreshError instanceof Error
           ? refreshError.message
-          : 'Membership access could not be refreshed.');
-      });
-    }, 1500);
-    return () => window.clearTimeout(timer);
+          : 'Membership access could not be refreshed.';
+        setError(message);
+      })
+      .finally(() => setLoading(false));
   }, [refreshEntitlements, user]);
 
   const signInWithGoogle = useCallback(async () => {
@@ -245,6 +330,30 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     const { error: authError } = await client.auth.signOut();
     if (authError) setError(authError.message);
   }, []);
+
+  const saveDisplayName = useCallback(async (displayName: string) => {
+    const client = clientRef.current;
+    if (!client || !user) return;
+    const normalized = displayName.trim().slice(0, 80);
+    setLoading(true);
+    setError('');
+    try {
+      const result = await client
+        .from<MembershipProfile>('profiles')
+        .update({
+          display_name: normalized || null,
+          locale: document.documentElement.lang.startsWith('zh') ? 'zh' : 'en',
+          last_seen_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+        .select('id,display_name,avatar_url,locale,last_seen_at')
+        .single();
+      if (result.error) throw new Error(result.error.message);
+      setProfile(result.data);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   const callMembershipFunction = useCallback(async (url: string) => {
     const client = clientRef.current;
@@ -296,6 +405,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     billingEnabled: membershipConfig.billingEnabled,
     loading,
     user,
+    profile,
+    productAccount,
     error,
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
@@ -307,6 +418,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     sendMagicLink,
     signOut,
     refreshEntitlements,
+    saveDisplayName,
     startCheckout,
     openPortal
   }), [
@@ -316,7 +428,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     isPro,
     loading,
     openPortal,
+    productAccount,
+    profile,
     refreshEntitlements,
+    saveDisplayName,
     sendMagicLink,
     signInWithGoogle,
     signOut,
