@@ -51,15 +51,24 @@ function initializeCloudflareAnalytics(): void {
   document.head.appendChild(script);
 }
 
+export function trackProductEvent(name: string, params: ProductEventParams = {}): void {
+  const gtag = window.gtag;
+  if (!gtag) return;
+  gtag('event', name, params);
+}
+
+function trackAppSurface(): void {
+  const isApp = window.location.hash.replace(/^#/, '').split('?')[0].replace(/\/+$/, '') === '/app';
+  if (isApp) trackProductEvent('open_app', { surface: 'rehearsal' });
+}
+
 export function initializeAnalytics(): void {
   if (typeof window === 'undefined' || window.__rhythmCoachAnalyticsInitialized) return;
   window.__rhythmCoachAnalyticsInitialized = true;
   initializeGoogleAnalytics();
   initializeCloudflareAnalytics();
-}
 
-export function trackProductEvent(name: string, params: ProductEventParams = {}): void {
-  const gtag = window.gtag;
-  if (!gtag) return;
-  gtag('event', name, params);
+  trackAppSurface();
+  window.addEventListener('hashchange', trackAppSurface);
+  window.addEventListener('appinstalled', () => trackProductEvent('pwa_install', { product: 'rhythmcoach' }));
 }
