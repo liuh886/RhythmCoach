@@ -13,7 +13,7 @@ export interface MembershipConfig {
 
 export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
   enabled: true,
-  billingEnabled: false,
+  billingEnabled: true,
   productCode: 'rhythmcoach',
   supabaseUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co',
   supabasePublishableKey: 'sb_publishable_n1Va-c_alpkQ0zNuJYUaxA_J0u68RVW',
@@ -21,5 +21,5 @@ export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
   redirectUrl: 'https://liuh886.github.io/RhythmCoach/',
   checkoutFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-checkout-session',
   portalFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-portal-session',
-  enforceRecordingDownload: false
+  enforceRecordingDownload: true
 });
