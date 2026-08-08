@@ -102,6 +102,11 @@ interface EntitlementRow {
   valid_until: string | null;
 }
 
+interface AdminRoleRow {
+  role: string;
+  active: boolean;
+}
+
 export interface MembershipProfile {
   id: string;
   display_name: string | null;
@@ -129,6 +134,7 @@ interface MembershipContextValue {
   error: string;
   dialogOpen: boolean;
   enforcementEnabled: boolean;
+  isOwner: boolean;
   isPro: boolean;
   hasEntitlement: (code: string) => boolean;
   openDialog: () => void;
@@ -138,6 +144,7 @@ interface MembershipContextValue {
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
   saveDisplayName: (displayName: string) => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
   startCheckout: () => Promise<void>;
   openPortal: () => Promise<void>;
 }
@@ -170,6 +177,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<MembershipProfile | null>(null);
   const [productAccount, setProductAccount] = useState<ProductAccountRow | null>(null);
   const [entitlements, setEntitlements] = useState<Set<string>>(() => new Set());
+  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -179,6 +187,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setProductAccount(null);
       setEntitlements(new Set());
+      setIsOwner(false);
       return;
     }
 
@@ -227,6 +236,14 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       .single();
     if (touchedProduct.error) throw new Error(touchedProduct.error.message);
     setProductAccount(touchedProduct.data);
+
+    const adminResult = await client
+      .from<AdminRoleRow>('membership_admins')
+      .select('role,active')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (adminResult.error) throw new Error(adminResult.error.message);
+    setIsOwner(Boolean(adminResult.data?.active && adminResult.data.role === 'owner'));
 
     const entitlementResult = await client
       .from<EntitlementRow>('entitlements')
@@ -355,15 +372,20 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const callMembershipFunction = useCallback(async (url: string) => {
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
     const client = clientRef.current;
-    if (!membershipConfig.billingEnabled || !client || !url || !user) return;
+    if (!client) return null;
+    const { data, error: sessionError } = await client.auth.getSession();
+    if (sessionError) throw new Error(sessionError.message);
+    return data.session?.access_token ?? null;
+  }, []);
+
+  const callMembershipFunction = useCallback(async (url: string) => {
+    if (!membershipConfig.billingEnabled || !url || !user) return;
     setLoading(true);
     setError('');
     try {
-      const { data, error: sessionError } = await client.auth.getSession();
-      if (sessionError) throw new Error(sessionError.message);
-      const token = data.session?.access_token;
+      const token = await getAccessToken();
       if (!token) throw new Error('Authentication session is unavailable.');
 
       const response = await fetch(url, {
@@ -386,7 +408,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         : 'Membership request failed.');
       setLoading(false);
     }
-  }, [user]);
+  }, [getAccessToken, user]);
 
   const startCheckout = useCallback(
     () => callMembershipFunction(membershipConfig.checkoutFunctionUrl),
@@ -397,8 +419,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     [callMembershipFunction]
   );
 
-  const isPro = entitlements.has(membershipConfig.entitlementCode)
-    || entitlements.has('rhythmcoach.recording_download');
+  const isPro = isOwner
+    || entitlements.has(membershipConfig.entitlementCode)
+    || entitlements.has('rhythmcoach.recording_download')
+    || entitlements.has('rhythmcoach.personal_library_cloud');
 
   const value = useMemo<MembershipContextValue>(() => ({
     configured: membershipConfig.enabled,
@@ -410,8 +434,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     error,
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
+    isOwner,
     isPro,
-    hasEntitlement: (code: string) => entitlements.has(code),
+    hasEntitlement: (code: string) => isOwner || entitlements.has(code),
     openDialog: () => setDialogOpen(true),
     closeDialog: () => setDialogOpen(false),
     signInWithGoogle,
@@ -419,12 +444,15 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     signOut,
     refreshEntitlements,
     saveDisplayName,
+    getAccessToken,
     startCheckout,
     openPortal
   }), [
     dialogOpen,
     entitlements,
     error,
+    getAccessToken,
+    isOwner,
     isPro,
     loading,
     openPortal,
