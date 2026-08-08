@@ -7,19 +7,19 @@ function expectEqual<T>(actual: T, expected: T, label: string) {
 }
 
 expectEqual(membershipConfig.enabled, true, 'Shared account client');
-expectEqual(membershipConfig.billingEnabled, false, 'Paid actions remain closed');
+expectEqual(membershipConfig.billingEnabled, true, 'Paid actions are enabled');
 expectEqual(membershipConfig.productCode, 'rhythmcoach', 'Shared product code');
 expectEqual(membershipConfig.entitlementCode, 'rhythmcoach.pro', 'Primary entitlement');
-expectEqual(membershipConfig.enforceRecordingDownload, false, 'Recording downloads remain available');
+expectEqual(membershipConfig.enforceRecordingDownload, true, 'Recording downloads require membership');
 
 if (!membershipConfig.checkoutFunctionUrl.endsWith('/create-checkout-session')) {
-  throw new Error('Future checkout must continue to use the shared Supabase Edge Function.');
+  throw new Error('Checkout must use the shared Supabase Edge Function.');
 }
 if (!membershipConfig.portalFunctionUrl.endsWith('/create-portal-session')) {
-  throw new Error('Future portal access must continue to use the shared Supabase Edge Function.');
+  throw new Error('Portal access must use the shared Supabase Edge Function.');
 }
 if (/sk_(live|test)_|whsec_|sb_secret_|service_role/.test(JSON.stringify(membershipConfig))) {
   throw new Error('Client account configuration contains a server secret.');
 }
 
-console.log('RhythmCoach shared account foundation contract passed');
+console.log('RhythmCoach Pro membership contract passed');

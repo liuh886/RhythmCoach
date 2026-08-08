@@ -1,5 +1,6 @@
 import type { Language } from '../types.js';
 import { stripDeliveryMarkup } from '../domain/deliveryMarkup.js';
+import { chineseExtraMaterials } from './chineseExtraMaterials.js';
 import { defaultMaterials, type ScriptMaterial } from './materials.js';
 
 function createEnglishMaterial(id: string, title: string, deliveryMarkup: string, tip: string): ScriptMaterial {
@@ -38,11 +39,65 @@ Read the opening exactly once.{//}Then look away from the text and explain the e
 
 When you return to the closing line, [[say it to one person]], not to an anonymous audience.`,
     'Practice focus: treat the middle paragraph as an outline, not a passage that must be read word for word.'
+  ),
+  createEnglishMaterial(
+    'en-quiet-morning',
+    'A quiet morning',
+    `The city is different before most people wake.{//}
+
+A delivery bike passes through the pale light.{/}A café lifts its shutters.{/}Someone waters a row of plants on a balcony three floors above the street.{b}
+
+Nothing remarkable is happening,{/}and that is exactly why the morning feels generous.{//}For a few minutes, there is no rush to explain the day or improve it.{b}
+
+You can simply notice the cool air,{/}the first cup being poured,{/}and the soft sound of a place [[becoming itself again]].`,
+    'Practice focus: keep the pace unhurried. Let each concrete image land before moving to the next one.'
+  ),
+  createEnglishMaterial(
+    'en-last-train-home',
+    'The last train home',
+    `On the last train home, people become quieter.{//}
+
+Phones dim.{/}Conversations shorten.{/}The windows turn into mirrors, carrying tired faces over tunnels and empty platforms.{b}
+
+At every stop, a few passengers stand and disappear into the night.{//}The carriage grows lighter, but somehow more intimate.{b}
+
+You begin to notice small things:{/}a worker holding a paper bag of dinner,{/}a student asleep against a backpack,{/}a stranger moving aside so someone else can sit.{//}
+
+By the time your station arrives, the day feels less like a list of tasks and more like [[a story finally finding its ending]].`,
+    'Practice focus: use a low, reflective tone and make the final sentence feel earned rather than dramatic.'
+  ),
+  createEnglishMaterial(
+    'en-small-courage',
+    'Small acts of courage',
+    `Courage is easy to imagine as something loud.{/}A speech.{/}A leap.{/}A decision everyone can see.{//}
+
+But most courage is much smaller.{b}
+
+It is asking a question when everyone else seems certain.{/}It is saying “I was wrong” before someone forces you to.{/}It is beginning again after an ordinary disappointment.{b}
+
+These moments do not look heroic from the outside.{//}Often, nobody notices them at all.{b}
+
+Still, they change the direction of a day,{/}and sometimes the direction of a life.{//}That may be enough: [[not fearless, just willing to move while fear is still there]].`,
+    'Practice focus: build contrast between the loud image of courage and the quieter examples that follow.'
+  ),
+  createEnglishMaterial(
+    'en-after-rain',
+    'After the rain',
+    `After the rain, the familiar street looks newly made.{//}
+
+The pavement holds pieces of the sky.{/}Leaves shine at their edges.{/}Cars move slowly through shallow water, making brief silver fans beside the curb.{b}
+
+People step around puddles with the careful concentration of children.{//}For a moment, everyone is paying attention to where they place their feet.{b}
+
+Then the clouds break.{/}A little sunlight reaches the buildings.{/}The whole street seems to exhale.{//}
+
+Nothing has really changed,{/}but the world feels clean enough to [[begin one more time]].`,
+    'Practice focus: use gentle variation in pace; slightly brighten the tone when the sunlight appears.'
   )
 ];
 
 const englishTipByChineseTip: Record<string, string> = {
-  '先慢读带标记的目标字，再按正常语速讲完整故事。平舌音标在字下，翘舌音标在字上；鼠标悬停可查看舌位提示。': 'Practice focus: read the marked sounds slowly first, then tell the full story at a natural pace. Hover over a marker for articulation guidance.',
+  '先慢读带标记的目标字，再按正常语速讲完整故事。平舌音标在字下，翘舌音标在字上；鼠标悬停可查看舌位提示。': 'Practice focus: read the marked sounds slowly first, then tell the full story at a natural pace.',
   '练习重点：“你有没有发现”“我后来发现”“比如”要像真实聊天，不要刻意加重每个字。': 'Practice focus: make the conversational phrases sound like real speech instead of stressing every word.',
   '练习重点：最后一句放慢，像在总结自己真实形成的工作习惯。': 'Practice focus: slow down for the final sentence and make it sound like a genuine professional habit.',
   '练习重点：把“预算谁来批？风险谁来承担？”读成连续追问，而非并列念清单。': 'Practice focus: deliver the two questions as a connected line of inquiry, not as a flat checklist.',
@@ -56,7 +111,7 @@ const englishTipByChineseTip: Record<string, string> = {
 };
 
 export function getCuratedMaterials(language: Language): ScriptMaterial[] {
-  return language === 'zh' ? defaultMaterials : englishMaterials;
+  return language === 'zh' ? [...chineseExtraMaterials, ...defaultMaterials] : englishMaterials;
 }
 
 export function localizePracticeTip(tip: string, language: Language): string {
