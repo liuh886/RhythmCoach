@@ -1,21 +1,21 @@
 import './ScriptEditor.css';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Activity, CheckCircle2, ChevronRight, Download, FileText, Library, Play, Save, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { Activity, CheckCircle2, ChevronRight, Cloud, Download, FileText, Library, Play, RefreshCw, Save, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isDeliveryMarkupAligned } from '../domain/deliveryMarkup';
 import { getStarterScript, shouldSeedPodcastTemplate } from '../domain/podcastMode';
 import { countScriptUnits } from '../domain/sessionMetrics';
+import { useMembership } from '../membership/MembershipProvider';
 import { useAppStore } from '../store';
 import type { Language, PrompterMode } from '../types';
 import { getCuratedMaterials, localizePracticeTip } from './localizedMaterials';
 import type { ScriptMaterial } from './materials';
 import { SessionHistory } from './SessionHistory';
+import { usePersonalLibrary } from './usePersonalLibrary';
 
 interface ScriptEditorProps {
   onStart: (title: string, script: string, pace: number, lang: Language, mode: PrompterMode, deliveryMarkup: string) => void;
 }
-
-const DRAFTS_KEY = 'rhythm_custom_materials';
 
 const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
   timed: {
@@ -48,6 +48,7 @@ const audioProfileCopy = {
 } as const;
 
 export function ScriptEditor({ onStart }: ScriptEditorProps) {
+  const membership = useMembership();
   const globalLang = useAppStore((state) => state.globalLang);
   const storedPace = useAppStore((state) => state.targetPace);
   const setStoredPace = useAppStore((state) => state.setTargetPace);
@@ -71,18 +72,9 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
   const [deliveryMarkup, setDeliveryMarkup] = useState(activeDeliveryMarkup);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [customMaterials, setCustomMaterials] = useState<ScriptMaterial[]>([]);
   const workspaceHydratedRef = useRef(false);
   const isPodcastMode = storedMode === 'free';
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(DRAFTS_KEY);
-      if (saved) setCustomMaterials(JSON.parse(saved));
-    } catch (error) {
-      console.error('Failed to load drafts:', error);
-    }
-  }, []);
+  const personalLibrary = usePersonalLibrary(globalLang);
 
   useEffect(() => {
     if (!isPersistedDataLoaded || workspaceHydratedRef.current) return;
@@ -152,11 +144,6 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     if (!title.trim()) updateTitle(globalLang === 'zh' ? '我的播客排练' : 'My podcast rehearsal');
   };
 
-  const persistDrafts = (drafts: ScriptMaterial[]) => {
-    setCustomMaterials(drafts);
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
-  };
-
   const importMaterial = (material: ScriptMaterial) => {
     updateTitle(material.title);
     applyMaterialContent(material.content, material.deliveryMarkup);
@@ -165,11 +152,16 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
     setIsDrawerOpen(false);
   };
 
-  const saveDraft = () => {
+  const openLibrary = () => {
+    setIsDrawerOpen(true);
+    if (personalLibrary.cloudEnabled) void personalLibrary.refreshCloud();
+  };
+
+  const saveDraft = async () => {
     if (!content.trim()) return;
     const fallbackTitle = globalLang === 'zh'
-      ? `未命名草稿 ${new Date().toLocaleDateString('zh-CN')}`
-      : `Untitled draft ${new Date().toLocaleDateString('en')}`;
+      ? `未命名素材 ${new Date().toLocaleDateString('zh-CN')}`
+      : `Untitled material ${new Date().toLocaleDateString('en')}`;
     const draft: ScriptMaterial = {
       id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
       title: title.trim() || fallbackTitle,
@@ -177,51 +169,18 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
       tip: tip.trim() || undefined,
       deliveryMarkup: hasDeliveryCues ? deliveryMarkup : undefined
     };
-    persistDrafts([draft, ...customMaterials]);
+    await personalLibrary.save(draft);
     setIsSaving(true);
     window.setTimeout(() => setIsSaving(false), 900);
-  };
-
-  const exportDrafts = () => {
-    if (customMaterials.length === 0) return;
-    const blob = new Blob([JSON.stringify(customMaterials, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `rhythmcoach_drafts_${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
   };
 
   const importDrafts = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result));
-        if (!Array.isArray(parsed)) throw new Error('Expected an array');
-        const valid = parsed
-          .filter((item) => item && typeof item.title === 'string' && typeof item.content === 'string')
-          .map((item) => {
-            const markup = typeof item.deliveryMarkup === 'string' && isDeliveryMarkupAligned(item.deliveryMarkup, item.content)
-              ? item.deliveryMarkup
-              : undefined;
-            return {
-              id: crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-              title: item.title,
-              content: item.content,
-              tip: typeof item.tip === 'string' ? item.tip : undefined,
-              deliveryMarkup: markup
-            };
-          });
-        persistDrafts([...valid, ...customMaterials]);
-      } catch (error) {
-        console.error('Failed to import drafts:', error);
-        alert(globalLang === 'zh' ? '导入失败：文件格式不正确。' : 'Import failed: invalid file format.');
-      }
-    };
-    reader.readAsText(file);
+    void personalLibrary.importFile(file).catch((error) => {
+      console.error('Failed to import personal library:', error);
+      alert(globalLang === 'zh' ? '导入失败：文件格式不正确。' : 'Import failed: invalid file format.');
+    });
     event.target.value = '';
   };
 
@@ -248,7 +207,7 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
       <button
         type="button"
         className="btn-icon library-launcher"
-        onClick={() => setIsDrawerOpen(true)}
+        onClick={openLibrary}
         title={globalLang === 'zh' ? '素材库' : 'Script library'}
         aria-label={globalLang === 'zh' ? '打开素材库' : 'Open script library'}
       >
@@ -290,36 +249,66 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
                     <Upload size={15} /> {globalLang === 'zh' ? '导入' : 'Import'}
                   </button>
                   <input id="draft-import" type="file" accept="application/json,.json" hidden onChange={importDrafts} />
-                  <button type="button" className="btn btn-secondary" onClick={exportDrafts} disabled={customMaterials.length === 0}>
+                  <button type="button" className="btn btn-secondary" onClick={personalLibrary.exportFile} disabled={personalLibrary.materials.length === 0}>
                     <Download size={15} /> {globalLang === 'zh' ? '导出' : 'Export'}
                   </button>
                 </div>
 
-                {customMaterials.length > 0 && (
-                  <div className="library-section">
-                    <h4>{globalLang === 'zh' ? '我的草稿' : 'My drafts'}</h4>
+                <div className="library-section personal-library-section">
+                  <div className="personal-library-heading">
+                    <h4>{globalLang === 'zh' ? '个人素材库' : 'Personal library'}</h4>
+                    {personalLibrary.cloudEnabled ? (
+                      <span className="library-cue-tag"><Cloud size={11} /> {globalLang === 'zh' ? 'Pro 云同步' : 'Pro cloud sync'}</span>
+                    ) : (
+                      <button type="button" className="personal-library-upgrade" onClick={membership.openDialog}>
+                        {globalLang === 'zh' ? '升级云同步' : 'Enable cloud sync'}
+                      </button>
+                    )}
+                  </div>
+                  <p className="personal-library-note">
+                    {personalLibrary.cloudEnabled
+                      ? (globalLang === 'zh' ? '文字素材会在线保存并可跨设备同步；录音永远只保存在本机，不会上传。' : 'Text materials sync online across devices. Recordings always stay on this device and are never uploaded.')
+                      : (globalLang === 'zh' ? '本机保存免费；RhythmCoach Pro 可在线保存文字素材。录音永远不会上传。' : 'Local saving is free; RhythmCoach Pro adds cloud sync for text materials. Recordings are never uploaded.')}
+                  </p>
+                  {personalLibrary.cloudEnabled && (
+                    <button type="button" className="personal-library-refresh" onClick={() => void personalLibrary.refreshCloud()} disabled={personalLibrary.cloudLoading}>
+                      <RefreshCw size={13} /> {personalLibrary.cloudLoading
+                        ? (globalLang === 'zh' ? '同步中…' : 'Syncing…')
+                        : (globalLang === 'zh' ? '刷新云端' : 'Refresh cloud')}
+                    </button>
+                  )}
+                  {personalLibrary.cloudError && <p className="personal-library-error">{personalLibrary.cloudError}</p>}
+
+                  {personalLibrary.materials.length > 0 ? (
                     <div className="library-list">
-                      {customMaterials.map((material) => (
+                      {personalLibrary.materials.map((material) => (
                         <div key={material.id} className="library-item-row">
                           <button type="button" className="library-item" onClick={() => importMaterial(material)}>
                             <div>
-                              <strong>{material.title}</strong>
+                              <div className="library-item-title">
+                                <strong>{material.title}</strong>
+                                {personalLibrary.cloudIds.has(material.id) && (
+                                  <span className="library-cue-tag"><Cloud size={10} /> {globalLang === 'zh' ? '云端' : 'Cloud'}</span>
+                                )}
+                              </div>
                               <p>{material.content}</p>
                             </div>
                           </button>
                           <button
                             type="button"
                             className="btn-icon compact-icon delete-draft"
-                            onClick={() => persistDrafts(customMaterials.filter((item) => item.id !== material.id))}
-                            aria-label={globalLang === 'zh' ? `删除草稿：${material.title}` : `Delete draft: ${material.title}`}
+                            onClick={() => void personalLibrary.remove(material)}
+                            aria-label={globalLang === 'zh' ? `删除素材：${material.title}` : `Delete material: ${material.title}`}
                           >
                             <Trash2 size={14} />
                           </button>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="personal-library-empty">{globalLang === 'zh' ? '还没有个人素材。编辑文字后点击“保存到个人素材库”。' : 'No personal materials yet. Edit a script and choose “Save to personal library.”'}</p>
+                  )}
+                </div>
 
                 <div className="library-section">
                   <h4>{globalLang === 'zh' ? '精选练习' : 'Practice scripts'}</h4>
@@ -469,8 +458,8 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
             )}
 
             <div className="editor-actions">
-              <button type="button" className="btn btn-secondary" onClick={saveDraft} disabled={!content.trim()}>
-                <Save size={17} /> {isSaving ? (globalLang === 'zh' ? '已保存' : 'Saved') : (globalLang === 'zh' ? '保存到素材库' : 'Save to library')}
+              <button type="button" className="btn btn-secondary" onClick={() => void saveDraft()} disabled={!content.trim()}>
+                <Save size={17} /> {isSaving ? (globalLang === 'zh' ? '已保存' : 'Saved') : (globalLang === 'zh' ? '保存到个人素材库' : 'Save to personal library')}
               </button>
               <button type="button" className="btn" onClick={start} disabled={!content.trim()}>
                 <Play size={18} fill="currentColor" /> {globalLang === 'zh' ? '开始训练' : 'Start rehearsal'}
