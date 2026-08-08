@@ -12,7 +12,9 @@ import {
   X
 } from 'lucide-react';
 import type { Language } from '../types';
+import { membershipConfig } from './config';
 import { useMembership } from './MembershipProvider';
+import { TurnstileWidget } from './TurnstileWidget';
 import './membership.css';
 
 const copy = {
@@ -25,6 +27,7 @@ const copy = {
     email: '邮箱地址',
     magic: '发送登录链接',
     sent: '登录链接已发送，请检查邮箱。',
+    captchaUnavailable: '人机验证暂时不可用，请稍后重试。',
     signOut: '退出登录',
     refresh: '刷新权益',
     signedIn: '已登录',
@@ -53,6 +56,7 @@ const copy = {
     email: 'Email address',
     magic: 'Send sign-in link',
     sent: 'Sign-in link sent. Check your inbox.',
+    captchaUnavailable: 'The security check is temporarily unavailable. Try again shortly.',
     signOut: 'Sign out',
     refresh: 'Refresh access',
     signedIn: 'Signed in',
@@ -76,7 +80,8 @@ const copy = {
 
 const localizedServiceErrors: Record<string, string> = {
   'Membership service failed to load. Training remains available.': '账户服务加载失败，但训练功能仍可使用。',
-  'Membership access could not be refreshed.': '无法刷新账户与会员权益。'
+  'Membership access could not be refreshed.': '无法刷新账户与会员权益。',
+  'Complete the security check first.': '请先完成人机验证。'
 };
 
 function localizeMembershipError(error: string, lang: Language): string {
@@ -113,6 +118,9 @@ export function MembershipDialog({ lang }: { lang: Language }) {
   const [sent, setSent] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaEpoch, setCaptchaEpoch] = useState(0);
+  const [authError, setAuthError] = useState('');
   const text = copy[lang];
 
   useEffect(() => {
@@ -123,13 +131,19 @@ export function MembershipDialog({ lang }: { lang: Language }) {
 
   const sendMagicLink = async () => {
     const normalized = email.trim();
-    if (!normalized) return;
+    if (!normalized || !captchaToken) return;
     setBusy(true);
     setSent(false);
+    setAuthError('');
     try {
-      await membership.sendMagicLink(normalized);
+      await membership.sendMagicLink(normalized, captchaToken);
       setSent(true);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : text.captchaUnavailable;
+      setAuthError(localizeMembershipError(message, lang));
     } finally {
+      setCaptchaToken('');
+      setCaptchaEpoch((value) => value + 1);
       setBusy(false);
     }
   };
@@ -239,11 +253,18 @@ export function MembershipDialog({ lang }: { lang: Language }) {
                 placeholder={text.email}
                 aria-label={text.email}
               />
-              <button type="button" disabled={busy || !email.trim()} onClick={() => void sendMagicLink()}>
+              <button type="button" disabled={busy || !email.trim() || !captchaToken} onClick={() => void sendMagicLink()}>
                 {text.magic}
               </button>
             </div>
+            <TurnstileWidget
+              key={captchaEpoch}
+              siteKey={membershipConfig.turnstileSiteKey}
+              onToken={setCaptchaToken}
+              onUnavailable={() => setAuthError(text.captchaUnavailable)}
+            />
             {sent && <span className="membership-success">{text.sent}</span>}
+            {authError && <div className="membership-error">{authError}</div>}
           </div>
         )}
 

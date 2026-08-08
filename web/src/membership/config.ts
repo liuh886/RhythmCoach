@@ -9,6 +9,7 @@ export interface MembershipConfig {
   checkoutFunctionUrl: string;
   portalFunctionUrl: string;
   enforceRecordingDownload: boolean;
+  turnstileSiteKey: string;
 }
 
 export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
@@ -21,5 +22,6 @@ export const membershipConfig: Readonly<MembershipConfig> = Object.freeze({
   redirectUrl: 'https://liuh886.github.io/RhythmCoach/',
   checkoutFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-checkout-session',
   portalFunctionUrl: 'https://blgwlycfcwvsupmqyqwn.supabase.co/functions/v1/create-portal-session',
-  enforceRecordingDownload: true
+  enforceRecordingDownload: true,
+  turnstileSiteKey: '0x4AAAAAAEKVMnWa2valozxW'
 });
