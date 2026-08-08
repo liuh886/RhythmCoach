@@ -43,7 +43,7 @@ interface AuthApi {
   }) => Promise<{ error: SupabaseErrorLike | null }>;
   signInWithOtp: (input: {
     email: string;
-    options: { emailRedirectTo: string; shouldCreateUser: boolean };
+    options: { emailRedirectTo: string; shouldCreateUser: boolean; captchaToken: string };
   }) => Promise<{ error: SupabaseErrorLike | null }>;
   signOut: () => Promise<{ error: SupabaseErrorLike | null }>;
 }
@@ -140,7 +140,7 @@ interface MembershipContextValue {
   openDialog: () => void;
   closeDialog: () => void;
   signInWithGoogle: () => Promise<void>;
-  sendMagicLink: (email: string) => Promise<void>;
+  sendMagicLink: (email: string, captchaToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
   saveDisplayName: (displayName: string) => Promise<void>;
@@ -327,15 +327,18 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     if (authError) setError(authError.message);
   }, []);
 
-  const sendMagicLink = useCallback(async (email: string) => {
+  const sendMagicLink = useCallback(async (email: string, captchaToken: string) => {
     const client = clientRef.current;
     if (!client) return;
+    const verifiedToken = captchaToken.trim();
+    if (!verifiedToken) throw new Error('Complete the security check first.');
     setError('');
     const { error: authError } = await client.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: membershipConfig.redirectUrl,
-        shouldCreateUser: true
+        shouldCreateUser: true,
+        captchaToken: verifiedToken
       }
     });
     if (authError) throw new Error(authError.message);
