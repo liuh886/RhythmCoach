@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Cloud,
   CreditCard,
-  Github,
   LogIn,
   LogOut,
   Mail,
@@ -249,7 +248,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
                 <LogIn size={17} /> {text.google}
               </button>
               <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('github')}>
-                <Github size={17} /> {text.github}
+                <LogIn size={17} /> {text.github}
               </button>
               <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('x')}>
                 <X size={17} /> {text.x}
