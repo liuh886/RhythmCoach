@@ -20,7 +20,7 @@ const copy = {
     account: '账户',
     title: 'RhythmCoach 账户',
     intro: '登录 Hao Apps 账户可管理 RhythmCoach Pro。训练本身保持免费，会员用于解锁跨设备个人素材与录音下载。',
-    privacy: '训练记录和录音仍默认只保存在当前浏览器；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
+    privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
     email: '邮箱地址',
     magic: '发送登录链接',
@@ -28,6 +28,7 @@ const copy = {
     signOut: '退出登录',
     refresh: '刷新权益',
     signedIn: '已登录',
+    loading: '正在加载…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
     owner: 'Owner',
@@ -47,7 +48,7 @@ const copy = {
     account: 'Account',
     title: 'RhythmCoach account',
     intro: 'Sign in with Hao Apps to manage RhythmCoach Pro. Core rehearsal stays free; membership unlocks recording downloads and a cloud-synced personal library.',
-    privacy: 'Training history and recordings remain in this browser by default. Only text you explicitly save to your personal library is synced to the cloud.',
+    privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
     email: 'Email address',
     magic: 'Send sign-in link',
@@ -55,6 +56,7 @@ const copy = {
     signOut: 'Sign out',
     refresh: 'Refresh access',
     signedIn: 'Signed in',
+    loading: 'Loading…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
     owner: 'Owner',
@@ -213,8 +215,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
               )}
               {membership.billingEnabled && membership.isPro && !membership.isOwner && (
                 <button type="button" onClick={() => void membership.openPortal()}>
-                  <CreditCard size={16} /> {text.manage}
-                </button>
+                  <CreditCard size={16} /> {text.manage}</button>
               )}
               <button type="button" onClick={() => void membership.refreshEntitlements()}>
                 <RefreshCw size={16} /> {text.refresh}
