@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Cloud,
   CreditCard,
-  LogIn,
+  Github,
   LogOut,
   Mail,
   RefreshCw,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import type { Language } from '../types';
 import { membershipConfig } from './config';
-import { useMembership } from './MembershipProvider';
+import { useMembership, type OAuthProvider } from './MembershipProvider';
 import { TurnstileWidget } from './TurnstileWidget';
 import './membership.css';
 
@@ -24,6 +24,9 @@ const copy = {
     intro: '登录 Hao Apps 账户可管理 RhythmCoach Pro。训练本身保持免费，会员用于解锁跨设备个人素材与录音下载。',
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
+    github: '使用 GitHub 登录',
+    xProvider: '使用 X 登录',
+    or: '或',
     email: '邮箱地址',
     magic: '发送登录链接',
     sent: '登录链接已发送，请检查邮箱。',
@@ -52,6 +55,9 @@ const copy = {
     intro: 'Sign in with Hao Apps to manage RhythmCoach Pro. Core rehearsal stays free; membership unlocks recording downloads and a cloud-synced personal library.',
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
+    github: 'Continue with GitHub',
+    xProvider: 'Continue with X',
+    or: 'OR',
     email: 'Email address',
     magic: 'Send sign-in link',
     sent: 'Sign-in link sent. Check your inbox.',
@@ -85,6 +91,23 @@ const localizedServiceErrors: Record<string, string> = {
 function localizeMembershipError(error: string, lang: Language): string {
   if (lang === 'en') return error;
   return localizedServiceErrors[error] ?? error;
+}
+
+function GoogleMark() {
+  return (
+    <svg className="membership-provider-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.41Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.36l-3.24-2.54c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z" />
+      <path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.46H3.04A10 10 0 0 0 2 12c0 1.61.39 3.13 1.04 4.54l3.35-2.61Z" />
+      <path fill="#EA4335" d="M12 5.94c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.46l3.35 2.61C7.18 7.7 9.39 5.94 12 5.94Z" />
+    </svg>
+  );
+}
+
+function ProviderMark({ provider }: { provider: OAuthProvider }) {
+  if (provider === 'google') return <GoogleMark />;
+  if (provider === 'github') return <Github className="membership-provider-mark" aria-hidden="true" />;
+  return <span className="membership-provider-x" aria-hidden="true">X</span>;
 }
 
 export function MembershipButton({ lang }: { lang: Language }) {
@@ -159,6 +182,11 @@ export function MembershipDialog({ lang }: { lang: Language }) {
 
   const avatarUrl = membership.profile?.avatar_url;
   const accessLabel = membership.isPro ? text.pro : text.free;
+  const providers: Array<{ id: OAuthProvider; label: string }> = [
+    { id: 'google', label: text.google },
+    { id: 'github', label: text.github },
+    { id: 'x', label: text.xProvider }
+  ];
 
   return (
     <div className="membership-backdrop" role="presentation" onMouseDown={membership.closeDialog}>
@@ -239,9 +267,21 @@ export function MembershipDialog({ lang }: { lang: Language }) {
           </div>
         ) : (
           <div className="membership-sign-in">
-            <button type="button" className="membership-primary" onClick={() => void membership.signInWithGoogle()}>
-              <LogIn size={17} /> {text.google}
-            </button>
+            <div className="membership-provider-list">
+              {providers.map((provider) => (
+                <button
+                  key={provider.id}
+                  type="button"
+                  className="membership-provider-button"
+                  disabled={busy || membership.loading}
+                  onClick={() => void membership.signInWithProvider(provider.id)}
+                >
+                  <ProviderMark provider={provider.id} />
+                  <span>{provider.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="membership-divider"><span>{text.or}</span></div>
             <div className="membership-email-row">
               <Mail size={16} aria-hidden="true" />
               <input
