@@ -1,0 +1,55 @@
+.personal-library-section {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.personal-library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.personal-library-heading h4 {
+  margin: 0;
+}
+
+.personal-library-note,
+.personal-library-empty,
+.personal-library-error {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.personal-library-error {
+  color: #fca5a5;
+}
+
+.personal-library-upgrade,
+.personal-library-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  color: var(--accent-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.personal-library-refresh {
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.personal-library-refresh:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
