@@ -34,7 +34,6 @@ const copy = {
     loading: '正在加载…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
-    owner: 'Owner',
     upgrade: '升级 · US$1/月',
     manage: '管理订阅',
     close: '关闭账户窗口',
@@ -63,7 +62,6 @@ const copy = {
     loading: 'Loading…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
-    owner: 'Owner',
     upgrade: 'Upgrade · US$1/month',
     manage: 'Manage subscription',
     close: 'Close account dialog',
@@ -160,7 +158,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
   };
 
   const avatarUrl = membership.profile?.avatar_url;
-  const accessLabel = membership.isOwner ? text.owner : membership.isPro ? text.pro : text.free;
+  const accessLabel = membership.isPro ? text.pro : text.free;
 
   return (
     <div className="membership-backdrop" role="presentation" onMouseDown={membership.closeDialog}>
@@ -227,7 +225,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
                   <CreditCard size={16} /> {text.upgrade}
                 </button>
               )}
-              {membership.billingEnabled && membership.isPro && !membership.isOwner && (
+              {membership.billingEnabled && membership.isPro && (
                 <button type="button" onClick={() => void membership.openPortal()}>
                   <CreditCard size={16} /> {text.manage}</button>
               )}
