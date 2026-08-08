@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Cloud,
   CreditCard,
-  LogIn,
   LogOut,
   Mail,
   RefreshCw,
@@ -25,7 +24,8 @@ const copy = {
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
     github: '使用 GitHub 登录',
-    x: '使用 X 登录',
+    xProvider: '使用 X 登录',
+    or: '或',
     email: '邮箱地址',
     magic: '发送登录链接',
     sent: '登录链接已发送，请检查邮箱。',
@@ -55,7 +55,8 @@ const copy = {
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
     github: 'Continue with GitHub',
-    x: 'Continue with X',
+    xProvider: 'Continue with X',
+    or: 'OR',
     email: 'Email address',
     magic: 'Send sign-in link',
     sent: 'Sign-in link sent. Check your inbox.',
@@ -86,9 +87,36 @@ const localizedServiceErrors: Record<string, string> = {
   'Complete the security check first.': '请先完成人机验证。'
 };
 
+type ProviderId = 'google' | 'github' | 'x';
+
 function localizeMembershipError(error: string, lang: Language): string {
   if (lang === 'en') return error;
   return localizedServiceErrors[error] ?? error;
+}
+
+function GoogleMark() {
+  return (
+    <svg className="membership-provider-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.41Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.36l-3.24-2.54c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z" />
+      <path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.46H3.04A10 10 0 0 0 2 12c0 1.61.39 3.13 1.04 4.54l3.35-2.61Z" />
+      <path fill="#EA4335" d="M12 5.94c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.46l3.35 2.61C7.18 7.7 9.39 5.94 12 5.94Z" />
+    </svg>
+  );
+}
+
+function GitHubMark() {
+  return (
+    <svg className="membership-provider-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 7.01c.85 0 1.71.11 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.57c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+    </svg>
+  );
+}
+
+function ProviderMark({ provider }: { provider: ProviderId }) {
+  if (provider === 'google') return <GoogleMark />;
+  if (provider === 'github') return <GitHubMark />;
+  return <span className="membership-provider-x" aria-hidden="true">X</span>;
 }
 
 export function MembershipButton({ lang }: { lang: Language }) {
@@ -163,6 +191,11 @@ export function MembershipDialog({ lang }: { lang: Language }) {
 
   const avatarUrl = membership.profile?.avatar_url;
   const accessLabel = membership.isPro ? text.pro : text.free;
+  const providers: Array<{ id: ProviderId; label: string }> = [
+    { id: 'google', label: text.google },
+    { id: 'github', label: text.github },
+    { id: 'x', label: text.xProvider }
+  ];
 
   return (
     <div className="membership-backdrop" role="presentation" onMouseDown={membership.closeDialog}>
@@ -244,16 +277,20 @@ export function MembershipDialog({ lang }: { lang: Language }) {
         ) : (
           <div className="membership-sign-in">
             <div className="membership-provider-list">
-              <button type="button" className="membership-primary" onClick={() => void membership.signInWithProvider('google')}>
-                <LogIn size={17} /> {text.google}
-              </button>
-              <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('github')}>
-                <LogIn size={17} /> {text.github}
-              </button>
-              <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('x')}>
-                <X size={17} /> {text.x}
-              </button>
+              {providers.map((provider) => (
+                <button
+                  key={provider.id}
+                  type="button"
+                  className="membership-provider-button"
+                  disabled={busy || membership.loading}
+                  onClick={() => void membership.signInWithProvider(provider.id)}
+                >
+                  <ProviderMark provider={provider.id} />
+                  <span>{provider.label}</span>
+                </button>
+              ))}
             </div>
+            <div className="membership-divider"><span>{text.or}</span></div>
             <div className="membership-email-row">
               <Mail size={16} aria-hidden="true" />
               <input
