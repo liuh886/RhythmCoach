@@ -6,7 +6,6 @@ import { useMembership } from '../membership/MembershipProvider';
 import {
   deleteCloudPersonalMaterial,
   listCloudPersonalMaterials,
-  PERSONAL_LIBRARY_CLOUD_ENTITLEMENT,
   saveCloudPersonalMaterial,
   type CloudPersonalMaterial
 } from '../membership/personalMaterials';
@@ -56,10 +55,7 @@ export function usePersonalLibrary(language: Language) {
     setLocalMaterials(safeLocalMaterials());
   }, []);
 
-  const cloudEnabled = Boolean(
-    membership.user
-    && membership.hasEntitlement(PERSONAL_LIBRARY_CLOUD_ENTITLEMENT)
-  );
+  const cloudEnabled = Boolean(membership.user && membership.isPro);
 
   const cloudIds = useMemo(
     () => new Set(cloudMaterials.map((material) => material.clientId)),
