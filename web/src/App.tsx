@@ -1,17 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import packageJson from '../package.json';
-import { AppHeader } from './components/AppHeader';
 import './components/CommercialTheme.css';
 import { LandingPage } from './components/LandingPage';
-import { ProductGuide } from './components/ProductGuide';
 import './components/ProductExperience.css';
-import { PrompterDisplayControls } from './components/PrompterDisplayControls';
-import { RecordingsWidget } from './components/RecordingsWidget';
-import { ScriptEditor } from './components/ScriptEditor';
-import { Teleprompter } from './components/Teleprompter';
-import { TrainingFocus } from './components/TrainingFocus';
 import { toHtmlLanguage } from './domain/language';
 import {
   hashForProductSurface,
@@ -19,9 +12,33 @@ import {
   type ProductSurface
 } from './domain/productSurface';
 import { getThemeColor, resolveTheme, THEME_STORAGE_KEY, toggleTheme, type AppTheme } from './domain/theme';
-import { MembershipDialog } from './membership/MembershipDialog';
 import { useAppStore } from './store';
 import type { Language, PrompterMode } from './types';
+
+const AppHeader = lazy(() =>
+  import('./components/AppHeader').then((module) => ({ default: module.AppHeader }))
+);
+const ProductGuide = lazy(() =>
+  import('./components/ProductGuide').then((module) => ({ default: module.ProductGuide }))
+);
+const PrompterDisplayControls = lazy(() =>
+  import('./components/PrompterDisplayControls').then((module) => ({ default: module.PrompterDisplayControls }))
+);
+const RecordingsWidget = lazy(() =>
+  import('./components/RecordingsWidget').then((module) => ({ default: module.RecordingsWidget }))
+);
+const ScriptEditor = lazy(() =>
+  import('./components/ScriptEditor').then((module) => ({ default: module.ScriptEditor }))
+);
+const Teleprompter = lazy(() =>
+  import('./components/Teleprompter').then((module) => ({ default: module.Teleprompter }))
+);
+const TrainingFocus = lazy(() =>
+  import('./components/TrainingFocus').then((module) => ({ default: module.TrainingFocus }))
+);
+const MembershipDialog = lazy(() =>
+  import('./membership/MembershipDialog').then((module) => ({ default: module.MembershipDialog }))
+);
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -205,73 +222,75 @@ export default function App() {
   }
 
   return (
-    <div className={mode === 'editor' ? 'app-shell' : undefined}>
-      {mode === 'editor' && (
-        <AppHeader
-          lang={globalLang}
-          theme={theme}
-          canInstall={Boolean(installPrompt)}
-          isFullscreen={isFullscreen}
-          onOpenHome={() => navigateToSurface('landing')}
-          onOpenLibrary={openLibrary}
-          onOpenGuide={() => setIsGuideOpen(true)}
-          onOpenFocus={() => setIsFocusOpen(true)}
-          onInstall={() => void installApp()}
-          onToggleTheme={() => setTheme((current) => toggleTheme(current))}
-          onToggleLanguage={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
-          onToggleFullscreen={() => void toggleFullscreen()}
-        />
-      )}
-
-      {mode === 'editor' && <RecordingsWidget />}
-      {mode === 'teleprompter' && <PrompterDisplayControls lang={globalLang} />}
-      <AnimatePresence mode="wait">
-        {mode === 'editor' ? (
-          <ScriptEditor key="editor" onStart={startSession} />
-        ) : (
-          <Teleprompter
-            key="teleprompter"
-            title={activeTitle}
-            script={activeScript}
-            deliveryMarkup={activeDeliveryMarkup}
-            targetPace={targetPace}
+    <Suspense fallback={null}>
+      <div className={mode === 'editor' ? 'app-shell' : undefined}>
+        {mode === 'editor' && (
+          <AppHeader
             lang={globalLang}
-            prompterMode={prompterMode}
-            onClose={() => setMode('editor')}
+            theme={theme}
+            canInstall={Boolean(installPrompt)}
+            isFullscreen={isFullscreen}
+            onOpenHome={() => navigateToSurface('landing')}
+            onOpenLibrary={openLibrary}
+            onOpenGuide={() => setIsGuideOpen(true)}
+            onOpenFocus={() => setIsFocusOpen(true)}
+            onInstall={() => void installApp()}
+            onToggleTheme={() => setTheme((current) => toggleTheme(current))}
+            onToggleLanguage={() => setGlobalLang(globalLang === 'zh' ? 'en' : 'zh')}
+            onToggleFullscreen={() => void toggleFullscreen()}
           />
         )}
-      </AnimatePresence>
 
-      {mode === 'editor' && (
-        <footer className="app-footer">
-          <div className="app-footer-trust">
-            <strong><ShieldCheck size={15} /> {globalLang === 'zh' ? '本地优先' : 'Local-first'}</strong>
-            <span>{globalLang === 'zh' ? '无需账户' : 'No account required'}</span>
-            <span>{globalLang === 'zh' ? '音频不自动上传' : 'No automatic audio upload'}</span>
-          </div>
-          <div className="app-footer-meta">
-            <a href="https://github.com/liuh886/RhythmCoach" target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={14} /> RhythmCoach
-            </a>
-            <span>v{packageJson.version}</span>
-          </div>
-        </footer>
-      )}
+        {mode === 'editor' && <RecordingsWidget />}
+        {mode === 'teleprompter' && <PrompterDisplayControls lang={globalLang} />}
+        <AnimatePresence mode="wait">
+          {mode === 'editor' ? (
+            <ScriptEditor key="editor" onStart={startSession} />
+          ) : (
+            <Teleprompter
+              key="teleprompter"
+              title={activeTitle}
+              script={activeScript}
+              deliveryMarkup={activeDeliveryMarkup}
+              targetPace={targetPace}
+              lang={globalLang}
+              prompterMode={prompterMode}
+              onClose={() => setMode('editor')}
+            />
+          )}
+        </AnimatePresence>
 
-      <ProductGuide
-        open={mode === 'editor' && isGuideOpen}
-        lang={globalLang}
-        canInstall={Boolean(installPrompt)}
-        onInstall={() => void installApp()}
-        onClose={closeGuide}
-      />
-      <TrainingFocus
-        open={mode === 'editor' && isFocusOpen}
-        lang={globalLang}
-        sessions={sessions}
-        onClose={() => setIsFocusOpen(false)}
-      />
-      <MembershipDialog lang={globalLang} />
-    </div>
+        {mode === 'editor' && (
+          <footer className="app-footer">
+            <div className="app-footer-trust">
+              <strong><ShieldCheck size={15} /> {globalLang === 'zh' ? '本地优先' : 'Local-first'}</strong>
+              <span>{globalLang === 'zh' ? '无需账户' : 'No account required'}</span>
+              <span>{globalLang === 'zh' ? '音频不自动上传' : 'No automatic audio upload'}</span>
+            </div>
+            <div className="app-footer-meta">
+              <a href="https://github.com/liuh886/RhythmCoach" target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={14} /> RhythmCoach
+              </a>
+              <span>v{packageJson.version}</span>
+            </div>
+          </footer>
+        )}
+
+        <ProductGuide
+          open={mode === 'editor' && isGuideOpen}
+          lang={globalLang}
+          canInstall={Boolean(installPrompt)}
+          onInstall={() => void installApp()}
+          onClose={closeGuide}
+        />
+        <TrainingFocus
+          open={mode === 'editor' && isFocusOpen}
+          lang={globalLang}
+          sessions={sessions}
+          onClose={() => setIsFocusOpen(false)}
+        />
+        <MembershipDialog lang={globalLang} />
+      </div>
+    </Suspense>
   );
 }
