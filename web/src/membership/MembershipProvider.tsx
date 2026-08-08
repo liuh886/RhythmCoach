@@ -29,6 +29,8 @@ interface AuthSubscription {
   unsubscribe: () => void;
 }
 
+export type OAuthProvider = 'google' | 'github' | 'x';
+
 interface AuthApi {
   getSession: () => Promise<{
     data: { session: MembershipSession | null };
@@ -38,7 +40,7 @@ interface AuthApi {
     callback: (event: string, session: MembershipSession | null) => void
   ) => { data: { subscription: AuthSubscription } };
   signInWithOAuth: (input: {
-    provider: 'google';
+    provider: OAuthProvider;
     options: { redirectTo: string };
   }) => Promise<{ error: SupabaseErrorLike | null }>;
   signInWithOtp: (input: {
@@ -133,7 +135,7 @@ interface MembershipContextValue {
   hasEntitlement: (code: string) => boolean;
   openDialog: () => void;
   closeDialog: () => void;
-  signInWithGoogle: () => Promise<void>;
+  signInWithProvider: (provider: OAuthProvider) => Promise<void>;
   sendMagicLink: (email: string, captchaToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
@@ -300,12 +302,12 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, [refreshEntitlements, user]);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
     const client = clientRef.current;
     if (!client) return;
     setError('');
     const { error: authError } = await client.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: { redirectTo: membershipConfig.redirectUrl }
     });
     if (authError) setError(authError.message);
@@ -422,7 +424,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     hasEntitlement: (code: string) => entitlements.has(code),
     openDialog: () => setDialogOpen(true),
     closeDialog: () => setDialogOpen(false),
-    signInWithGoogle,
+    signInWithProvider,
     sendMagicLink,
     signOut,
     refreshEntitlements,
@@ -443,7 +445,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     refreshEntitlements,
     saveDisplayName,
     sendMagicLink,
-    signInWithGoogle,
+    signInWithProvider,
     signOut,
     startCheckout,
     user
