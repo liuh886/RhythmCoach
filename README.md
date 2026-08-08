@@ -15,7 +15,7 @@ RhythmCoach 是演讲者、播客创作者的录制前排练工具。用提纲�
 - 精选中文素材支持低干扰的重音、停顿和换气标注；英文界面提供独立的英文练习素材。
 - 新增“平翘舌专项｜四十本杂志”，以故事和最小对立词训练平舌音与翘舌音。
 - 核心训练数据保持本地优先，不引入语音内容识别或复杂云端服务。
-- 使用 Google Analytics 4 了解汇总访问情况和产品采用情况。
+- 生产构建可启用 Cloudflare Web Analytics，仅用于汇总访问与 Web Vitals；未配置 token 时不加载分析 beacon。
 
 ## 训练模式
 
@@ -68,6 +68,12 @@ npm run dev
 npm run build
 ```
 
+如需启用生产访问统计，在构建环境设置公开的 Cloudflare Web Analytics site token：
+
+```bash
+VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN=<public site token>
+```
+
 版本一致性检查：
 
 ```bash
@@ -82,11 +88,11 @@ npm run version:check
 - Zustand
 - localforage / IndexedDB
 - Framer Motion
-- Google Analytics 4
+- Cloudflare Web Analytics（可选生产 RUM）
 
 ## 数据与隐私
 
-稿件、训练记录和录音默认保存在当前浏览器本地。应用不主动上传麦克风音频。Google Analytics 仅用于访问与产品采用情况分析，不应接收稿件、录音或本地训练记录。清除浏览器站点数据会删除这些本地内容，重要录音请及时下载。
+稿件、训练记录和录音默认保存在当前浏览器本地。应用不主动上传麦克风音频。Cloudflare Web Analytics 仅在生产构建配置 token 后加载，用于汇总访问与 Web Vitals，不接收稿件、录音或本地训练记录；未配置 token 时不发送分析请求。清除浏览器站点数据会删除这些本地内容，重要录音请及时下载。
 
 更完整说明见 [`PRIVACY.md`](PRIVACY.md)。
 
@@ -96,6 +102,6 @@ RhythmCoach 从 `v1.0.0` 起采用语义化版本。`web/package.json` 是应用
 
 ## 质量门禁
 
-GitHub Actions 在 pull request 和 main 分支更新时执行版本一致性检查、`npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试、时间标尺测试、主题切换测试、朗读标注测试、播客模板测试、语言解析测试、双语素材隔离测试以及 TypeScript/Vite 生产构建。
+GitHub Actions 在 pull request 和 main 分支更新时执行版本一致性检查、`npm ci`、核心会话指标测试、训练建议测试、DSP 参数测试、时间标尺测试、主题切换测试、朗读标注测试、播客模板测试、语言解析测试、双语素材隔离测试以及 TypeScript/Vite 生产构建。面向浏览器的验收还覆盖首页 → 应用 → 启动排练的核心路径、移动端横向溢出，并保留桌面/移动端截图证据。
 
 核心训练闭环和验收标准见 [`docs/CORE_TRAINING_LOOP.md`](docs/CORE_TRAINING_LOOP.md)。版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。

@@ -1,6 +1,6 @@
 # RhythmCoach Privacy Notes
 
-_Last updated: 2026-08-02_
+_Last updated: 2026-08-08_
 
 RhythmCoach is designed as a local-first rehearsal tool.
 
@@ -21,23 +21,23 @@ Microphone permission is requested only when a rehearsal needs speech activity a
 
 ## Usage analytics
 
-RhythmCoach uses Google Analytics 4 with measurement ID `G-G4TTH49G1C` to understand aggregate site usage and product adoption. Google Analytics may receive technical usage information such as page visits, browser or device characteristics, and referring pages.
+The hosted Web/PWA can load Cloudflare Web Analytics when the production build supplies `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN`. The analytics surface is limited to aggregate traffic and Web Vitals. If the token is not configured, RhythmCoach does not load an analytics beacon.
 
-RhythmCoach does not intentionally send scripts, saved drafts, session notes, microphone audio, or locally stored recordings to Google Analytics. Analytics is separate from the local rehearsal-data workflow.
+RhythmCoach does not send scripts, saved drafts, session notes, session metrics, microphone audio, locally stored recordings, or account state as custom analytics events. Analytics is separate from the local rehearsal-data workflow.
 
-Users may limit analytics through browser privacy controls, tracking protection, content blockers, or other settings available in their browser.
+Users may also block the analytics beacon through browser privacy controls, tracking protection, content blockers, or other browser settings.
 
 ## Data deletion and retention
 
 Browser storage remains under the user's control. Removing site data, using private-browsing storage, or browser cleanup may delete scripts, recordings, and rehearsal history. Important recordings should be downloaded before clearing browser data.
 
-Deleting local site data does not necessarily remove analytics records already processed by the analytics provider.
+Deleting local site data does not necessarily remove aggregate analytics records already processed by the analytics provider when Web Analytics is enabled.
 
 ## PWA and offline cache
 
 The installed web app may cache application files so the interface can reopen after a previous successful visit. The service worker does not create an external user profile or transmit rehearsal data.
 
-When the application is online, the Google Analytics script may load independently of the PWA cache.
+When the application is online and Web Analytics is configured, the Cloudflare beacon may load independently of the PWA cache.
 
 ## External links
 
@@ -45,4 +45,4 @@ RhythmCoach may include links to third-party websites, such as the project repos
 
 ## Scope
 
-These notes describe the stable version 1.0.1 implementation in this repository. If future versions add optional cloud synchronization, external speech services, or additional analytics providers, those features must be disclosed separately.
+These notes describe the stable version 1.0.1 implementation in this repository. If future versions add optional cloud synchronization, external speech services, custom behavioral analytics, or additional analytics providers, those features must be disclosed separately.

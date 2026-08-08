@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initializeAnalytics } from './analytics';
 import { resolveInitialLanguage, toHtmlLanguage } from './domain/language';
 import { MembershipProvider } from './membership/MembershipProvider';
 import './index.css';
@@ -11,6 +12,7 @@ import './components/StageLights.css';
 import './components/AppHeaderHomepage.css';
 
 document.documentElement.lang = toHtmlLanguage(resolveInitialLanguage());
+initializeAnalytics();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
