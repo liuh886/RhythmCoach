@@ -1,6 +1,6 @@
 # RhythmCoach Privacy Notes
 
-_Last updated: 2026-08-08_
+_Last updated: 2026-08-09_
 
 RhythmCoach is designed as a local-first rehearsal tool.
 
@@ -40,11 +40,14 @@ Core rehearsal, local recording, and local material saving remain available with
 
 ## Usage analytics
 
-The hosted Web/PWA can load Cloudflare Web Analytics when the production build supplies `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN`. The analytics surface is limited to aggregate traffic and Web Vitals. If the token is not configured, RhythmCoach does not load an analytics beacon.
+The hosted Web/PWA uses two complementary analytics layers:
 
-RhythmCoach does not send scripts, personal-library text, session notes, session metrics, microphone audio, locally stored recordings, or account state as custom analytics events. Analytics is separate from the rehearsal-data workflow.
+- **Cloudflare Web Analytics** provides aggregate traffic and Web Vitals when the production build supplies `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN`.
+- **Google Analytics 4** uses measurement ID `G-G4TTH49G1C` for product adoption signals. Current custom events are limited to opening the rehearsal app surface and successful PWA installation.
 
-Users may also block the analytics beacon through browser privacy controls, tracking protection, content blockers, or other browser settings.
+RhythmCoach does not send scripts, personal-library text, session notes, session metrics, microphone audio, locally stored recordings, account state, email addresses, or other content as custom analytics event parameters. Analytics is separate from the rehearsal-data workflow.
+
+Users may block either analytics provider through browser privacy controls, tracking protection, content blockers, or other browser settings.
 
 ## Data deletion and retention
 
@@ -52,13 +55,13 @@ Browser storage remains under the user's control. Removing site data, using priv
 
 Deleting a Personal Library item while cloud sync is active removes that user's matching cloud item. Deleting local browser data alone does not automatically delete a cloud-synchronized Personal Library item.
 
-Deleting local site data does not necessarily remove aggregate analytics records already processed by the analytics provider when Web Analytics is enabled.
+Deleting local site data does not necessarily remove aggregate analytics records already processed by an analytics provider.
 
 ## PWA and offline cache
 
 The installed web app may cache application files so the interface can reopen after a previous successful visit. The service worker does not upload rehearsal audio or create an external audio archive.
 
-When the application is online and Web Analytics is configured, the Cloudflare beacon may load independently of the PWA cache.
+When the application is online, analytics scripts may load independently of the PWA cache.
 
 ## External links
 
