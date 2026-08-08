@@ -24,6 +24,8 @@ const copy = {
     intro: '登录 Hao Apps 账户可管理 RhythmCoach Pro。训练本身保持免费，会员用于解锁跨设备个人素材与录音下载。',
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
+    github: '使用 GitHub 登录',
+    x: '使用 X 登录',
     email: '邮箱地址',
     magic: '发送登录链接',
     sent: '登录链接已发送，请检查邮箱。',
@@ -52,6 +54,8 @@ const copy = {
     intro: 'Sign in with Hao Apps to manage RhythmCoach Pro. Core rehearsal stays free; membership unlocks recording downloads and a cloud-synced personal library.',
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
+    github: 'Continue with GitHub',
+    x: 'Continue with X',
     email: 'Email address',
     magic: 'Send sign-in link',
     sent: 'Sign-in link sent. Check your inbox.',
@@ -239,9 +243,17 @@ export function MembershipDialog({ lang }: { lang: Language }) {
           </div>
         ) : (
           <div className="membership-sign-in">
-            <button type="button" className="membership-primary" onClick={() => void membership.signInWithGoogle()}>
-              <LogIn size={17} /> {text.google}
-            </button>
+            <div className="membership-provider-list">
+              <button type="button" className="membership-primary" onClick={() => void membership.signInWithProvider('google')}>
+                <LogIn size={17} /> {text.google}
+              </button>
+              <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('github')}>
+                <LogIn size={17} /> {text.github}
+              </button>
+              <button type="button" className="membership-provider" onClick={() => void membership.signInWithProvider('x')}>
+                <X size={17} /> {text.x}
+              </button>
+            </div>
             <div className="membership-email-row">
               <Mail size={16} aria-hidden="true" />
               <input
