@@ -48,6 +48,8 @@ jobs:
         run: npm test
 
       - name: Build
+        env:
+          VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.CLOUDFLARE_WEB_ANALYTICS_TOKEN || '' }}
         run: npm run build
 
       - name: Upload Pages artifact
