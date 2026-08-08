@@ -124,6 +124,11 @@
   margin: 18px 0;
 }
 
+.membership-provider-list {
+  display: grid;
+  gap: 9px;
+}
+
 .membership-optional-chip {
   width: max-content;
   padding: 5px 9px;
@@ -136,6 +141,7 @@
 }
 
 .membership-primary,
+.membership-provider,
 .membership-actions-row button,
 .membership-email-row button,
 .membership-profile-form button {
@@ -155,8 +161,12 @@
   cursor: pointer;
 }
 
-.membership-primary {
+.membership-primary,
+.membership-provider {
   width: 100%;
+}
+
+.membership-primary {
   border-color: transparent;
   background: var(--accent, #5b78ff);
   color: #fff;
