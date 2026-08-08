@@ -1,7 +1,5 @@
 import { membershipConfig } from './config';
 
-export const PERSONAL_LIBRARY_CLOUD_ENTITLEMENT = 'rhythmcoach.personal_library_cloud';
-
 export interface CloudPersonalMaterial {
   id: string;
   clientId: string;

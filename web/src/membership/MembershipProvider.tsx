@@ -102,11 +102,6 @@ interface EntitlementRow {
   valid_until: string | null;
 }
 
-interface AdminRoleRow {
-  role: string;
-  active: boolean;
-}
-
 export interface MembershipProfile {
   id: string;
   display_name: string | null;
@@ -134,7 +129,6 @@ interface MembershipContextValue {
   error: string;
   dialogOpen: boolean;
   enforcementEnabled: boolean;
-  isOwner: boolean;
   isPro: boolean;
   hasEntitlement: (code: string) => boolean;
   openDialog: () => void;
@@ -177,7 +171,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<MembershipProfile | null>(null);
   const [productAccount, setProductAccount] = useState<ProductAccountRow | null>(null);
   const [entitlements, setEntitlements] = useState<Set<string>>(() => new Set());
-  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -187,7 +180,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setProductAccount(null);
       setEntitlements(new Set());
-      setIsOwner(false);
       return;
     }
 
@@ -236,14 +228,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       .single();
     if (touchedProduct.error) throw new Error(touchedProduct.error.message);
     setProductAccount(touchedProduct.data);
-
-    const adminResult = await client
-      .from<AdminRoleRow>('membership_admins')
-      .select('role,active')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (adminResult.error) throw new Error(adminResult.error.message);
-    setIsOwner(Boolean(adminResult.data?.active && adminResult.data.role === 'owner'));
 
     const entitlementResult = await client
       .from<EntitlementRow>('entitlements')
@@ -422,10 +406,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     [callMembershipFunction]
   );
 
-  const isPro = isOwner
-    || entitlements.has(membershipConfig.entitlementCode)
-    || entitlements.has('rhythmcoach.recording_download')
-    || entitlements.has('rhythmcoach.personal_library_cloud');
+  const isPro = entitlements.has(membershipConfig.entitlementCode);
 
   const value = useMemo<MembershipContextValue>(() => ({
     configured: membershipConfig.enabled,
@@ -437,9 +418,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     error,
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
-    isOwner,
     isPro,
-    hasEntitlement: (code: string) => isOwner || entitlements.has(code),
+    hasEntitlement: (code: string) => entitlements.has(code),
     openDialog: () => setDialogOpen(true),
     closeDialog: () => setDialogOpen(false),
     signInWithGoogle,
@@ -455,7 +435,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     entitlements,
     error,
     getAccessToken,
-    isOwner,
     isPro,
     loading,
     openPortal,
