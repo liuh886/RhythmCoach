@@ -15,7 +15,7 @@ RhythmCoach 是演讲者、播客创作者的录制前排练工具。用提纲�
 - 精选中文素材支持低干扰的重音、停顿和换气标注；英文界面提供独立的英文练习素材。
 - 新增“平翘舌专项｜四十本杂志”，以故事和最小对立词训练平舌音与翘舌音。
 - 核心训练数据保持本地优先，不引入语音内容识别或复杂云端服务。
-- 生产构建可启用 Cloudflare Web Analytics，仅用于汇总访问与 Web Vitals；未配置 token 时不加载分析 beacon。
+- Cloudflare Web Analytics 负责汇总访问与 Web Vitals；GA4 `G-G4TTH49G1C` 补充有限产品采用事件，两者不接收稿件、录音或训练内容。
 
 ## 训练模式
 
@@ -68,11 +68,13 @@ npm run dev
 npm run build
 ```
 
-如需启用生产访问统计，在构建环境设置公开的 Cloudflare Web Analytics site token：
+Cloudflare Web Analytics 的公开 site token 由生产构建环境提供：
 
 ```bash
 VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN=<public site token>
 ```
+
+GA4 使用固定公开 Measurement ID `G-G4TTH49G1C`，浏览器侧不需要任何 Google Analytics secret。
 
 版本一致性检查：
 
@@ -88,11 +90,12 @@ npm run version:check
 - Zustand
 - localforage / IndexedDB
 - Framer Motion
-- Cloudflare Web Analytics（可选生产 RUM）
+- Cloudflare Web Analytics（基础访问 / RUM）
+- Google Analytics 4（有限产品行为事件）
 
 ## 数据与隐私
 
-稿件、训练记录和录音默认保存在当前浏览器本地。应用不主动上传麦克风音频。Cloudflare Web Analytics 仅在生产构建配置 token 后加载，用于汇总访问与 Web Vitals，不接收稿件、录音或本地训练记录；未配置 token 时不发送分析请求。清除浏览器站点数据会删除这些本地内容，重要录音请及时下载。
+稿件、训练记录和录音默认保存在当前浏览器本地。应用不主动上传麦克风音频。Cloudflare Web Analytics 用于汇总访问与 Web Vitals；GA4 当前仅记录打开排练应用和成功安装 PWA 等非敏感产品事件，不发送稿件、个人素材、录音、训练指标、邮箱或账户状态。清除浏览器站点数据会删除这些本地内容，重要录音请及时下载。
 
 更完整说明见 [`PRIVACY.md`](PRIVACY.md)。
 
