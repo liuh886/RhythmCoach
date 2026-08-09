@@ -30,6 +30,8 @@ interface AuthSubscription {
 }
 
 type OAuthProvider = 'google' | 'github' | 'x';
+type BillingReturn = 'success' | 'cancelled' | null;
+type BillingMode = 'checkout' | 'portal';
 
 interface AuthApi {
   getSession: () => Promise<{
@@ -121,6 +123,13 @@ interface ProductAccountRow {
   last_seen_at: string;
 }
 
+export interface MembershipSubscription {
+  id: string;
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+}
+
 interface MembershipContextValue {
   configured: boolean;
   billingEnabled: boolean;
@@ -128,6 +137,9 @@ interface MembershipContextValue {
   user: MembershipUser | null;
   profile: MembershipProfile | null;
   productAccount: ProductAccountRow | null;
+  subscription: MembershipSubscription | null;
+  hasPaidSubscription: boolean;
+  billingReturn: BillingReturn;
   error: string;
   dialogOpen: boolean;
   enforcementEnabled: boolean;
@@ -146,6 +158,7 @@ interface MembershipContextValue {
 }
 
 const MembershipContext = createContext<MembershipContextValue | null>(null);
+const MANAGEABLE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due', 'unpaid']);
 
 function isEntitlementCurrent(row: EntitlementRow): boolean {
   if (!row.active) return false;
@@ -166,6 +179,16 @@ function defaultDisplayName(user: MembershipUser): string | null {
     ?? null;
 }
 
+function readBillingReturn(): BillingReturn {
+  const url = new URL(window.location.href);
+  const billing = url.searchParams.get('billing');
+  if (billing !== 'success' && billing !== 'cancelled') return null;
+  url.searchParams.delete('billing');
+  url.searchParams.delete('session_id');
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  return billing;
+}
+
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<SupabaseClientLike | null>(null);
   const [loading, setLoading] = useState(membershipConfig.enabled);
@@ -173,8 +196,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<MembershipProfile | null>(null);
   const [productAccount, setProductAccount] = useState<ProductAccountRow | null>(null);
   const [entitlements, setEntitlements] = useState<Set<string>>(() => new Set());
+  const [subscription, setSubscription] = useState<MembershipSubscription | null>(null);
+  const [billingReturn] = useState<BillingReturn>(readBillingReturn);
   const [error, setError] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(Boolean(billingReturn));
 
   const refreshEntitlements = useCallback(async () => {
     const client = clientRef.current;
@@ -182,6 +207,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setProductAccount(null);
       setEntitlements(new Set());
+      setSubscription(null);
       return;
     }
 
@@ -231,16 +257,28 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     if (touchedProduct.error) throw new Error(touchedProduct.error.message);
     setProductAccount(touchedProduct.data);
 
-    const entitlementResult = await client
-      .from<EntitlementRow>('entitlements')
-      .select('entitlement_code,active,valid_until')
-      .eq('user_id', user.id);
+    const [entitlementResult, subscriptionResult] = await Promise.all([
+      client
+        .from<EntitlementRow>('entitlements')
+        .select('entitlement_code,active,valid_until')
+        .eq('user_id', user.id),
+      client
+        .from<MembershipSubscription>('subscriptions')
+        .select('id,status,current_period_end,cancel_at_period_end')
+        .eq('user_id', user.id)
+        .eq('product_code', membershipConfig.productCode)
+    ]);
     if (entitlementResult.error) throw new Error(entitlementResult.error.message);
+    if (subscriptionResult.error) throw new Error(subscriptionResult.error.message);
+
     setEntitlements(new Set(
       (entitlementResult.data ?? [])
         .filter(isEntitlementCurrent)
         .map((row) => row.entitlement_code)
     ));
+    setSubscription(
+      (subscriptionResult.data ?? []).find((row) => MANAGEABLE_SUBSCRIPTION_STATUSES.has(row.status)) ?? null
+    );
   }, [user]);
 
   useEffect(() => {
@@ -301,6 +339,20 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setLoading(false));
   }, [refreshEntitlements, user]);
+
+  useEffect(() => {
+    if (!user || billingReturn !== 'success') return;
+    let active = true;
+    const confirm = async () => {
+      for (const delay of [700, 1400]) {
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+        if (!active) return;
+        await refreshEntitlements().catch(() => undefined);
+      }
+    };
+    void confirm();
+    return () => { active = false; };
+  }, [billingReturn, refreshEntitlements, user]);
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
     const client = clientRef.current;
@@ -369,8 +421,12 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return data.session?.access_token ?? null;
   }, []);
 
-  const callMembershipFunction = useCallback(async (url: string) => {
+  const callMembershipFunction = useCallback(async (url: string, mode: BillingMode) => {
     if (!membershipConfig.billingEnabled || !url || !user) return;
+    if (mode === 'portal' && !subscription) {
+      setError('No paid subscription exists for this account.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -387,6 +443,11 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ product_code: membershipConfig.productCode })
       });
       const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
+      if (mode === 'portal' && response.status === 404) {
+        setSubscription(null);
+        setError('No paid subscription exists for this account.');
+        return;
+      }
       if (!response.ok || !payload.url) {
         throw new Error(payload.error ?? `Membership request failed (${response.status}).`);
       }
@@ -395,20 +456,22 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       setError(requestError instanceof Error
         ? requestError.message
         : 'Membership request failed.');
+    } finally {
       setLoading(false);
     }
-  }, [getAccessToken, user]);
+  }, [getAccessToken, subscription, user]);
 
   const startCheckout = useCallback(
-    () => callMembershipFunction(membershipConfig.checkoutFunctionUrl),
+    () => callMembershipFunction(membershipConfig.checkoutFunctionUrl, 'checkout'),
     [callMembershipFunction]
   );
   const openPortal = useCallback(
-    () => callMembershipFunction(membershipConfig.portalFunctionUrl),
+    () => callMembershipFunction(membershipConfig.portalFunctionUrl, 'portal'),
     [callMembershipFunction]
   );
 
   const isPro = entitlements.has(membershipConfig.entitlementCode);
+  const hasPaidSubscription = Boolean(subscription);
 
   const value = useMemo<MembershipContextValue>(() => ({
     configured: membershipConfig.enabled,
@@ -417,6 +480,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     user,
     profile,
     productAccount,
+    subscription,
+    hasPaidSubscription,
+    billingReturn,
     error,
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
@@ -433,10 +499,12 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     startCheckout,
     openPortal
   }), [
+    billingReturn,
     dialogOpen,
     entitlements,
     error,
     getAccessToken,
+    hasPaidSubscription,
     isPro,
     loading,
     openPortal,
@@ -448,6 +516,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     signInWithProvider,
     signOut,
     startCheckout,
+    subscription,
     user
   ]);
 
