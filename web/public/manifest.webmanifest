@@ -7,7 +7,7 @@
   "dir": "ltr",
   "start_url": "./#/app?source=pwa",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "any",
   "background_color": "#07070a",
   "theme_color": "#07070a",

@@ -175,6 +175,11 @@ export default function App() {
     sessionMode: PrompterMode,
     deliveryMarkup: string
   ) => {
+    if (!document.fullscreenElement && document.fullscreenEnabled) {
+      void document.documentElement.requestFullscreen().catch(() => {
+        // Installed PWAs remain immersive even when the browser Fullscreen API is unavailable.
+      });
+    }
     setActiveTitle(title);
     setActiveScript(script);
     setActiveDeliveryMarkup(deliveryMarkup);
