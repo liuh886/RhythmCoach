@@ -43,11 +43,9 @@ jobs:
         working-directory: web
         run: npm ci --no-audit --no-fund
 
-      - name: Test and build
+      - name: Build visual target
         working-directory: web
-        run: |
-          npm test
-          npm run build
+        run: npm run build
 
       - name: Install browser-smoke runner
         working-directory: web
@@ -104,7 +102,7 @@ jobs:
 
       - name: Upload visual evidence and preview
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rhythmcoach-homepage-visual-evidence
           path: |
