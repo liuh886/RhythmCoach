@@ -31,7 +31,6 @@ interface AuthSubscription {
 
 type OAuthProvider = 'google' | 'github' | 'x';
 type BillingReturn = 'success' | 'cancelled' | null;
-type BillingMode = 'checkout' | 'portal';
 
 interface AuthApi {
   getSession: () => Promise<{
@@ -421,12 +420,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return data.session?.access_token ?? null;
   }, []);
 
-  const callMembershipFunction = useCallback(async (url: string, mode: BillingMode) => {
+  const callMembershipFunction = useCallback(async (url: string) => {
     if (!membershipConfig.billingEnabled || !url || !user) return;
-    if (mode === 'portal' && !subscription) {
-      setError('No paid subscription exists for this account.');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -443,11 +438,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ product_code: membershipConfig.productCode })
       });
       const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
-      if (mode === 'portal' && response.status === 404) {
-        setSubscription(null);
-        setError('No paid subscription exists for this account.');
-        return;
-      }
       if (!response.ok || !payload.url) {
         throw new Error(payload.error ?? `Membership request failed (${response.status}).`);
       }
@@ -459,14 +449,14 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken, subscription, user]);
+  }, [getAccessToken, user]);
 
   const startCheckout = useCallback(
-    () => callMembershipFunction(membershipConfig.checkoutFunctionUrl, 'checkout'),
+    () => callMembershipFunction(membershipConfig.checkoutFunctionUrl),
     [callMembershipFunction]
   );
   const openPortal = useCallback(
-    () => callMembershipFunction(membershipConfig.portalFunctionUrl, 'portal'),
+    () => callMembershipFunction(membershipConfig.portalFunctionUrl),
     [callMembershipFunction]
   );
 
