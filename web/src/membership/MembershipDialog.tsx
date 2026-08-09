@@ -20,7 +20,7 @@ const copy = {
   zh: {
     account: '账户',
     title: 'RhythmCoach 账户',
-    intro: '登录 Hao Apps 账户可管理 RhythmCoach Pro。训练本身保持免费，会员用于解锁跨设备个人素材与录音下载。',
+    intro: '登录 Hao Apps 账户可同步身份并管理 RhythmCoach Pro。核心排练继续免费。',
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
     github: '使用 GitHub 登录',
@@ -36,7 +36,6 @@ const copy = {
     loading: '正在加载…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
-    upgrade: '升级 · US$1/月',
     manage: '管理订阅',
     close: '关闭账户窗口',
     displayName: '显示名称',
@@ -46,12 +45,27 @@ const copy = {
     featureDownload: '下载本地录音文件',
     featureMaterials: '在线保存并跨设备同步个人素材库',
     featureTraining: '核心排练、录音与节奏反馈继续免费',
-    localFirst: '数据边界'
+    localFirst: '数据边界',
+    proKicker: 'PRO · 可选支持',
+    proTitle: '成为 RhythmCoach Pro',
+    proBody: '如果 RhythmCoach 对你的录制准备有帮助，可以用 US$1/月支持持续维护，并解锁录音下载与跨设备个人素材库。',
+    proPrice: 'US$1 / 月',
+    becomePro: '成为 Pro',
+    stripeNote: '通过 Stripe 安全结账 · 可随时取消',
+    proAccess: 'Pro 权限已激活',
+    grantedBody: '此账户已拥有 RhythmCoach Pro 权限，目前没有需要管理的付费订阅。',
+    paidActive: 'Pro 订阅有效',
+    paidBody: '当前 Pro 权限来自有效订阅。付款方式、取消与账单信息由 Stripe 安全管理。',
+    billingSuccess: '付款已完成，Pro 权限已更新。',
+    billingPending: '付款已完成，正在确认 Pro 权限。若刚刚完成结账，权益通常会很快同步。',
+    billingCancelled: '未完成付款。核心排练与 Free 使用不受影响。',
+    noPaidSubscription: '当前没有需要管理的付费订阅。',
+    billingUnavailable: '暂时无法打开 Stripe 付款或订阅管理页面。你的账户和现有权限不受影响。'
   },
   en: {
     account: 'Account',
     title: 'RhythmCoach account',
-    intro: 'Sign in with Hao Apps to manage RhythmCoach Pro. Core rehearsal stays free; membership unlocks recording downloads and a cloud-synced personal library.',
+    intro: 'Sign in with Hao Apps to keep one identity and manage RhythmCoach Pro. Core rehearsal stays free.',
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
     github: 'Continue with GitHub',
@@ -67,7 +81,6 @@ const copy = {
     loading: 'Loading…',
     free: 'Free',
     pro: 'RhythmCoach Pro',
-    upgrade: 'Upgrade · US$1/month',
     manage: 'Manage subscription',
     close: 'Close account dialog',
     displayName: 'Display name',
@@ -77,20 +90,41 @@ const copy = {
     featureDownload: 'Download locally recorded audio files',
     featureMaterials: 'Save and sync your personal script library across devices',
     featureTraining: 'Core rehearsal, recording, and pacing feedback stay free',
-    localFirst: 'Data boundary'
+    localFirst: 'Data boundary',
+    proKicker: 'PRO · OPTIONAL SUPPORT',
+    proTitle: 'Become RhythmCoach Pro',
+    proBody: 'If RhythmCoach helps you prepare to record, US$1/month supports ongoing maintenance and unlocks recording downloads plus a cross-device personal library.',
+    proPrice: 'US$1 / month',
+    becomePro: 'Become Pro',
+    stripeNote: 'Secure checkout with Stripe · Cancel anytime',
+    proAccess: 'Pro access active',
+    grantedBody: 'This account already has RhythmCoach Pro access and has no paid subscription to manage.',
+    paidActive: 'Pro subscription active',
+    paidBody: 'Your current Pro access comes from an active subscription. Stripe securely manages payment method, cancellation, and billing details.',
+    billingSuccess: 'Payment complete. Pro access is up to date.',
+    billingPending: 'Payment complete. Pro access is still being confirmed and should sync shortly.',
+    billingCancelled: 'Payment was not completed. Core rehearsal and Free access are unchanged.',
+    noPaidSubscription: 'There is no paid subscription to manage.',
+    billingUnavailable: 'Stripe checkout or subscription management is temporarily unavailable. Your account and current access are unaffected.'
   }
 } as const;
 
 const localizedServiceErrors: Record<string, string> = {
   'Membership service failed to load. Training remains available.': '账户服务加载失败，但训练功能仍可使用。',
   'Membership access could not be refreshed.': '无法刷新账户与会员权益。',
-  'Complete the security check first.': '请先完成人机验证。'
+  'Complete the security check first.': '请先完成人机验证。',
+  'No paid subscription exists for this account.': '当前没有需要管理的付费订阅。'
 };
 
 type ProviderId = 'google' | 'github' | 'x';
 
 function localizeMembershipError(error: string, lang: Language): string {
-  if (lang === 'en') return error;
+  if (lang === 'en') {
+    if (error === 'No paid subscription exists for this account.') return copy.en.noPaidSubscription;
+    if (error.includes('Membership request failed') || error.includes('Stripe')) return copy.en.billingUnavailable;
+    return error;
+  }
+  if (error.includes('Membership request failed') || error.includes('Stripe')) return copy.zh.billingUnavailable;
   return localizedServiceErrors[error] ?? error;
 }
 
@@ -197,6 +231,12 @@ export function MembershipDialog({ lang }: { lang: Language }) {
     { id: 'x', label: text.xProvider }
   ];
 
+  const billingMessage = membership.billingReturn === 'cancelled'
+    ? text.billingCancelled
+    : membership.billingReturn === 'success'
+      ? (membership.isPro ? text.billingSuccess : text.billingPending)
+      : null;
+
   return (
     <div className="membership-backdrop" role="presentation" onMouseDown={membership.closeDialog}>
       <section
@@ -240,6 +280,40 @@ export function MembershipDialog({ lang }: { lang: Language }) {
               <em className={membership.isPro ? 'is-pro' : ''}>{accessLabel}</em>
             </section>
 
+            {membership.billingEnabled && (
+              <section className={`membership-pro-card ${membership.isPro ? 'is-active' : ''}`}>
+                <div className="membership-pro-copy">
+                  <span className="membership-pro-kicker">
+                    {membership.isPro
+                      ? (membership.hasPaidSubscription ? text.paidActive : text.proAccess)
+                      : text.proKicker}
+                  </span>
+                  <strong>{membership.isPro ? text.pro : text.proTitle}</strong>
+                  <p>
+                    {membership.isPro
+                      ? (membership.hasPaidSubscription ? text.paidBody : text.grantedBody)
+                      : text.proBody}
+                  </p>
+                </div>
+                <div className="membership-pro-action">
+                  {!membership.isPro && (
+                    <>
+                      <span className="membership-pro-price">{text.proPrice}</span>
+                      <button type="button" className="membership-pro-cta" disabled={membership.loading} onClick={() => void membership.startCheckout()}>
+                        <CreditCard size={16} /> {text.becomePro}
+                      </button>
+                      <small>{text.stripeNote}</small>
+                    </>
+                  )}
+                  {membership.isPro && membership.hasPaidSubscription && (
+                    <button type="button" disabled={membership.loading} onClick={() => void membership.openPortal()}>
+                      <CreditCard size={16} /> {text.manage}
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
             <form className="membership-profile-form" onSubmit={(event) => { event.preventDefault(); void saveName(); }}>
               <label>
                 {text.displayName}
@@ -257,15 +331,6 @@ export function MembershipDialog({ lang }: { lang: Language }) {
             {saved && <span className="membership-success">{text.saved}</span>}
 
             <div className="membership-actions-row">
-              {membership.billingEnabled && !membership.isPro && (
-                <button type="button" onClick={() => void membership.startCheckout()}>
-                  <CreditCard size={16} /> {text.upgrade}
-                </button>
-              )}
-              {membership.billingEnabled && membership.isPro && (
-                <button type="button" onClick={() => void membership.openPortal()}>
-                  <CreditCard size={16} /> {text.manage}</button>
-              )}
               <button type="button" onClick={() => void membership.refreshEntitlements()}>
                 <RefreshCw size={16} /> {text.refresh}
               </button>
@@ -314,6 +379,8 @@ export function MembershipDialog({ lang }: { lang: Language }) {
             {authError && <div className="membership-error">{authError}</div>}
           </div>
         )}
+
+        {billingMessage && <div className="membership-notice">{billingMessage}</div>}
 
         <footer className="membership-privacy">
           <strong><Cloud size={15} /> {text.localFirst}</strong>
