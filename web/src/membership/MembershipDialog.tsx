@@ -55,7 +55,7 @@ const copy = {
     guestHint: '选择任一登录方式后继续开通',
     stripeNote: '通过 Stripe 安全结账 · 可随时取消',
     proAccess: 'Pro 权限已激活',
-    grantedBody: '此账户已拥有 RhythmCoach Pro 权限，目前没有需要管理的付费订阅。',
+    grantedBody: '此账户已拥有 RhythmCoach Pro 权限。订阅、付款方式与取消操作可从下方统一管理。',
     paidActive: 'Pro 订阅有效',
     paidBody: '当前 Pro 权限来自有效订阅。付款方式、取消与账单信息由 Stripe 安全管理。',
     trialActive: 'Pro · 免费体验中',
@@ -63,7 +63,7 @@ const copy = {
     billingSuccess: '付款已完成，Pro 权限已更新。',
     billingPending: '付款已完成，正在确认 Pro 权限。若刚刚完成结账，权益通常会很快同步。',
     billingCancelled: '未完成付款。核心排练与 Free 使用不受影响。',
-    noPaidSubscription: '当前没有需要管理的付费订阅。',
+    noPaidSubscription: '当前没有 Stripe 订阅；Pro 权益仍然有效。',
     billingUnavailable: '暂时无法打开 Stripe 付款或订阅管理页面。你的账户和现有权限不受影响。'
   },
   en: {
@@ -104,7 +104,7 @@ const copy = {
     guestHint: 'Choose any sign-in method to continue',
     stripeNote: 'Secure checkout with Stripe · Cancel anytime',
     proAccess: 'Pro access active',
-    grantedBody: 'This account already has RhythmCoach Pro access and has no paid subscription to manage.',
+    grantedBody: 'This account already has RhythmCoach Pro access. Subscription, payment, and cancellation settings are available below.',
     paidActive: 'Pro subscription active',
     paidBody: 'Your current Pro access comes from an active subscription. Stripe securely manages payment method, cancellation, and billing details.',
     trialActive: 'PRO · FREE TRIAL',
@@ -112,7 +112,7 @@ const copy = {
     billingSuccess: 'Payment complete. Pro access is up to date.',
     billingPending: 'Payment complete. Pro access is still being confirmed and should sync shortly.',
     billingCancelled: 'Payment was not completed. Core rehearsal and Free access are unchanged.',
-    noPaidSubscription: 'There is no paid subscription to manage.',
+    noPaidSubscription: 'There is no Stripe subscription for this account. Pro access remains active.',
     billingUnavailable: 'Stripe checkout or subscription management is temporarily unavailable. Your account and current access are unaffected.'
   }
 } as const;
@@ -121,7 +121,7 @@ const localizedServiceErrors: Record<string, string> = {
   'Membership service failed to load. Training remains available.': '账户服务加载失败，但训练功能仍可使用。',
   'Membership access could not be refreshed.': '无法刷新账户与会员权益。',
   'Complete the security check first.': '请先完成人机验证。',
-  'No paid subscription exists for this account.': '当前没有需要管理的付费订阅。'
+  'No paid subscription exists for this account.': '当前没有 Stripe 订阅；Pro 权益仍然有效。'
 };
 
 type ProviderId = 'google' | 'github' | 'x';
@@ -327,7 +327,7 @@ export function MembershipDialog({ lang }: { lang: Language }) {
                       <small>{text.stripeNote}</small>
                     </>
                   )}
-                  {membership.isPro && membership.hasPaidSubscription && (
+                  {membership.isPro && (
                     <button type="button" disabled={membership.loading} onClick={() => void membership.openPortal()}>
                       <CreditCard size={16} /> {text.manage}
                     </button>
