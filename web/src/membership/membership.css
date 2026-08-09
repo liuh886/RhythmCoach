@@ -1,5 +1,25 @@
 .membership-header-action.is-pro {
+  width: auto;
+  min-width: 37px;
+  gap: 5px;
+  padding: 0 7px;
   color: var(--accent, #f2c94c);
+}
+
+.membership-header-action.is-pro::after {
+  content: 'PRO';
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--accent, #8da2fb) 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #8da2fb) 10%, transparent);
+  color: var(--accent, #f2c94c);
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
 }
 
 .membership-header-action.is-signed-in {
@@ -374,6 +394,11 @@
 }
 
 @media (max-width: 640px) {
+  .membership-header-action.is-pro {
+    min-width: 34px;
+    padding-inline: 5px;
+  }
+
   .membership-backdrop {
     align-items: flex-end;
   }
