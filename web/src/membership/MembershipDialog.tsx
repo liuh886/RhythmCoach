@@ -20,7 +20,7 @@ const copy = {
   zh: {
     account: '账户',
     title: 'RhythmCoach 账户',
-    intro: '登录 Hao Apps 账户可同步身份并管理 RhythmCoach Pro。核心排练继续免费。',
+    intro: '核心排练保持免费。登录用于同步身份、保存个人素材并管理 RhythmCoach Pro。',
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
     github: '使用 GitHub 登录',
@@ -41,16 +41,18 @@ const copy = {
     displayName: '显示名称',
     saveName: '保存名称',
     saved: '名称已保存。',
-    benefits: '会员权益',
-    featureDownload: '下载本地录音文件',
-    featureMaterials: '在线保存并跨设备同步个人素材库',
-    featureTraining: '核心排练、录音与节奏反馈继续免费',
+    benefits: 'Free 与 RhythmCoach Pro',
+    featureDownload: 'Pro · 下载本地录音文件',
+    featureMaterials: 'Pro · 在线保存并跨设备同步个人素材库',
+    featureTraining: 'Free · 核心排练、录音与节奏反馈',
     localFirst: '数据边界',
     proKicker: 'PRO · 可选支持',
-    proTitle: '成为 RhythmCoach Pro',
-    proBody: '如果 RhythmCoach 对你的录制准备有帮助，可以用 US$1/月支持持续维护，并解锁录音下载与跨设备个人素材库。',
+    proTitle: '开通 RhythmCoach Pro',
+    proBody: 'US$1/月解锁录音下载与跨设备个人素材库，并支持 RhythmCoach 持续维护。核心排练继续免费。',
     proPrice: 'US$1 / 月',
-    becomePro: '成为 Pro',
+    becomePro: '开通 RhythmCoach Pro',
+    guestSteps: '1 登录账户 · 2 Stripe 付款 · 3 Pro 自动生效',
+    guestHint: '选择任一登录方式后继续开通',
     stripeNote: '通过 Stripe 安全结账 · 可随时取消',
     proAccess: 'Pro 权限已激活',
     grantedBody: '此账户已拥有 RhythmCoach Pro 权限，目前没有需要管理的付费订阅。',
@@ -65,7 +67,7 @@ const copy = {
   en: {
     account: 'Account',
     title: 'RhythmCoach account',
-    intro: 'Sign in with Hao Apps to keep one identity and manage RhythmCoach Pro. Core rehearsal stays free.',
+    intro: 'Core rehearsal stays free. Sign in to keep one identity, sync your personal library, and manage RhythmCoach Pro.',
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
     github: 'Continue with GitHub',
@@ -86,16 +88,18 @@ const copy = {
     displayName: 'Display name',
     saveName: 'Save name',
     saved: 'Name saved.',
-    benefits: 'Membership benefits',
-    featureDownload: 'Download locally recorded audio files',
-    featureMaterials: 'Save and sync your personal script library across devices',
-    featureTraining: 'Core rehearsal, recording, and pacing feedback stay free',
+    benefits: 'Free and RhythmCoach Pro',
+    featureDownload: 'Pro · Download locally recorded audio files',
+    featureMaterials: 'Pro · Save and sync your personal script library across devices',
+    featureTraining: 'Free · Core rehearsal, recording, and pacing feedback',
     localFirst: 'Data boundary',
     proKicker: 'PRO · OPTIONAL SUPPORT',
-    proTitle: 'Become RhythmCoach Pro',
-    proBody: 'If RhythmCoach helps you prepare to record, US$1/month supports ongoing maintenance and unlocks recording downloads plus a cross-device personal library.',
+    proTitle: 'Upgrade to RhythmCoach Pro',
+    proBody: 'US$1/month unlocks recording downloads and a cross-device personal library while supporting ongoing maintenance. Core rehearsal stays free.',
     proPrice: 'US$1 / month',
-    becomePro: 'Become Pro',
+    becomePro: 'Upgrade to RhythmCoach Pro',
+    guestSteps: '1 Sign in · 2 Pay with Stripe · 3 Pro activates',
+    guestHint: 'Choose any sign-in method to continue',
     stripeNote: 'Secure checkout with Stripe · Cancel anytime',
     proAccess: 'Pro access active',
     grantedBody: 'This account already has RhythmCoach Pro access and has no paid subscription to manage.',
@@ -261,9 +265,9 @@ export function MembershipDialog({ lang }: { lang: Language }) {
         <section className="membership-capabilities" aria-labelledby="membership-capabilities-title">
           <strong id="membership-capabilities-title"><Sparkles size={16} /> {text.benefits}</strong>
           <ul>
+            <li>{text.featureTraining}</li>
             <li>{text.featureDownload}</li>
             <li>{text.featureMaterials}</li>
-            <li>{text.featureTraining}</li>
           </ul>
         </section>
 
@@ -341,6 +345,21 @@ export function MembershipDialog({ lang }: { lang: Language }) {
           </div>
         ) : (
           <div className="membership-sign-in">
+            {membership.billingEnabled && (
+              <section className="membership-pro-card">
+                <div className="membership-pro-copy">
+                  <span className="membership-pro-kicker">{text.proKicker}</span>
+                  <strong>{text.proTitle}</strong>
+                  <p>{text.proBody}</p>
+                </div>
+                <div className="membership-pro-action">
+                  <span className="membership-pro-price">{text.proPrice}</span>
+                  <small>{text.guestSteps}</small>
+                  <small>{text.stripeNote}</small>
+                </div>
+              </section>
+            )}
+            <span className="membership-optional-chip">{text.guestHint}</span>
             <div className="membership-provider-list">
               {providers.map((provider) => (
                 <button
