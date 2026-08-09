@@ -58,6 +58,8 @@ const copy = {
     grantedBody: '此账户已拥有 RhythmCoach Pro 权限，目前没有需要管理的付费订阅。',
     paidActive: 'Pro 订阅有效',
     paidBody: '当前 Pro 权限来自有效订阅。付款方式、取消与账单信息由 Stripe 安全管理。',
+    trialActive: 'Pro · 免费体验中',
+    trialBody: '免费体验有效至 {date}。这是一条可管理的 Stripe 订阅，你可以随时查看订阅、管理付款方式或取消。',
     billingSuccess: '付款已完成，Pro 权限已更新。',
     billingPending: '付款已完成，正在确认 Pro 权限。若刚刚完成结账，权益通常会很快同步。',
     billingCancelled: '未完成付款。核心排练与 Free 使用不受影响。',
@@ -105,6 +107,8 @@ const copy = {
     grantedBody: 'This account already has RhythmCoach Pro access and has no paid subscription to manage.',
     paidActive: 'Pro subscription active',
     paidBody: 'Your current Pro access comes from an active subscription. Stripe securely manages payment method, cancellation, and billing details.',
+    trialActive: 'PRO · FREE TRIAL',
+    trialBody: 'Your free trial runs through {date}. This is a manageable Stripe subscription: you can review it, manage payment details, or cancel at any time.',
     billingSuccess: 'Payment complete. Pro access is up to date.',
     billingPending: 'Payment complete. Pro access is still being confirmed and should sync shortly.',
     billingCancelled: 'Payment was not completed. Core rehearsal and Free access are unchanged.',
@@ -130,6 +134,15 @@ function localizeMembershipError(error: string, lang: Language): string {
   }
   if (error.includes('Membership request failed') || error.includes('Stripe')) return copy.zh.billingUnavailable;
   return localizedServiceErrors[error] ?? error;
+}
+
+function formatSubscriptionDate(value: string | null | undefined, lang: Language): string {
+  if (!value) return lang === 'zh' ? '体验期结束日' : 'the trial end date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return lang === 'zh' ? '体验期结束日' : 'the trial end date';
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric', month: 'short', day: 'numeric'
+  }).format(date);
 }
 
 function GoogleMark() {
@@ -234,6 +247,11 @@ export function MembershipDialog({ lang }: { lang: Language }) {
     { id: 'github', label: text.github },
     { id: 'x', label: text.xProvider }
   ];
+  const isTrialing = membership.subscription?.status === 'trialing';
+  const subscriptionKicker = isTrialing ? text.trialActive : text.paidActive;
+  const subscriptionBody = isTrialing
+    ? text.trialBody.replace('{date}', formatSubscriptionDate(membership.subscription?.current_period_end, lang))
+    : text.paidBody;
 
   const billingMessage = membership.billingReturn === 'cancelled'
     ? text.billingCancelled
@@ -289,13 +307,13 @@ export function MembershipDialog({ lang }: { lang: Language }) {
                 <div className="membership-pro-copy">
                   <span className="membership-pro-kicker">
                     {membership.isPro
-                      ? (membership.hasPaidSubscription ? text.paidActive : text.proAccess)
+                      ? (membership.hasPaidSubscription ? subscriptionKicker : text.proAccess)
                       : text.proKicker}
                   </span>
                   <strong>{membership.isPro ? text.pro : text.proTitle}</strong>
                   <p>
                     {membership.isPro
-                      ? (membership.hasPaidSubscription ? text.paidBody : text.grantedBody)
+                      ? (membership.hasPaidSubscription ? subscriptionBody : text.grantedBody)
                       : text.proBody}
                   </p>
                 </div>
