@@ -9,6 +9,7 @@ import {
   type ReactNode
 } from 'react';
 import { membershipConfig } from './config';
+import { didMembershipUserChange, type OAuthProvider } from './policy';
 
 interface SupabaseErrorLike {
   message: string;
@@ -29,7 +30,6 @@ interface AuthSubscription {
   unsubscribe: () => void;
 }
 
-type OAuthProvider = 'google';
 type BillingReturn = 'success' | 'cancelled' | null;
 
 interface AuthApi {
@@ -198,6 +198,7 @@ async function ignoreOptional(label: string, task: () => Promise<void>): Promise
 
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<SupabaseClientLike | null>(null);
+  const entitlementUserIdRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(membershipConfig.enabled);
   const [user, setUser] = useState<MembershipUser | null>(null);
   const [profile, setProfile] = useState<MembershipProfile | null>(null);
@@ -211,6 +212,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const refreshEntitlements = useCallback(async () => {
     const client = clientRef.current;
     if (!client || !user) {
+      entitlementUserIdRef.current = null;
       setProfile(null);
       setProductAccount(null);
       setEntitlements(new Set());
@@ -219,7 +221,13 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
 
     const now = new Date().toISOString();
-    setEntitlements(new Set());
+    if (didMembershipUserChange(entitlementUserIdRef.current, user.id)) {
+      entitlementUserIdRef.current = user.id;
+      setProfile(null);
+      setProductAccount(null);
+      setEntitlements(new Set());
+      setSubscription(null);
+    }
 
     const refreshProfile = async () => {
       const existing = await client
@@ -277,9 +285,11 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .eq('entitlement_code', membershipConfig.entitlementCode);
       if (result.error) {
-        console.warn('RhythmCoach entitlement refresh failed closed:', result.error);
+        console.warn('RhythmCoach entitlement refresh failed:', result.error);
+        setError('Membership access could not be refreshed.');
         return;
       }
+      setError((current) => current === 'Membership access could not be refreshed.' ? '' : current);
       setEntitlements(new Set(
         (result.data ?? [])
           .filter(isEntitlementCurrent)
@@ -288,7 +298,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     };
 
     const refreshSubscription = async () => {
-      setSubscription(null);
       const result = await client
         .from<MembershipSubscription>('subscriptions')
         .select('id,status,current_period_end,cancel_at_period_end')
@@ -376,7 +385,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
     const client = clientRef.current;
-    if (!client || provider !== 'google') return;
+    if (!client) return;
     setError('');
     const { error: authError } = await client.auth.signInWithOAuth({
       provider,

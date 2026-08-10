@@ -24,6 +24,7 @@
     "src/components/materials.ts",
     "src/components/localizedMaterials.ts",
     "src/membership/config.ts",
+    "src/membership/policy.ts",
     "test/sessionMetrics.test.ts",
     "test/trainingFocus.test.ts",
     "test/audioDsp.test.ts",
@@ -35,6 +36,7 @@
     "test/language.test.ts",
     "test/localizedMaterials.test.ts",
     "test/membershipCanary.test.ts",
+    "test/membershipPolicy.test.ts",
     "test/productSurface.test.ts",
     "test/prompterDisplay.test.ts"
   ]
