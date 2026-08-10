@@ -232,8 +232,8 @@ export function MembershipDialog({ lang }: { lang: Language }) {
   const needsPayment = subscription?.status === 'past_due' || subscription?.status === 'unpaid';
   const cancellationScheduled = subscription?.cancel_at_period_end === true;
 
-  let subscriptionKicker = text.paidActive;
-  let subscriptionBody = text.renewsBody.replace('{date}', periodEnd);
+  let subscriptionKicker: string = text.paidActive;
+  let subscriptionBody: string = text.renewsBody.replace('{date}', periodEnd);
   if (isTrialing) {
     subscriptionKicker = text.trialActive;
     subscriptionBody = text.trialBody.replace('{date}', periodEnd);
