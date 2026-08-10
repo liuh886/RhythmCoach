@@ -13,6 +13,7 @@ import {
 import type { Language } from '../types';
 import { membershipConfig } from './config';
 import { useMembership } from './MembershipProvider';
+import { getSubscriptionPresentation } from './policy';
 import { TurnstileWidget } from './TurnstileWidget';
 import './membership.css';
 
@@ -23,6 +24,8 @@ const copy = {
     intro: '核心排练保持免费。登录用于同步身份、保存个人素材并管理 RhythmCoach Pro。',
     privacy: '录音永远只保存在本机浏览器，绝不会上传或在线保存；只有你主动保存到“个人素材库”的文字素材会同步到云端。',
     google: '使用 Google 登录',
+    github: '使用 GitHub 登录',
+    xProvider: '使用 X 登录',
     or: '或',
     email: '邮箱地址',
     magic: '发送登录链接',
@@ -50,7 +53,7 @@ const copy = {
     proPrice: 'US$1 / 月',
     becomePro: '开通 RhythmCoach Pro',
     guestSteps: '1 登录账户 · 2 Stripe 付款 · 3 Pro 自动生效',
-    guestHint: '使用 Google 或邮箱登录后继续开通',
+    guestHint: '使用 Google、GitHub、X 或邮箱登录后继续开通',
     stripeNote: '通过 Stripe 安全结账 · 可随时取消',
     proAccess: 'Pro 权限已激活',
     grantedBody: '此账户已拥有 RhythmCoach Pro 权限，且当前没有需要续费或取消的付费订阅。',
@@ -73,6 +76,8 @@ const copy = {
     intro: 'Core rehearsal stays free. Sign in to keep one identity, sync your personal library, and manage RhythmCoach Pro.',
     privacy: 'Recordings always stay in this browser and are never uploaded or stored online. Only text you explicitly save to your personal library is synced to the cloud.',
     google: 'Continue with Google',
+    github: 'Continue with GitHub',
+    xProvider: 'Continue with X',
     or: 'OR',
     email: 'Email address',
     magic: 'Send sign-in link',
@@ -100,7 +105,7 @@ const copy = {
     proPrice: 'US$1 / month',
     becomePro: 'Upgrade to RhythmCoach Pro',
     guestSteps: '1 Sign in · 2 Pay with Stripe · 3 Pro activates',
-    guestHint: 'Continue with Google or email to upgrade',
+    guestHint: 'Continue with Google, GitHub, X, or email to upgrade',
     stripeNote: 'Secure checkout with Stripe · Cancel anytime',
     proAccess: 'Pro access active',
     grantedBody: 'This account already has RhythmCoach Pro access and no paid subscription currently needs renewal or cancellation.',
@@ -150,6 +155,14 @@ function GoogleMark() {
       <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.36l-3.24-2.54c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z" />
       <path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.46H3.04A10 10 0 0 0 2 12c0 1.61.39 3.13 1.04 4.54l3.35-2.61Z" />
       <path fill="#EA4335" d="M12 5.94c1.47 0 2.79.5 3.83 1.49l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.46l3.35 2.61C7.18 7.7 9.39 5.94 12 5.94Z" />
+    </svg>
+  );
+}
+
+function GitHubMark() {
+  return (
+    <svg className="membership-provider-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 7.01c.85 0 1.71.11 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.57c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
     </svg>
   );
 }
@@ -228,21 +241,22 @@ export function MembershipDialog({ lang }: { lang: Language }) {
   const accessLabel = membership.isPro ? text.pro : text.free;
   const subscription = membership.subscription;
   const periodEnd = formatSubscriptionDate(subscription?.current_period_end, lang);
-  const isTrialing = subscription?.status === 'trialing';
-  const needsPayment = subscription?.status === 'past_due' || subscription?.status === 'unpaid';
-  const cancellationScheduled = subscription?.cancel_at_period_end === true;
+  const subscriptionPresentation = getSubscriptionPresentation(
+    subscription?.status,
+    subscription?.cancel_at_period_end === true
+  );
 
   let subscriptionKicker: string = text.paidActive;
   let subscriptionBody: string = text.renewsBody.replace('{date}', periodEnd);
-  if (isTrialing) {
-    subscriptionKicker = text.trialActive;
-    subscriptionBody = text.trialBody.replace('{date}', periodEnd);
-  } else if (needsPayment) {
+  if (subscriptionPresentation === 'payment') {
     subscriptionKicker = text.paymentAttention;
     subscriptionBody = text.paymentAttentionBody;
-  } else if (cancellationScheduled) {
+  } else if (subscriptionPresentation === 'cancellation') {
     subscriptionKicker = text.cancellationScheduled;
     subscriptionBody = text.cancellationBody.replace('{date}', periodEnd);
+  } else if (subscriptionPresentation === 'trial') {
+    subscriptionKicker = text.trialActive;
+    subscriptionBody = text.trialBody.replace('{date}', periodEnd);
   }
 
   const billingMessage = membership.billingReturn === 'cancelled'
@@ -379,6 +393,24 @@ export function MembershipDialog({ lang }: { lang: Language }) {
               >
                 <GoogleMark />
                 <span>{text.google}</span>
+              </button>
+              <button
+                type="button"
+                className="membership-provider-button"
+                disabled={busy || membership.loading}
+                onClick={() => void membership.signInWithProvider('github')}
+              >
+                <GitHubMark />
+                <span>{text.github}</span>
+              </button>
+              <button
+                type="button"
+                className="membership-provider-button"
+                disabled={busy || membership.loading}
+                onClick={() => void membership.signInWithProvider('x')}
+              >
+                <span className="membership-provider-x" aria-hidden="true">X</span>
+                <span>{text.xProvider}</span>
               </button>
             </div>
             <div className="membership-divider"><span>{text.or}</span></div>
