@@ -29,7 +29,7 @@ interface AuthSubscription {
   unsubscribe: () => void;
 }
 
-type OAuthProvider = 'google' | 'github' | 'x';
+type OAuthProvider = 'google';
 type BillingReturn = 'success' | 'cancelled' | null;
 
 interface AuthApi {
@@ -188,6 +188,14 @@ function readBillingReturn(): BillingReturn {
   return billing;
 }
 
+async function ignoreOptional(label: string, task: () => Promise<void>): Promise<void> {
+  try {
+    await task();
+  } catch (error) {
+    console.warn(`RhythmCoach optional membership ${label}:`, error);
+  }
+}
+
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<SupabaseClientLike | null>(null);
   const [loading, setLoading] = useState(membershipConfig.enabled);
@@ -211,73 +219,93 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
 
     const now = new Date().toISOString();
-    const existingProfile = await client
-      .from<MembershipProfile>('profiles')
-      .select('id,display_name,avatar_url,locale,last_seen_at')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (existingProfile.error) throw new Error(existingProfile.error.message);
+    setEntitlements(new Set());
 
-    let nextProfile = existingProfile.data;
-    if (!nextProfile) {
-      const createdProfile = await client
+    const refreshProfile = async () => {
+      const existing = await client
         .from<MembershipProfile>('profiles')
-        .insert({
-          id: user.id,
-          display_name: defaultDisplayName(user),
-          avatar_url: metadataText(user, 'avatar_url') ?? metadataText(user, 'picture'),
-          locale: document.documentElement.lang.startsWith('zh') ? 'zh' : 'en',
-          last_seen_at: now
-        })
         .select('id,display_name,avatar_url,locale,last_seen_at')
-        .single();
-      if (createdProfile.error) throw new Error(createdProfile.error.message);
-      nextProfile = createdProfile.data;
-    } else {
-      const refreshedProfile = await client
+        .eq('id', user.id)
+        .maybeSingle();
+      if (existing.error) throw new Error(existing.error.message);
+
+      if (!existing.data) {
+        const created = await client
+          .from<MembershipProfile>('profiles')
+          .insert({
+            id: user.id,
+            display_name: defaultDisplayName(user),
+            avatar_url: metadataText(user, 'avatar_url') ?? metadataText(user, 'picture'),
+            locale: document.documentElement.lang.startsWith('zh') ? 'zh' : 'en',
+            last_seen_at: now
+          })
+          .select('id,display_name,avatar_url,locale,last_seen_at')
+          .single();
+        if (created.error) throw new Error(created.error.message);
+        setProfile(created.data);
+        return;
+      }
+
+      setProfile(existing.data);
+      const touched = await client
         .from<MembershipProfile>('profiles')
         .update({ last_seen_at: now })
         .eq('id', user.id)
         .select('id,display_name,avatar_url,locale,last_seen_at')
         .single();
-      if (!refreshedProfile.error && refreshedProfile.data) nextProfile = refreshedProfile.data;
-    }
-    setProfile(nextProfile);
+      if (!touched.error && touched.data) setProfile(touched.data);
+    };
 
-    const touchedProduct = await client
-      .from<ProductAccountRow>('product_accounts')
-      .upsert({
-        user_id: user.id,
-        product_code: membershipConfig.productCode,
-        last_seen_at: now
-      }, { onConflict: 'user_id,product_code' })
-      .select('user_id,product_code,preferences,state,first_seen_at,last_seen_at')
-      .single();
-    if (touchedProduct.error) throw new Error(touchedProduct.error.message);
-    setProductAccount(touchedProduct.data);
+    const refreshProductAccount = async () => {
+      const result = await client
+        .from<ProductAccountRow>('product_accounts')
+        .upsert({
+          user_id: user.id,
+          product_code: membershipConfig.productCode,
+          last_seen_at: now
+        }, { onConflict: 'user_id,product_code' })
+        .select('user_id,product_code,preferences,state,first_seen_at,last_seen_at')
+        .single();
+      if (result.error) throw new Error(result.error.message);
+      setProductAccount(result.data);
+    };
 
-    const [entitlementResult, subscriptionResult] = await Promise.all([
-      client
+    const refreshCurrentEntitlement = async () => {
+      const result = await client
         .from<EntitlementRow>('entitlements')
         .select('entitlement_code,active,valid_until')
-        .eq('user_id', user.id),
-      client
+        .eq('user_id', user.id)
+        .eq('entitlement_code', membershipConfig.entitlementCode);
+      if (result.error) {
+        console.warn('RhythmCoach entitlement refresh failed closed:', result.error);
+        return;
+      }
+      setEntitlements(new Set(
+        (result.data ?? [])
+          .filter(isEntitlementCurrent)
+          .map((row) => row.entitlement_code)
+      ));
+    };
+
+    const refreshSubscription = async () => {
+      setSubscription(null);
+      const result = await client
         .from<MembershipSubscription>('subscriptions')
         .select('id,status,current_period_end,cancel_at_period_end')
         .eq('user_id', user.id)
-        .eq('product_code', membershipConfig.productCode)
-    ]);
-    if (entitlementResult.error) throw new Error(entitlementResult.error.message);
-    if (subscriptionResult.error) throw new Error(subscriptionResult.error.message);
+        .eq('product_code', membershipConfig.productCode);
+      if (result.error) throw new Error(result.error.message);
+      setSubscription(
+        (result.data ?? []).find((row) => MANAGEABLE_SUBSCRIPTION_STATUSES.has(row.status)) ?? null
+      );
+    };
 
-    setEntitlements(new Set(
-      (entitlementResult.data ?? [])
-        .filter(isEntitlementCurrent)
-        .map((row) => row.entitlement_code)
-    ));
-    setSubscription(
-      (subscriptionResult.data ?? []).find((row) => MANAGEABLE_SUBSCRIPTION_STATUSES.has(row.status)) ?? null
-    );
+    await Promise.all([
+      ignoreOptional('profile refresh', refreshProfile),
+      ignoreOptional('product account refresh', refreshProductAccount),
+      refreshCurrentEntitlement(),
+      ignoreOptional('subscription refresh', refreshSubscription)
+    ]);
   }, [user]);
 
   useEffect(() => {
@@ -329,14 +357,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setLoading(Boolean(user));
-    void refreshEntitlements()
-      .catch((refreshError: unknown) => {
-        const message = refreshError instanceof Error
-          ? refreshError.message
-          : 'Membership access could not be refreshed.';
-        setError(message);
-      })
-      .finally(() => setLoading(false));
+    void refreshEntitlements().finally(() => setLoading(false));
   }, [refreshEntitlements, user]);
 
   useEffect(() => {
@@ -346,7 +367,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       for (const delay of [700, 1400]) {
         await new Promise((resolve) => window.setTimeout(resolve, delay));
         if (!active) return;
-        await refreshEntitlements().catch(() => undefined);
+        await refreshEntitlements();
       }
     };
     void confirm();
@@ -355,7 +376,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const signInWithProvider = useCallback(async (provider: OAuthProvider) => {
     const client = clientRef.current;
-    if (!client) return;
+    if (!client || provider !== 'google') return;
     setError('');
     const { error: authError } = await client.auth.signInWithOAuth({
       provider,
@@ -427,7 +448,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Authentication session is unavailable.');
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -477,7 +497,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     dialogOpen,
     enforcementEnabled: membershipConfig.enforceRecordingDownload,
     isPro,
-    hasEntitlement: (code: string) => entitlements.has(code),
+    hasEntitlement: (code: string) => code === membershipConfig.entitlementCode && entitlements.has(code),
     openDialog: () => setDialogOpen(true),
     closeDialog: () => setDialogOpen(false),
     signInWithProvider,
