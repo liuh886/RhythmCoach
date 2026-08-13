@@ -1,0 +1,23 @@
+.rhythm-referral-trigger { color: inherit; }
+.rhythm-referral-overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 20px; background: rgba(5, 8, 14, .66); backdrop-filter: blur(10px); }
+.rhythm-referral-dialog { width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 22px; background: var(--surface, #111827); color: var(--text-primary, #f9fafb); padding: 22px; box-shadow: 0 30px 90px rgba(0,0,0,.32); }
+.rhythm-referral-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.rhythm-referral-dialog header p { margin: 0 0 5px; font-size: 10px; font-weight: 800; letter-spacing: .14em; opacity: .58; }
+.rhythm-referral-dialog h2 { margin: 0; font-size: 24px; }
+.rhythm-referral-close { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 999px; background: color-mix(in srgb, currentColor 8%, transparent); color: inherit; cursor: pointer; }
+.rhythm-referral-status, .rhythm-referral-benefit, .rhythm-referral-link { margin: 14px 0 0; padding: 14px; border-radius: 14px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.rhythm-referral-status { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.rhythm-referral-status.is-error { border: 1px solid rgba(239,68,68,.35); }
+.rhythm-referral-benefit { display: grid; gap: 6px; }
+.rhythm-referral-benefit.is-pro { border: 1px solid rgba(245,158,11,.35); }
+.rhythm-referral-benefit strong { font-size: 14px; }
+.rhythm-referral-benefit span { font-size: 12px; line-height: 1.55; opacity: .72; }
+.rhythm-referral-link { display: block; overflow-wrap: anywhere; font-size: 11px; line-height: 1.55; opacity: .74; }
+.rhythm-referral-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 12px; }
+.rhythm-referral-stats div { display: grid; gap: 3px; padding: 12px; border: 1px solid color-mix(in srgb, currentColor 10%, transparent); border-radius: 13px; }
+.rhythm-referral-stats strong { font-size: 21px; }
+.rhythm-referral-stats span { font-size: 11px; opacity: .6; }
+.rhythm-referral-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 16px; }
+.rhythm-referral-actions button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 12px; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.rhythm-referral-actions button.is-primary { background: currentColor; color: var(--surface, #111827); }
+@media (max-width: 560px) { .rhythm-referral-overlay { align-items: end; padding: 0; } .rhythm-referral-dialog { width: 100%; border-radius: 22px 22px 0 0; padding: 20px 16px max(20px, env(safe-area-inset-bottom)); } .rhythm-referral-actions { grid-template-columns: 1fr 1fr; } .rhythm-referral-actions button:last-child { grid-column: 1/-1; } }

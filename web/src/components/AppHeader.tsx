@@ -14,6 +14,7 @@ import {
 import packageJson from '../../package.json';
 import type { AppTheme } from '../domain/theme';
 import { MembershipButton } from '../membership/MembershipDialog';
+import { ProductReferralButton } from '../membership/ProductReferralButton';
 import type { Language } from '../types';
 
 interface AppHeaderProps {
@@ -117,6 +118,7 @@ export function AppHeader({
 
           <span className="header-divider" aria-hidden="true" />
 
+          <ProductReferralButton lang={lang} />
           <MembershipButton lang={lang} />
           <button type="button" className="header-icon-action" onClick={onOpenGuide} title={text.guide} aria-label={text.guide}>
             <HelpCircle size={18} />
