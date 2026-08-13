@@ -130,12 +130,9 @@ export function ProductReferralButton({ lang }: { lang: Language }) {
   }, [membership.isPro, membership.user]);
 
   const openReferral = async () => {
-    try {
-      await ensureSharedAssets();
-      window.HaoReferral?.open?.();
-    } catch {
-      membership.openDialog();
-    }
+    await ensureSharedAssets();
+    if (!window.HaoReferral?.open) throw new Error('Shared referral surface is unavailable.');
+    window.HaoReferral.open();
   };
 
   return (
