@@ -85,12 +85,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-header-actions {
+.app-header-actions,
+.header-mode-group,
+.header-utility-group {
   display: flex;
   align-items: center;
+}
+
+.app-header-actions {
   justify-content: flex-end;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
+}
+
+.header-mode-group {
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.header-utility-group {
+  gap: 2px;
 }
 
 .header-action,
@@ -102,29 +119,34 @@
   color: var(--text-secondary);
   background: transparent;
   cursor: pointer;
-  transition: color 0.17s ease, border-color 0.17s ease, background 0.17s ease, transform 0.17s ease;
+  transition: color 0.17s ease, border-color 0.17s ease, background 0.17s ease;
 }
 
 .header-action {
   gap: 7px;
-  min-height: 37px;
+  min-height: 35px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 9px;
   font-size: 0.74rem;
   font-weight: 660;
 }
 
 .header-action-primary {
-  border-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.025);
+  border-color: transparent;
+  background: transparent;
 }
 
 .header-action:hover,
 .header-icon-action:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.07);
+}
+
+.header-action:focus-visible,
+.header-icon-action:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.72);
+  outline-offset: 2px;
 }
 
 .install-action {
@@ -137,7 +159,7 @@
   width: 37px;
   height: 37px;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   text-decoration: none;
 }
 
@@ -166,7 +188,7 @@
 .header-divider {
   width: 1px;
   height: 23px;
-  margin: 0 2px;
+  margin: 0 3px;
   background: var(--glass-border);
 }
 
@@ -218,7 +240,7 @@
   }
 
   .header-action {
-    width: 37px;
+    width: 35px;
     padding: 0;
   }
 }
@@ -249,7 +271,9 @@
   .brand-copy > span,
   .release-chip,
   .header-divider,
-  .header-optional {
+  .header-optional,
+  .header-mobile-optional,
+  .install-action {
     display: none;
   }
 
@@ -257,16 +281,22 @@
     font-size: 0.82rem;
   }
 
-  .app-header-actions {
+  .app-header-actions,
+  .header-utility-group {
     gap: 2px;
+  }
+
+  .header-mode-group {
+    padding: 2px;
+    border-radius: 10px;
   }
 
   .header-action,
   .header-icon-action {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    min-height: 34px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border-radius: 8px;
   }
 

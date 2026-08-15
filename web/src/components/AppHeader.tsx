@@ -101,14 +101,17 @@ export function AppHeader({
         </button>
 
         <nav className="app-header-actions" aria-label={lang === 'zh' ? '应用导航' : 'Application navigation'}>
-          <button type="button" className="header-action header-action-primary" onClick={onOpenLibrary} title={text.library}>
-            <Library size={17} />
-            <span>{text.library}</span>
-          </button>
-          <button type="button" className="header-action header-action-primary" onClick={onOpenFocus} title={text.focus}>
-            <Sparkles size={17} />
-            <span>{text.focus}</span>
-          </button>
+          <div className="header-mode-group" aria-label={lang === 'zh' ? '训练模式' : 'Training modes'}>
+            <button type="button" className="header-action header-action-primary" onClick={onOpenLibrary} title={text.library}>
+              <Library size={17} />
+              <span>{text.library}</span>
+            </button>
+            <button type="button" className="header-action header-action-primary" onClick={onOpenFocus} title={text.focus}>
+              <Sparkles size={17} />
+              <span>{text.focus}</span>
+            </button>
+          </div>
+
           {canInstall && (
             <button type="button" className="header-action install-action" onClick={onInstall} title={text.install}>
               <Download size={17} />
@@ -118,44 +121,46 @@ export function AppHeader({
 
           <span className="header-divider" aria-hidden="true" />
 
-          <ProductReferralButton lang={lang} />
-          <MembershipButton lang={lang} />
-          <button type="button" className="header-icon-action" onClick={onOpenGuide} title={text.guide} aria-label={text.guide}>
-            <HelpCircle size={18} />
-          </button>
-          <button
-            type="button"
-            className="header-icon-action theme-action"
-            onClick={onToggleTheme}
-            title={themeLabel}
-            aria-label={themeLabel}
-            aria-pressed={theme === 'light'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button type="button" className="header-icon-action language-action" onClick={onToggleLanguage} title={text.language} aria-label={text.language}>
-            <Languages size={18} />
-            <span>{lang === 'zh' ? 'EN' : '中'}</span>
-          </button>
-          <button
-            type="button"
-            className="header-icon-action header-optional"
-            onClick={onToggleFullscreen}
-            title={isFullscreen ? text.exitFullscreen : text.fullscreen}
-            aria-label={isFullscreen ? text.exitFullscreen : text.fullscreen}
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-          <a
-            className="header-icon-action header-optional support-action"
-            href="https://ko-fi.com/zhihao"
-            target="_blank"
-            rel="noopener noreferrer"
-            title={text.support}
-            aria-label={text.support}
-          >
-            <Heart size={17} />
-          </a>
+          <div className="header-utility-group" aria-label={lang === 'zh' ? '账户与工具' : 'Account and utilities'}>
+            <ProductReferralButton lang={lang} />
+            <MembershipButton lang={lang} />
+            <button type="button" className="header-icon-action header-mobile-optional" onClick={onOpenGuide} title={text.guide} aria-label={text.guide}>
+              <HelpCircle size={18} />
+            </button>
+            <button
+              type="button"
+              className="header-icon-action theme-action"
+              onClick={onToggleTheme}
+              title={themeLabel}
+              aria-label={themeLabel}
+              aria-pressed={theme === 'light'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button type="button" className="header-icon-action language-action" onClick={onToggleLanguage} title={text.language} aria-label={text.language}>
+              <Languages size={18} />
+              <span>{lang === 'zh' ? 'EN' : '中'}</span>
+            </button>
+            <button
+              type="button"
+              className="header-icon-action header-optional"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? text.exitFullscreen : text.fullscreen}
+              aria-label={isFullscreen ? text.exitFullscreen : text.fullscreen}
+            >
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+            <a
+              className="header-icon-action header-optional support-action"
+              href="https://ko-fi.com/zhihao"
+              target="_blank"
+              rel="noopener noreferrer"
+              title={text.support}
+              aria-label={text.support}
+            >
+              <Heart size={17} />
+            </a>
+          </div>
         </nav>
       </div>
     </header>
