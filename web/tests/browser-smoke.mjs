@@ -273,6 +273,7 @@ try {
   const landscape = await openMockedRoom({ width: 844, height: 390 }, { userId: 'host-1', signedIn: true });
   await assertFitsViewport(landscape, '844x390 room');
   await assertPrompterToolsDoNotOverlap(landscape, '844x390 room');
+  await landscape.waitForTimeout(220);
   const landscapePanel = await landscape.locator('.podcast-sync-panel').boundingBox();
   if (!landscapePanel || landscapePanel.y < 0 || landscapePanel.y + landscapePanel.height > 391) throw new Error('Landscape room panel exceeds viewport.');
   await landscape.screenshot({ path: '../visual-evidence/room-host-landscape.png', fullPage: false });
