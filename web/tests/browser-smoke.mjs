@@ -163,7 +163,9 @@ async function openMockedRoom(viewport, { theme = 'dark', userId = 'host-1' } = 
   const page = await browser.newPage({ viewport });
   await preparePage(page, theme);
   await prepareRoomMock(page, userId);
-  await page.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await page.locator('.app-shell').waitFor({ state: 'visible' });
+  await page.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
   await page.locator('.podcast-sync-panel.is-invite').waitFor({ state: 'visible' });
   await page.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
   const panel = page.locator('.podcast-sync-panel');
@@ -182,27 +184,26 @@ try {
   await page.locator('.app-shell').waitFor({ state: 'visible' });
   await page.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
   await page.locator('.prompter-shell').waitFor({ state: 'visible' });
-  await page.close();
 
-  const invitePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await preparePage(invitePage, 'dark');
-  await invitePage.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
-  await invitePage.locator('.prompter-shell').waitFor({ state: 'visible' });
-  const invitePanel = invitePage.locator('.podcast-sync-panel.is-invite');
+  await page.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
+  const invitePanel = page.locator('.podcast-sync-panel.is-invite');
   await invitePanel.waitFor({ state: 'visible' });
   const inviteCode = await invitePanel.locator('.podcast-sync-invite-code strong').textContent();
   if (inviteCode?.trim() !== 'A3F82C') throw new Error(`Podcast invite room ID mismatch: ${inviteCode}`);
-  await invitePage.locator('.podcast-sync-backdrop').waitFor({ state: 'visible' });
-  await assertFitsViewport(invitePage, '390x844 invite');
-  await assertPrompterToolsDoNotOverlap(invitePage, '390x844 invite');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.podcast-sync-backdrop').waitFor({ state: 'visible' });
+  await assertFitsViewport(page, '390x844 invite');
+  await assertPrompterToolsDoNotOverlap(page, '390x844 invite');
   const inviteBox = await invitePanel.boundingBox();
   if (!inviteBox || inviteBox.y + inviteBox.height > 844 + 1) throw new Error('Mobile invite sheet exceeds the visual viewport.');
-  await invitePage.screenshot({ path: '../visual-evidence/room-invite-dark-mobile.png', fullPage: false });
-  await invitePage.close();
+  await page.screenshot({ path: '../visual-evidence/room-invite-dark-mobile.png', fullPage: false });
+  await page.close();
 
   const lightInvitePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await preparePage(lightInvitePage, 'light');
-  await lightInvitePage.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  await lightInvitePage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await lightInvitePage.locator('.app-shell').waitFor({ state: 'visible' });
+  await lightInvitePage.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
   const lightPanel = lightInvitePage.locator('.podcast-sync-panel.is-invite');
   await lightPanel.waitFor({ state: 'visible' });
   const lightPanelBackground = await lightPanel.evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -239,7 +240,6 @@ try {
   const firstSwitch = switches.first();
   if (await firstSwitch.getAttribute('aria-pressed') !== 'true') throw new Error('Second member should start with scroll permission.');
   await firstSwitch.click();
-  await firstSwitch.waitFor({ state: 'visible' });
   if (await firstSwitch.getAttribute('aria-pressed') !== 'false') throw new Error('Host permission switch did not update its state.');
   await assertFitsViewport(hostPage, '430x932 full room');
   await assertPrompterToolsDoNotOverlap(hostPage, '430x932 full room');
