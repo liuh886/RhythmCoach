@@ -1,4 +1,4 @@
-import { BarChart3, Download, FileText, Mic2, ShieldCheck, X } from 'lucide-react';
+import { BarChart3, Download, FileText, Heart, Mic2, ShieldCheck, X } from 'lucide-react';
 import packageJson from '../../package.json';
 import type { Language } from '../types';
 
@@ -22,6 +22,7 @@ const copy = {
     ],
     privacy: '本地优先：无需账户，不主动上传麦克风音频。',
     version: '当前版本',
+    support: '支持 RhythmCoach',
     install: '安装应用',
     start: '开始使用'
   },
@@ -36,6 +37,7 @@ const copy = {
     ],
     privacy: 'Local-first: no account and no automatic microphone upload.',
     version: 'Current version',
+    support: 'Support RhythmCoach',
     install: 'Install app',
     start: 'Start using'
   }
@@ -76,9 +78,20 @@ export function ProductGuide({ open, lang, canInstall, onInstall, onClose }: Pro
 
         <div className="guide-privacy"><ShieldCheck size={17} /> {text.privacy}</div>
 
-        <div className="guide-version" aria-label={`${text.version} v${packageJson.version}`}>
-          <span>{text.version}</span>
-          <strong>v{packageJson.version}</strong>
+        <div className="guide-meta-row">
+          <div className="guide-version" aria-label={`${text.version} v${packageJson.version}`}>
+            <span>{text.version}</span>
+            <strong>v{packageJson.version}</strong>
+          </div>
+          <a
+            className="guide-support-link"
+            href="https://ko-fi.com/zhihao"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Heart size={15} />
+            <span>{text.support}</span>
+          </a>
         </div>
 
         <div className="product-dialog-actions">
