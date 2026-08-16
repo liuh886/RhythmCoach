@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import packageJson from '../package.json';
 import './components/CommercialTheme.css';
 import { LandingPage } from './components/LandingPage';
+import { PodcastSyncRoom, type PodcastSyncContent } from './components/PodcastSyncRoom';
 import './components/ProductExperience.css';
 import { toHtmlLanguage } from './domain/language';
 import {
@@ -80,6 +81,7 @@ export default function App() {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem(GUIDE_KEY) !== 'complete');
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [podcastSyncContent, setPodcastSyncContent] = useState<PodcastSyncContent | null>(null);
 
   useEffect(() => {
     void loadPersistedData();
@@ -180,6 +182,7 @@ export default function App() {
         // Installed PWAs remain immersive even when the browser Fullscreen API is unavailable.
       });
     }
+    setPodcastSyncContent(null);
     setActiveTitle(title);
     setActiveScript(script);
     setActiveDeliveryMarkup(deliveryMarkup);
@@ -213,6 +216,15 @@ export default function App() {
   const openLibrary = () => {
     document.querySelector<HTMLButtonElement>('.library-launcher')?.click();
   };
+
+  const closeTeleprompter = () => {
+    setPodcastSyncContent(null);
+    setMode('editor');
+  };
+
+  const teleprompterTitle = podcastSyncContent?.title ?? activeTitle;
+  const teleprompterScript = podcastSyncContent?.script ?? activeScript;
+  const teleprompterDeliveryMarkup = podcastSyncContent?.deliveryMarkup ?? activeDeliveryMarkup;
 
   if (surface === 'landing') {
     return (
@@ -254,16 +266,26 @@ export default function App() {
           ) : (
             <Teleprompter
               key="teleprompter"
-              title={activeTitle}
-              script={activeScript}
-              deliveryMarkup={activeDeliveryMarkup}
+              title={teleprompterTitle}
+              script={teleprompterScript}
+              deliveryMarkup={teleprompterDeliveryMarkup}
               targetPace={targetPace}
               lang={globalLang}
               prompterMode={prompterMode}
-              onClose={() => setMode('editor')}
+              onClose={closeTeleprompter}
             />
           )}
         </AnimatePresence>
+
+        {mode === 'teleprompter' && prompterMode === 'free' && (
+          <PodcastSyncRoom
+            title={activeTitle}
+            script={activeScript}
+            deliveryMarkup={activeDeliveryMarkup}
+            lang={globalLang}
+            onRoomContentChange={setPodcastSyncContent}
+          />
+        )}
 
         {mode === 'editor' && (
           <footer className="app-footer">
