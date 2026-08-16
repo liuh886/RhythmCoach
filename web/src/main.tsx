@@ -8,6 +8,7 @@ import './index.css';
 import './components/AudioInputStatus.css';
 import './components/DeliveryCues.css';
 import './theme.css';
+import './membership/membership-theme.css';
 import './components/StageLights.css';
 import './components/AppHeaderHomepage.css';
 
