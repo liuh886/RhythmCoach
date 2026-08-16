@@ -35,7 +35,8 @@ try {
   const inviteFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!inviteFitsViewport) throw new Error('Mobile podcast invite surface overflows horizontally.');
 
-  await page.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:4173/?smoke=header#/app', { waitUntil: 'networkidle' });
+  await page.locator('.app-shell').waitFor({ state: 'visible' });
   const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!fitsViewport) throw new Error('Mobile app surface overflows horizontally.');
 
