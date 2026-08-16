@@ -227,10 +227,6 @@
   color: currentColor;
 }
 
-.header-menu-action[href*='ko-fi'] {
-  color: color-mix(in srgb, #ef6f7a 82%, var(--text-primary));
-}
-
 .app-footer {
   display: flex;
   align-items: center;
