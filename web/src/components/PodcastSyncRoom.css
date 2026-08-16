@@ -709,6 +709,10 @@
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
+  .podcast-sync-trigger {
+    height: 44px;
+  }
+
   .podcast-sync-panel,
   .podcast-sync-panel.is-invite {
     right: 8px;
