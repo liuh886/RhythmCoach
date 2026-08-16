@@ -121,11 +121,11 @@ html[data-prompter-font-size='large'] .prompter-text {
   }
 
   .prompter-display-button {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     padding: 0;
-    border-radius: 11px;
+    border-radius: 12px;
   }
 
   .prompter-display-button > span {
@@ -137,13 +137,18 @@ html[data-prompter-font-size='large'] .prompter-text {
   }
 
   .prompter-font-menu {
-    top: 46px;
-    right: -45px;
+    top: 50px;
+    right: -49px;
+    grid-template-columns: 44px minmax(88px, 1fr) 44px;
+  }
+
+  .prompter-font-menu button {
+    height: 44px;
   }
 
   .prompter-orientation-message {
-    top: 46px;
-    right: -86px;
+    top: 50px;
+    right: -94px;
   }
 
   html[data-prompter-font-size='small'] .prompter-text {
