@@ -181,10 +181,8 @@
   padding: 7px;
   border: 1px solid var(--glass-border);
   border-radius: 13px;
-  background: color-mix(in srgb, var(--bg-elevated) 97%, transparent);
+  background: color-mix(in srgb, var(--bg-base) 94%, var(--text-primary) 6%);
   box-shadow: 0 20px 54px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(22px) saturate(120%);
-  -webkit-backdrop-filter: blur(22px) saturate(120%);
 }
 
 .header-menu-action {
