@@ -1,7 +1,7 @@
 {
   "name": "rhythmcoach",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A local-first rehearsal coach for speakers and podcasters.",
   "type": "module",
   "scripts": {
