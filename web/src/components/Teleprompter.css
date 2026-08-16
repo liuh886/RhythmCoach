@@ -613,6 +613,14 @@
   }
 }
 
+@media (orientation: landscape) and (max-height: 560px) {
+  .top-actions .btn-icon {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+}
+
 @media (max-width: 420px) {
   .status-dot {
     display: none;
