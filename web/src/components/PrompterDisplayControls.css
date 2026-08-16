@@ -179,13 +179,46 @@ html[data-prompter-font-size='large'] .prompter-text {
 
 @media (orientation: landscape) and (max-height: 560px) {
   .prompter-topbar {
-    min-height: 50px;
+    min-height: 58px;
     padding-top: max(7px, env(safe-area-inset-top));
     padding-bottom: 7px;
   }
 
   .session-state span {
     display: none;
+  }
+
+  .prompter-display-controls {
+    gap: 5px;
+  }
+
+  .prompter-display-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
+  }
+
+  .prompter-display-button > span {
+    display: none;
+  }
+
+  .orientation-button {
+    display: inline-flex;
+  }
+
+  .prompter-font-menu {
+    top: 50px;
+    grid-template-columns: 44px minmax(88px, 1fr) 44px;
+  }
+
+  .prompter-font-menu button {
+    height: 44px;
+  }
+
+  .prompter-orientation-message {
+    top: 50px;
   }
 
   .pace-panel {
