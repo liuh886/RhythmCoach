@@ -28,7 +28,7 @@ interface AuthApi {
     callback: (event: string, session: SupabaseSession | null) => void
   ) => { data: { subscription: AuthSubscription } };
   signInWithOAuth: (input: {
-    provider: 'google' | 'github';
+    provider: 'google' | 'github' | 'x';
     options: { redirectTo: string };
   }) => Promise<{ error: SupabaseErrorLike | null }>;
   signInWithOtp: (input: {
