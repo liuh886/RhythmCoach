@@ -483,8 +483,8 @@
 
 .podcast-sync-switch {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   border: 0;
   border-radius: 12px;
@@ -494,8 +494,8 @@
 
 .podcast-sync-switch::before {
   position: absolute;
-  top: 11px;
-  left: 4px;
+  top: 12px;
+  left: 5px;
   width: 36px;
   height: 22px;
   border: 1px solid var(--glass-border);
@@ -507,8 +507,8 @@
 
 .podcast-sync-switch span {
   position: absolute;
-  top: 15px;
-  left: 8px;
+  top: 16px;
+  left: 9px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -633,9 +633,9 @@
   }
 
   .podcast-sync-icon {
-    width: 44px;
-    height: 44px;
-    margin: -4px -4px 0 0;
+    width: 46px;
+    height: 46px;
+    margin: -5px -5px 0 0;
     border-color: transparent;
     background: transparent;
   }
