@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rhythmcoach-v1.0.1';
+const CACHE_NAME = 'rhythmcoach-v1.1.0';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './rhythmcoach.svg'];
 
 self.addEventListener('install', (event) => {
