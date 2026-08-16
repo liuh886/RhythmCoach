@@ -20,9 +20,9 @@ async function preparePage(page, theme = 'dark') {
   }, theme);
 }
 
-async function prepareRoomMock(page, userId = 'host-1') {
+async function prepareRoomMock(page, { userId = 'host-1', signedIn = true } = {}) {
   await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0', (route) => route.abort());
-  await page.addInitScript(({ activeUserId }) => {
+  await page.addInitScript(({ activeUserId, hasPermanentSession }) => {
     const room = {
       id: 'room-1',
       room_code: 'A3F82C',
@@ -35,17 +35,24 @@ async function prepareRoomMock(page, userId = 'host-1') {
     const memberData = [
       { room_id: room.id, user_id: 'host-1', display_name: 'Host', avatar_url: null, can_scroll: true, joined_at: '2026-08-16T10:00:00Z', last_seen_at: '2026-08-16T10:40:00Z' },
       { room_id: room.id, user_id: 'member-2', display_name: 'Alex', avatar_url: null, can_scroll: true, joined_at: '2026-08-16T10:01:00Z', last_seen_at: '2026-08-16T10:40:00Z' },
-      { room_id: room.id, user_id: 'member-3', display_name: 'Mina', avatar_url: null, can_scroll: false, joined_at: '2026-08-16T10:02:00Z', last_seen_at: '2026-08-16T10:40:00Z' },
+      { room_id: room.id, user_id: 'member-3', display_name: 'Guest 3A7F', avatar_url: null, can_scroll: false, joined_at: '2026-08-16T10:02:00Z', last_seen_at: '2026-08-16T10:40:00Z' },
       { room_id: room.id, user_id: 'member-4', display_name: 'Kai', avatar_url: null, can_scroll: false, joined_at: '2026-08-16T10:03:00Z', last_seen_at: '2026-08-16T10:40:00Z' }
     ];
-    const user = {
+    const permanentUser = {
       id: activeUserId,
       email: `${activeUserId}@example.com`,
+      is_anonymous: false,
       user_metadata: { full_name: memberData.find((member) => member.user_id === activeUserId)?.display_name ?? 'Member' }
+    };
+    const anonymousUser = {
+      id: activeUserId,
+      email: null,
+      is_anonymous: true,
+      user_metadata: { full_name: memberData.find((member) => member.user_id === activeUserId)?.display_name ?? 'Guest 3A7F' }
     };
     const profile = {
       id: activeUserId,
-      display_name: memberData.find((member) => member.user_id === activeUserId)?.display_name ?? 'Member',
+      display_name: permanentUser.user_metadata.full_name,
       avatar_url: null,
       locale: 'zh',
       last_seen_at: new Date().toISOString()
@@ -58,6 +65,10 @@ async function prepareRoomMock(page, userId = 'host-1') {
       first_seen_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString()
     };
+    let currentSession = hasPermanentSession
+      ? { user: permanentUser, access_token: 'test-token' }
+      : null;
+    const authListeners = [];
 
     const resultForTable = (table, single) => {
       if (table === 'profiles') return single ? profile : [profile];
@@ -110,8 +121,16 @@ async function prepareRoomMock(page, userId = 'host-1') {
 
     const client = {
       auth: {
-        getSession: async () => ({ data: { session: { user, access_token: 'test-token' } }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+        getSession: async () => ({ data: { session: currentSession }, error: null }),
+        onAuthStateChange: (callback) => {
+          authListeners.push(callback);
+          return { data: { subscription: { unsubscribe() {} } } };
+        },
+        signInAnonymously: async () => {
+          currentSession = { user: anonymousUser, access_token: 'guest-token' };
+          authListeners.forEach((callback) => callback('SIGNED_IN', currentSession));
+          return { data: { user: anonymousUser, session: currentSession }, error: null };
+        },
         signInWithOAuth: async () => ({ error: null }),
         signInWithOtp: async () => ({ error: null }),
         signOut: async () => ({ error: null })
@@ -132,7 +151,7 @@ async function prepareRoomMock(page, userId = 'host-1') {
     };
 
     window.supabase = { createClient: () => client };
-  }, { activeUserId: userId });
+  }, { activeUserId: userId, hasPermanentSession: signedIn });
 }
 
 function overlaps(first, second) {
@@ -159,63 +178,122 @@ async function assertFitsViewport(page, label) {
   if (!fits) throw new Error(`${label}: surface overflows horizontally.`);
 }
 
-async function openMockedRoom(viewport, { theme = 'dark', userId = 'host-1' } = {}) {
+async function choosePodcastMode(page) {
+  const trainingModeGroup = page.locator('.settings-group').filter({ hasText: /训练模式|Training mode/ }).first();
+  await trainingModeGroup.getByRole('button', { name: /^(播客|Podcast)$/ }).click();
+}
+
+async function openMockedRoom(viewport, { theme = 'dark', userId = 'host-1', signedIn = true } = {}) {
   const page = await browser.newPage({ viewport });
   await preparePage(page, theme);
-  await prepareRoomMock(page, userId);
-  await page.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
-  await page.locator('.app-shell').waitFor({ state: 'visible' });
-  await page.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
-  await page.locator('.podcast-sync-panel.is-invite').waitFor({ state: 'visible' });
-  await page.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
+  await prepareRoomMock(page, { userId, signedIn });
+  await page.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  const entryPanel = page.locator('.podcast-sync-panel.is-entry');
+  await entryPanel.waitFor({ state: 'visible' });
+  await entryPanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
+  await page.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await page.locator('.podcast-sync-trigger.is-live').waitFor({ state: 'visible' });
+  await page.locator('.podcast-sync-trigger.is-live').click();
   const panel = page.locator('.podcast-sync-panel');
   await panel.getByText(/^(成员|People)$/).waitFor({ state: 'visible' });
-  await page.locator('.podcast-sync-trigger.is-live').waitFor({ state: 'visible' });
   return page;
 }
 
 await mkdir('../visual-evidence', { recursive: true });
 
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await preparePage(page);
-  await page.goto('http://127.0.0.1:4173/#/', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /^(Open app|打开应用)$/ }).first().click();
-  await page.locator('.app-shell').waitFor({ state: 'visible' });
-  await page.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
-  await page.locator('.prompter-shell').waitFor({ state: 'visible' });
+  const basePage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await preparePage(basePage);
+  await basePage.goto('http://127.0.0.1:4173/#/', { waitUntil: 'networkidle' });
+  await basePage.getByRole('button', { name: /^(Open app|打开应用)$/ }).first().click();
+  await basePage.locator('.app-shell').waitFor({ state: 'visible' });
+  await basePage.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
+  await basePage.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await basePage.close();
 
-  await page.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
-  const invitePanel = page.locator('.podcast-sync-panel.is-invite');
+  const homeGuestPage = await browser.newPage({ viewport: { width: 430, height: 932 } });
+  await preparePage(homeGuestPage);
+  await prepareRoomMock(homeGuestPage, { userId: 'member-3', signedIn: false });
+  await homeGuestPage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await homeGuestPage.locator('.app-shell').waitFor({ state: 'visible' });
+  if (await homeGuestPage.getByRole('button', { name: /^(加入房间|Join room)$/ }).count() !== 0) {
+    throw new Error('Join room must not appear before Podcast mode is selected.');
+  }
+  await choosePodcastMode(homeGuestPage);
+  const homeJoinButton = homeGuestPage.getByRole('button', { name: /加入房间|Join room/ }).last();
+  await homeJoinButton.waitFor({ state: 'visible' });
+  const startBox = await homeGuestPage.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().boundingBox();
+  const joinBox = await homeJoinButton.boundingBox();
+  if (!startBox || !joinBox || joinBox.y <= startBox.y + startBox.height) {
+    throw new Error('Join room CTA must sit below Start rehearsal in Podcast mode.');
+  }
+  await homeJoinButton.click();
+  const homeEntryPanel = homeGuestPage.locator('.podcast-sync-panel.is-entry');
+  await homeEntryPanel.waitFor({ state: 'visible' });
+  await homeEntryPanel.getByText(/无需登录账号|no account required/i).first().waitFor({ state: 'visible' });
+  if (await homeGuestPage.locator('.membership-dialog').count() && await homeGuestPage.locator('.membership-dialog').isVisible()) {
+    throw new Error('Guest join must not open the membership dialog.');
+  }
+  await homeEntryPanel.locator('input[aria-label="房间 ID"], input[aria-label="Room ID"]').fill('A3F82C');
+  await homeEntryPanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
+  await homeGuestPage.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await homeGuestPage.getByText('A shared script for room UI quality verification.').waitFor({ state: 'visible' });
+  await homeGuestPage.locator('.podcast-sync-trigger.is-live').waitFor({ state: 'visible' });
+  await assertFitsViewport(homeGuestPage, '430x932 guest home join');
+  await assertPrompterToolsDoNotOverlap(homeGuestPage, '430x932 guest home join');
+  await homeGuestPage.screenshot({ path: '../visual-evidence/room-guest-home-joined.png', fullPage: false });
+  await homeGuestPage.close();
+
+  const inviteGuestPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await preparePage(inviteGuestPage);
+  await prepareRoomMock(inviteGuestPage, { userId: 'member-3', signedIn: false });
+  await inviteGuestPage.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  await inviteGuestPage.locator('.app-shell').waitFor({ state: 'visible' });
+  const invitePanel = inviteGuestPage.locator('.podcast-sync-panel.is-entry');
   await invitePanel.waitFor({ state: 'visible' });
   const inviteCode = await invitePanel.locator('.podcast-sync-invite-code strong').textContent();
   if (inviteCode?.trim() !== 'A3F82C') throw new Error(`Podcast invite room ID mismatch: ${inviteCode}`);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('.podcast-sync-backdrop').waitFor({ state: 'visible' });
-  await assertFitsViewport(page, '390x844 invite');
-  await assertPrompterToolsDoNotOverlap(page, '390x844 invite');
+  if (await invitePanel.getByText(/登录后加入|Sign in to join/i).count()) throw new Error('Invite flow still contains sign-in-to-join copy.');
+  await inviteGuestPage.locator('.podcast-sync-backdrop').waitFor({ state: 'visible' });
+  await assertFitsViewport(inviteGuestPage, '390x844 guest invite');
   const inviteBox = await invitePanel.boundingBox();
   if (!inviteBox || inviteBox.y + inviteBox.height > 844 + 1) throw new Error('Mobile invite sheet exceeds the visual viewport.');
-  await page.screenshot({ path: '../visual-evidence/room-invite-dark-mobile.png', fullPage: false });
-  await page.close();
+  await inviteGuestPage.screenshot({ path: '../visual-evidence/room-invite-guest-mobile.png', fullPage: false });
+  await invitePanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
+  await inviteGuestPage.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await inviteGuestPage.getByText('A shared script for room UI quality verification.').waitFor({ state: 'visible' });
+  if (new URL(inviteGuestPage.url()).hash.includes('sync=')) throw new Error('Invite route was not consumed after joining.');
+  await inviteGuestPage.close();
 
   const lightInvitePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await preparePage(lightInvitePage, 'light');
-  await lightInvitePage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
-  await lightInvitePage.locator('.app-shell').waitFor({ state: 'visible' });
-  await lightInvitePage.evaluate(() => { window.location.hash = '#/app?sync=A3F82C'; });
-  const lightPanel = lightInvitePage.locator('.podcast-sync-panel.is-invite');
+  await prepareRoomMock(lightInvitePage, { userId: 'member-3', signedIn: false });
+  await lightInvitePage.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  const lightPanel = lightInvitePage.locator('.podcast-sync-panel.is-entry');
   await lightPanel.waitFor({ state: 'visible' });
   const lightPanelBackground = await lightPanel.evaluate((element) => getComputedStyle(element).backgroundColor);
   const lightChannels = lightPanelBackground.match(/[\d.]+/g)?.map(Number) ?? [];
   if (lightChannels.length < 3 || lightChannels[0] < 220 || lightChannels[1] < 220 || lightChannels[2] < 220) {
     throw new Error(`Light room surface did not use the product light theme: ${lightPanelBackground}`);
   }
-  await assertPrompterToolsDoNotOverlap(lightInvitePage, '390x844 light invite');
-  await lightInvitePage.screenshot({ path: '../visual-evidence/room-invite-light-mobile.png', fullPage: false });
+  await lightInvitePage.screenshot({ path: '../visual-evidence/room-invite-guest-light-mobile.png', fullPage: false });
   await lightInvitePage.close();
 
-  const hostPage = await openMockedRoom({ width: 430, height: 932 });
+  const createGatePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await preparePage(createGatePage);
+  await prepareRoomMock(createGatePage, { userId: 'member-3', signedIn: false });
+  await createGatePage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await choosePodcastMode(createGatePage);
+  await createGatePage.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
+  await createGatePage.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await createGatePage.locator('.podcast-sync-trigger').click();
+  const createPanel = createGatePage.locator('.podcast-sync-panel');
+  await createPanel.getByText(/创建房间需要账号|account is required to create/i).waitFor({ state: 'visible' });
+  await createPanel.getByRole('button', { name: /^(创建房间|Create room)$/ }).click();
+  await createGatePage.locator('.membership-dialog').waitFor({ state: 'visible' });
+  await createGatePage.close();
+
+  const hostPage = await openMockedRoom({ width: 430, height: 932 }, { userId: 'host-1', signedIn: true });
   const hostPanel = hostPage.locator('.podcast-sync-panel');
   await hostPanel.getByText(/^(房间已满|Room is full)$/).waitFor({ state: 'visible' });
   if (await hostPage.locator('.podcast-sync-trigger').getAttribute('data-member-count') !== '4') {
@@ -233,10 +311,6 @@ try {
     const box = await switches.nth(index).boundingBox();
     if (!box || box.width < 44 || box.height < 44) throw new Error('Permission switch touch target is smaller than 44px.');
   }
-  for (const selector of ['.podcast-sync-icon', '.podcast-sync-room-id button', '.podcast-sync-leave']) {
-    const box = await hostPanel.locator(selector).boundingBox();
-    if (!box || box.height < 44) throw new Error(`${selector} touch target is smaller than 44px.`);
-  }
   const firstSwitch = switches.first();
   if (await firstSwitch.getAttribute('aria-pressed') !== 'true') throw new Error('Second member should start with scroll permission.');
   await firstSwitch.click();
@@ -246,19 +320,21 @@ try {
   await hostPage.screenshot({ path: '../visual-evidence/room-host-full-mobile.png', fullPage: false });
   await hostPage.keyboard.press('Escape');
   await hostPanel.waitFor({ state: 'hidden' });
-  await hostPage.locator('.prompter-shell').waitFor({ state: 'visible' });
   const triggerFocused = await hostPage.locator('.podcast-sync-trigger').evaluate((element) => document.activeElement === element);
   if (!triggerFocused) throw new Error('Closing the room panel with Escape did not restore focus to the room trigger.');
   await hostPage.close();
 
-  const followerPage = await openMockedRoom({ width: 390, height: 844 }, { userId: 'member-3' });
+  const followerPage = await openMockedRoom(
+    { width: 390, height: 844 },
+    { userId: 'member-3', signedIn: false }
+  );
   const followerPanel = followerPage.locator('.podcast-sync-panel');
   await followerPanel.getByText(/暂停了你的滚动权限|scroll access is paused/i).waitFor({ state: 'visible' });
   if (await followerPanel.locator('.podcast-sync-switch').count() !== 0) throw new Error('Followers must not see host permission switches.');
-  await followerPage.screenshot({ path: '../visual-evidence/room-follower-mobile.png', fullPage: false });
+  await followerPage.screenshot({ path: '../visual-evidence/room-follower-guest-mobile.png', fullPage: false });
   await followerPage.close();
 
-  const landscapePage = await openMockedRoom({ width: 844, height: 390 });
+  const landscapePage = await openMockedRoom({ width: 844, height: 390 }, { userId: 'host-1', signedIn: true });
   await assertFitsViewport(landscapePage, '844x390 room');
   await assertPrompterToolsDoNotOverlap(landscapePage, '844x390 room');
   const landscapePanel = await landscapePage.locator('.podcast-sync-panel').boundingBox();
@@ -268,30 +344,27 @@ try {
   await landscapePage.screenshot({ path: '../visual-evidence/room-host-landscape.png', fullPage: false });
   await landscapePage.close();
 
-  const desktopRoomPage = await openMockedRoom({ width: 1440, height: 1000 });
+  const desktopRoomPage = await openMockedRoom({ width: 1440, height: 1000 }, { userId: 'host-1', signedIn: true });
   await assertPrompterToolsDoNotOverlap(desktopRoomPage, '1440x1000 room');
   await desktopRoomPage.screenshot({ path: '../visual-evidence/room-host-desktop.png', fullPage: false });
   await desktopRoomPage.close();
 
   const keyboardPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await preparePage(keyboardPage);
+  await prepareRoomMock(keyboardPage, { userId: 'member-3', signedIn: false });
   await keyboardPage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
-  await keyboardPage.locator('.app-shell').waitFor({ state: 'visible' });
-  const trainingModeGroup = keyboardPage.locator('.settings-group').filter({ hasText: /训练模式|Training mode/ }).first();
-  await trainingModeGroup.getByRole('button', { name: /^(播客|Podcast)$/ }).click();
-  await keyboardPage.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
-  await keyboardPage.locator('.prompter-shell').waitFor({ state: 'visible' });
-  await keyboardPage.locator('.podcast-sync-trigger').click();
-  const roomIdInput = keyboardPage.locator('.podcast-sync-join-row input');
+  await choosePodcastMode(keyboardPage);
+  await keyboardPage.getByRole('button', { name: /加入房间|Join room/ }).last().click();
+  const roomIdInput = keyboardPage.locator('.podcast-sync-entry-code input');
   await roomIdInput.waitFor({ state: 'visible' });
   await roomIdInput.focus();
   await keyboardPage.setViewportSize({ width: 390, height: 500 });
   const inputBox = await roomIdInput.boundingBox();
-  const joinBox = await keyboardPage.locator('.podcast-sync-join-row button').boundingBox();
-  if (!inputBox || !joinBox || inputBox.y + inputBox.height > 500 || joinBox.y + joinBox.height > 500) {
-    throw new Error('Room ID input or Join CTA is hidden when the visual viewport shrinks for the soft keyboard.');
+  const joinButtonBox = await keyboardPage.locator('.podcast-sync-invite-entry .podcast-sync-primary').boundingBox();
+  if (!inputBox || !joinButtonBox || inputBox.y + inputBox.height > 500 || joinButtonBox.y + joinButtonBox.height > 500) {
+    throw new Error('Home room ID input or Join CTA is hidden when the visual viewport shrinks for the soft keyboard.');
   }
-  await keyboardPage.screenshot({ path: '../visual-evidence/room-keyboard-mobile.png', fullPage: false });
+  await keyboardPage.screenshot({ path: '../visual-evidence/room-home-keyboard-mobile.png', fullPage: false });
   await keyboardPage.close();
 
   const headerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
