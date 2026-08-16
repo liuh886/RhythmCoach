@@ -1,4 +1,5 @@
 import './AppHeader.css';
+import { useEffect, useRef, useState } from 'react';
 import {
   Download,
   Heart,
@@ -8,6 +9,7 @@ import {
   Maximize2,
   Minimize2,
   Moon,
+  MoreHorizontal,
   Sparkles,
   Sun
 } from 'lucide-react';
@@ -38,28 +40,30 @@ const copy = {
     home: '返回 RhythmCoach 首页',
     library: '素材库',
     focus: '训练建议',
-    install: '安装',
+    install: '安装应用',
     guide: '使用帮助',
     lightTheme: '切换到白色模式',
     darkTheme: '切换到深色模式',
     language: 'Switch to English',
     fullscreen: '进入全屏',
     exitFullscreen: '退出全屏',
-    support: '支持 RhythmCoach'
+    support: '支持 RhythmCoach',
+    more: '更多'
   },
   en: {
     product: 'Speaker & podcast rehearsal',
     home: 'Return to the RhythmCoach homepage',
     library: 'Library',
     focus: 'Coaching',
-    install: 'Install',
+    install: 'Install app',
     guide: 'Help',
     lightTheme: 'Switch to light mode',
     darkTheme: 'Switch to dark mode',
     language: '切换到中文',
     fullscreen: 'Enter fullscreen',
     exitFullscreen: 'Exit fullscreen',
-    support: 'Support RhythmCoach'
+    support: 'Support RhythmCoach',
+    more: 'More'
   }
 } as const;
 
@@ -79,6 +83,30 @@ export function AppHeader({
 }: AppHeaderProps) {
   const text = copy[lang];
   const themeLabel = theme === 'dark' ? text.lightTheme : text.darkTheme;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const utilityRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (utilityRef.current?.contains(event.target as Node)) return;
+      setMoreOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [moreOpen]);
+
+  const runUtilityAction = (action: () => void) => {
+    setMoreOpen(false);
+    action();
+  };
 
   return (
     <header className="app-header">
@@ -101,7 +129,7 @@ export function AppHeader({
         </button>
 
         <nav className="app-header-actions" aria-label={lang === 'zh' ? '应用导航' : 'Application navigation'}>
-          <div className="header-mode-group" aria-label={lang === 'zh' ? '训练模式' : 'Training modes'}>
+          <div className="header-mode-group" aria-label={lang === 'zh' ? '主要功能' : 'Primary features'}>
             <button type="button" className="header-action header-action-primary" onClick={onOpenLibrary} title={text.library}>
               <Library size={17} />
               <span>{text.library}</span>
@@ -112,54 +140,61 @@ export function AppHeader({
             </button>
           </div>
 
-          {canInstall && (
-            <button type="button" className="header-action install-action" onClick={onInstall} title={text.install}>
-              <Download size={17} />
-              <span>{text.install}</span>
-            </button>
-          )}
-
           <span className="header-divider" aria-hidden="true" />
 
-          <div className="header-utility-group" aria-label={lang === 'zh' ? '账户与工具' : 'Account and utilities'}>
-            <ProductReferralButton lang={lang} />
+          <div className="header-utility-group" ref={utilityRef} aria-label={lang === 'zh' ? '账户与更多' : 'Account and more'}>
             <MembershipButton lang={lang} />
-            <button type="button" className="header-icon-action header-mobile-optional" onClick={onOpenGuide} title={text.guide} aria-label={text.guide}>
-              <HelpCircle size={18} />
-            </button>
             <button
               type="button"
-              className="header-icon-action theme-action"
-              onClick={onToggleTheme}
-              title={themeLabel}
-              aria-label={themeLabel}
-              aria-pressed={theme === 'light'}
+              className={`header-icon-action header-more-action ${moreOpen ? 'is-open' : ''}`}
+              onClick={() => setMoreOpen((current) => !current)}
+              title={text.more}
+              aria-label={text.more}
+              aria-haspopup="menu"
+              aria-expanded={moreOpen}
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              <MoreHorizontal size={19} />
             </button>
-            <button type="button" className="header-icon-action language-action" onClick={onToggleLanguage} title={text.language} aria-label={text.language}>
-              <Languages size={18} />
-              <span>{lang === 'zh' ? 'EN' : '中'}</span>
-            </button>
-            <button
-              type="button"
-              className="header-icon-action header-optional"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? text.exitFullscreen : text.fullscreen}
-              aria-label={isFullscreen ? text.exitFullscreen : text.fullscreen}
-            >
-              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-            </button>
-            <a
-              className="header-icon-action header-optional support-action"
-              href="https://ko-fi.com/zhihao"
-              target="_blank"
-              rel="noopener noreferrer"
-              title={text.support}
-              aria-label={text.support}
-            >
-              <Heart size={17} />
-            </a>
+
+            {moreOpen && (
+              <div className="header-more-menu" role="menu" aria-label={text.more}>
+                {canInstall && (
+                  <button type="button" className="header-menu-action" role="menuitem" onClick={() => runUtilityAction(onInstall)}>
+                    <Download size={17} />
+                    <span>{text.install}</span>
+                  </button>
+                )}
+                <ProductReferralButton lang={lang} variant="menu" onOpen={() => setMoreOpen(false)} />
+                <span className="header-menu-divider" aria-hidden="true" />
+                <button type="button" className="header-menu-action" role="menuitem" onClick={() => runUtilityAction(onOpenGuide)}>
+                  <HelpCircle size={17} />
+                  <span>{text.guide}</span>
+                </button>
+                <button type="button" className="header-menu-action" role="menuitem" onClick={() => runUtilityAction(onToggleTheme)}>
+                  {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+                  <span>{themeLabel}</span>
+                </button>
+                <button type="button" className="header-menu-action" role="menuitem" onClick={() => runUtilityAction(onToggleLanguage)}>
+                  <Languages size={17} />
+                  <span>{text.language}</span>
+                </button>
+                <button type="button" className="header-menu-action" role="menuitem" onClick={() => runUtilityAction(onToggleFullscreen)}>
+                  {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+                  <span>{isFullscreen ? text.exitFullscreen : text.fullscreen}</span>
+                </button>
+                <a
+                  className="header-menu-action"
+                  role="menuitem"
+                  href="https://ko-fi.com/zhihao"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <Heart size={17} />
+                  <span>{text.support}</span>
+                </a>
+              </div>
+            )}
           </div>
         </nav>
       </div>
