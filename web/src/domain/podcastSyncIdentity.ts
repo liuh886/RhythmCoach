@@ -11,16 +11,26 @@ function guestDisplayName(lang: Language): string {
   return `${lang === 'zh' ? '访客' : 'Guest'} ${randomGuestSuffix()}`;
 }
 
-export async function ensurePodcastSyncIdentity(lang: Language): Promise<SupabaseUser> {
+export async function hasPodcastSyncIdentity(): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  const current = await client.auth.getSession();
+  if (current.error) throw new Error(current.error.message);
+  return Boolean(current.data.session?.user);
+}
+
+export async function ensurePodcastSyncIdentity(lang: Language, captchaToken = ''): Promise<SupabaseUser> {
   const client = getSupabaseClient();
   if (!client) throw new Error('sync_unavailable');
 
   const current = await client.auth.getSession();
   if (current.error) throw new Error(current.error.message);
   if (current.data.session?.user) return current.data.session.user;
+  if (!captchaToken.trim()) throw new Error('captcha_required');
 
   const anonymous = await client.auth.signInAnonymously({
     options: {
+      captchaToken: captchaToken.trim(),
       data: {
         full_name: guestDisplayName(lang),
         rhythmcoach_guest: true
