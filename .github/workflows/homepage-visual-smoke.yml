@@ -103,7 +103,6 @@ jobs:
           capture home-desktop.png 1440,1000 'http://127.0.0.1:4173/#/'
           capture home-mobile.png 390,844 'http://127.0.0.1:4173/#/'
           capture app-desktop.png 1440,1000 'http://127.0.0.1:4173/#/app'
-          capture app-mobile.png 390,844 'http://127.0.0.1:4173/#/app'
 
       - name: Upload visual evidence and preview
         if: always()
