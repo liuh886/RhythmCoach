@@ -11,9 +11,13 @@ on:
       - 'web/src/main.tsx'
       - 'web/src/analytics.ts'
       - 'web/src/components/AppHeader.tsx'
+      - 'web/src/components/AppHeader.css'
       - 'web/src/components/AppHeaderHomepage.css'
+      - 'web/src/components/ProductGuide.tsx'
+      - 'web/src/components/ProductGuideSupport.css'
       - 'web/src/components/LandingPage.tsx'
       - 'web/src/components/LandingPage.css'
+      - 'web/src/membership/membership-theme.css'
       - 'web/src/domain/productSurface.ts'
       - 'web/test/productSurface.test.ts'
       - 'web/tests/browser-smoke.mjs'
@@ -99,6 +103,7 @@ jobs:
           capture home-desktop.png 1440,1000 'http://127.0.0.1:4173/#/'
           capture home-mobile.png 390,844 'http://127.0.0.1:4173/#/'
           capture app-desktop.png 1440,1000 'http://127.0.0.1:4173/#/app'
+          capture app-mobile.png 390,844 'http://127.0.0.1:4173/#/app'
 
       - name: Upload visual evidence and preview
         if: always()
