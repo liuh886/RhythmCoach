@@ -78,7 +78,13 @@ function ensureSharedAssets(): Promise<void> {
   return sharedAssetsPromise;
 }
 
-export function ProductReferralButton({ lang }: { lang: Language }) {
+interface ProductReferralButtonProps {
+  lang: Language;
+  variant?: 'icon' | 'menu';
+  onOpen?: () => void;
+}
+
+export function ProductReferralButton({ lang, variant = 'icon', onOpen }: ProductReferralButtonProps) {
   const membership = useMembership();
   const label = lang === 'zh' ? '邀请朋友' : 'Invite a friend';
 
@@ -132,8 +138,23 @@ export function ProductReferralButton({ lang }: { lang: Language }) {
   const openReferral = async () => {
     await ensureSharedAssets();
     if (!window.HaoReferral?.open) throw new Error('Shared referral surface is unavailable.');
+    onOpen?.();
     window.HaoReferral.open();
   };
+
+  if (variant === 'menu') {
+    return (
+      <button
+        type="button"
+        className="header-menu-action"
+        role="menuitem"
+        onClick={() => void openReferral()}
+      >
+        <Gift size={17} />
+        <span>{label}</span>
+      </button>
+    );
+  }
 
   return (
     <button

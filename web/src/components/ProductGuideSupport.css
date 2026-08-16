@@ -1,0 +1,42 @@
+.guide-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.guide-meta-row .guide-version {
+  margin-top: 0;
+}
+
+.guide-support-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 0.17s ease, background 0.17s ease;
+}
+
+.guide-support-link svg {
+  color: #ef7b86;
+}
+
+.guide-support-link:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+@media (max-width: 520px) {
+  .guide-meta-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+}
