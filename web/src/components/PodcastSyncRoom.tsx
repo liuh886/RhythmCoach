@@ -1,11 +1,13 @@
 import './PodcastSyncRoom.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Copy, Link2, LogOut, RadioTower, Share2, UsersRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { hashForPodcastSyncInvite, normalizePodcastSyncRoomCode } from '../domain/productSurface';
 import { useMembership } from '../membership/MembershipProvider';
 import { getSupabaseClient, type RealtimeChannelLike } from '../supabase/client';
 import type { Language } from '../types';
+import { PrompterTopbarPortal } from './PrompterTopbarPortal';
 
 interface RoomRecord {
   id: string;
@@ -49,10 +51,14 @@ interface RoomRpcResult {
   room_code: string;
 }
 
+type ConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected';
+
 const MAX_MEMBERS = 4;
 const SCROLL_BROADCAST_INTERVAL_MS = 80;
 const REMOTE_SCROLL_GUARD_MS = 160;
 const LOCAL_INTENT_MS = 700;
+const PANEL_ID = 'podcast-sync-panel';
+const PANEL_TITLE_ID = 'podcast-sync-panel-title';
 
 function clampProgress(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -98,7 +104,7 @@ export function PodcastSyncRoom({
   const [room, setRoom] = useState<RoomRecord | null>(null);
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
-  const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected'>('idle');
+  const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [roomCodeCopied, setRoomCodeCopied] = useState(false);
@@ -115,6 +121,9 @@ export function PodcastSyncRoom({
   const roomRef = useRef<RoomRecord | null>(null);
   const membersRef = useRef<MemberRecord[]>([]);
   const joinedFromInviteRef = useRef(Boolean(inviteRoomCode));
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const panelWasOpenRef = useRef(false);
 
   roomRef.current = room;
   membersRef.current = members;
@@ -125,9 +134,24 @@ export function PodcastSyncRoom({
   );
   const isHost = Boolean(room && user && room.host_user_id === user.id);
   const canScroll = Boolean(currentMember?.can_scroll);
-  const onlineCount = onlineUserIds.size || (room ? 1 : 0);
   const remainingSlots = Math.max(0, MAX_MEMBERS - members.length);
   const isInviteEntry = Boolean(inviteRoomCode && !room);
+
+  const closePanel = useCallback(() => {
+    if (isInviteEntry) {
+      onInviteDismiss?.();
+      return;
+    }
+    setPanelOpen(false);
+  }, [isInviteEntry, onInviteDismiss]);
+
+  const connectionLabel = room
+    ? connectionState === 'connected'
+      ? (lang === 'zh' ? '实时同步中' : 'Live sync')
+      : connectionState === 'disconnected'
+        ? (lang === 'zh' ? '连接已中断，正在重连' : 'Reconnecting…')
+        : (lang === 'zh' ? '正在连接' : 'Connecting')
+    : '';
 
   useEffect(() => {
     if (!inviteRoomCode || room) return;
@@ -138,6 +162,41 @@ export function PodcastSyncRoom({
     setPanelOpen(true);
     setError('');
   }, [inviteRoomCode, room]);
+
+  useEffect(() => {
+    if (!panelOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const firstControl = panelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      firstControl?.focus();
+    });
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      closePanel();
+    };
+
+    window.addEventListener('keydown', handleEscape, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('keydown', handleEscape, true);
+    };
+  }, [closePanel, panelOpen]);
+
+  useEffect(() => {
+    if (panelOpen) {
+      panelWasOpenRef.current = true;
+      return;
+    }
+    if (!panelWasOpenRef.current) return;
+    panelWasOpenRef.current = false;
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, [panelOpen]);
 
   const applyRemoteProgress = useCallback((progress: number) => {
     const normalized = clampProgress(progress);
@@ -176,6 +235,7 @@ export function PodcastSyncRoom({
   }, []);
 
   const clearRoom = useCallback(async (message = '') => {
+    roomRef.current = null;
     await disconnectChannel();
     setRoom(null);
     setMembers([]);
@@ -194,6 +254,7 @@ export function PodcastSyncRoom({
     if (!client || !user) return;
     await disconnectChannel();
 
+    roomRef.current = nextRoom;
     setRoom(nextRoom);
     setConnectionState('connecting');
     setError('');
@@ -248,24 +309,33 @@ export function PodcastSyncRoom({
         setOnlineUserIds(nextOnline);
       })
       .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') return;
-        setConnectionState('connected');
-        sharedProgressRef.current = readScrollProgress();
-        void channel.track({
-          user_id: user.id,
-          display_name: profile?.display_name ?? user.email?.split('@')[0] ?? 'Member'
-        });
-        void client.rpc<void>('rhythmcoach_touch_sync_room', { p_room_id: nextRoom.id });
-        void channel.send({
-          type: 'broadcast',
-          event: 'sync-request',
-          payload: { sender_id: user.id }
-        });
-        void channel.send({
-          type: 'broadcast',
-          event: 'room-state-changed',
-          payload: { sender_id: user.id }
-        });
+        if (status === 'SUBSCRIBED') {
+          setConnectionState('connected');
+          sharedProgressRef.current = readScrollProgress();
+          void channel.track({
+            user_id: user.id,
+            display_name: profile?.display_name ?? user.email?.split('@')[0] ?? 'Member'
+          });
+          void client.rpc<void>('rhythmcoach_touch_sync_room', { p_room_id: nextRoom.id });
+          void channel.send({
+            type: 'broadcast',
+            event: 'sync-request',
+            payload: { sender_id: user.id }
+          });
+          void channel.send({
+            type: 'broadcast',
+            event: 'room-state-changed',
+            payload: { sender_id: user.id }
+          });
+          return;
+        }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (roomRef.current?.id === nextRoom.id) setConnectionState('disconnected');
+          return;
+        }
+
+        if (roomRef.current?.id === nextRoom.id) setConnectionState('connecting');
       });
   }, [applyRemoteProgress, clearRoom, disconnectChannel, lang, onRoomContentChange, profile?.display_name, refreshMembers, user]);
 
@@ -496,48 +566,46 @@ export function PodcastSyncRoom({
     }
   };
 
-  const closePanel = () => {
-    if (isInviteEntry) {
-      onInviteDismiss?.();
-      return;
-    }
-    setPanelOpen(false);
-  };
+  const triggerLabel = room
+    ? (lang === 'zh' ? `同步播客，${members.length}/${MAX_MEMBERS} 人` : `Podcast sync, ${members.length}/${MAX_MEMBERS} people`)
+    : (lang === 'zh' ? '同步播客' : 'Podcast sync');
 
-  return (
-    <>
-      <button
-        type="button"
-        className={`podcast-sync-trigger ${room ? 'is-live' : ''}`}
-        onClick={() => setPanelOpen((current) => !current)}
-        aria-expanded={panelOpen}
-        title={lang === 'zh' ? '同步播客' : 'Podcast sync'}
-      >
-        <UsersRound size={17} />
-        <span>{room ? `${Math.min(MAX_MEMBERS, onlineCount)}/${MAX_MEMBERS}` : (lang === 'zh' ? '同步' : 'Sync')}</span>
-      </button>
-
-      <AnimatePresence>
-        {panelOpen && (
+  const panel = (
+    <AnimatePresence>
+      {panelOpen && (
+        <>
+          <motion.div
+            className="podcast-sync-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            onClick={closePanel}
+            aria-hidden="true"
+          />
           <motion.aside
+            id={PANEL_ID}
+            ref={panelRef}
+            role="dialog"
+            aria-labelledby={PANEL_TITLE_ID}
             className={`podcast-sync-panel ${isInviteEntry ? 'is-invite' : ''}`}
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.985 }}
+            exit={{ opacity: 0, y: 12, scale: 0.99 }}
             transition={{ duration: 0.16 }}
           >
             <div className="podcast-sync-header">
               <div>
-                <strong>{isInviteEntry
+                <strong id={PANEL_TITLE_ID}>{isInviteEntry
                   ? (lang === 'zh' ? '同步播客邀请' : 'Podcast sync invite')
                   : (lang === 'zh' ? '同步播客' : 'Podcast sync')}</strong>
-                <span>{room
-                  ? (connectionState === 'connected' ? (lang === 'zh' ? '实时同步中' : 'Live sync') : (lang === 'zh' ? '正在连接' : 'Connecting'))
+                <span aria-live="polite">{room
+                  ? connectionLabel
                   : isInviteEntry
                     ? (lang === 'zh' ? '房主邀请你一起排练' : 'The host invited you to rehearse')
                     : (lang === 'zh' ? '最多 4 人，同看同一份稿件' : 'Up to 4 people on the same script')}</span>
               </div>
-              <button type="button" className="podcast-sync-icon" onClick={closePanel} aria-label={lang === 'zh' ? '关闭' : 'Close'}><X size={17} /></button>
+              <button type="button" className="podcast-sync-icon" onClick={closePanel} aria-label={lang === 'zh' ? '关闭' : 'Close'}><X size={18} /></button>
             </div>
 
             {!room ? (
@@ -583,6 +651,7 @@ export function PodcastSyncRoom({
                       autoCapitalize="characters"
                       spellCheck={false}
                       maxLength={6}
+                      aria-label={lang === 'zh' ? '房间 ID' : 'Room ID'}
                     />
                     <button type="button" onClick={() => void joinRoom()} disabled={busy}>{lang === 'zh' ? '加入' : 'Join'}</button>
                   </div>
@@ -613,7 +682,7 @@ export function PodcastSyncRoom({
 
                 <div className="podcast-sync-room-id">
                   <span>{lang === 'zh' ? '房间 ID' : 'Room ID'}</span>
-                  <button type="button" onClick={() => void copyRoomCode()}>
+                  <button type="button" onClick={() => void copyRoomCode()} aria-label={lang === 'zh' ? `复制房间 ID ${room.room_code}` : `Copy room ID ${room.room_code}`}>
                     <strong>{room.room_code}</strong>
                     {roomCodeCopied ? <Check size={16} /> : <Copy size={16} />}
                   </button>
@@ -632,11 +701,11 @@ export function PodcastSyncRoom({
                       <div className="podcast-sync-member" key={member.user_id}>
                         <div className="podcast-sync-avatar">
                           {member.avatar_url ? <img src={member.avatar_url} alt="" /> : member.display_name.slice(0, 1).toUpperCase()}
-                          <i className={online ? 'online' : ''} />
+                          <i className={online ? 'online' : ''} aria-hidden="true" />
                         </div>
                         <div className="podcast-sync-member-name">
                           <strong>{member.display_name}{memberIsSelf ? (lang === 'zh' ? ' · 你' : ' · You') : ''}</strong>
-                          <span>{memberIsHost ? (lang === 'zh' ? '房主' : 'Host') : (member.can_scroll ? (lang === 'zh' ? '可滚动' : 'Can scroll') : (lang === 'zh' ? '仅跟随' : 'Follow only'))}</span>
+                          <span>{memberIsHost ? (lang === 'zh' ? '房主' : 'Host') : (lang === 'zh' ? '成员' : 'Member')}</span>
                         </div>
                         {isHost && !memberIsHost ? (
                           <button
@@ -644,6 +713,7 @@ export function PodcastSyncRoom({
                             className={`podcast-sync-switch ${member.can_scroll ? 'on' : ''}`}
                             onClick={() => void setScrollPermission(member, !member.can_scroll)}
                             disabled={busy}
+                            aria-pressed={member.can_scroll}
                             aria-label={member.can_scroll ? (lang === 'zh' ? '暂停滚动权限' : 'Pause scroll access') : (lang === 'zh' ? '开启滚动权限' : 'Enable scroll access')}
                           ><span /></button>
                         ) : (
@@ -668,10 +738,32 @@ export function PodcastSyncRoom({
               </div>
             )}
 
-            {error && <div className="podcast-sync-error">{error}</div>}
+            {error && <div className="podcast-sync-error" role="status">{error}</div>}
           </motion.aside>
-        )}
-      </AnimatePresence>
+        </>
+      )}
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      <PrompterTopbarPortal>
+        <button
+          ref={triggerRef}
+          type="button"
+          className={`podcast-sync-trigger ${room ? 'is-live' : ''}`}
+          onClick={() => setPanelOpen((current) => !current)}
+          aria-expanded={panelOpen}
+          aria-controls={PANEL_ID}
+          aria-label={triggerLabel}
+          title={triggerLabel}
+          data-member-count={room ? members.length : undefined}
+        >
+          <UsersRound size={17} />
+          <span className="podcast-sync-trigger-label">{room ? `${members.length}/${MAX_MEMBERS}` : (lang === 'zh' ? '同步' : 'Sync')}</span>
+        </button>
+      </PrompterTopbarPortal>
+      {createPortal(panel, document.body)}
     </>
   );
 }

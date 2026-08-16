@@ -27,7 +27,7 @@
   z-index: 80;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   min-height: 64px;
   padding: max(13px, env(safe-area-inset-top)) 24px 13px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.045);
@@ -37,7 +37,9 @@
 }
 
 .session-state {
+  order: 0;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 11px;
   min-width: 0;
@@ -45,9 +47,10 @@
 
 .session-state div {
   display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 3px;
-  min-width: 0;
 }
 
 .session-state strong {
@@ -80,9 +83,11 @@
 }
 
 .top-actions {
+  order: 3;
   display: flex;
   flex: 0 0 auto;
   gap: 7px;
+  margin-left: 1px;
 }
 
 .top-actions .btn-icon {
@@ -499,13 +504,22 @@
 
 @media (max-width: 760px) {
   .prompter-topbar {
-    min-height: 60px;
-    padding: max(11px, env(safe-area-inset-top)) 12px 11px;
+    gap: 5px;
+    min-height: 68px;
+    padding: max(10px, env(safe-area-inset-top)) 10px 10px;
+  }
+
+  .session-state {
+    gap: 8px;
   }
 
   .session-state strong {
-    max-width: 43vw;
-    font-size: 0.82rem;
+    max-width: none;
+    font-size: 0.8rem;
+  }
+
+  .session-state span {
+    display: none;
   }
 
   .top-actions {
@@ -513,9 +527,9 @@
   }
 
   .top-actions .btn-icon {
-    width: 35px;
-    height: 35px;
-    padding: 7px;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
   }
 
   .pace-panel {
@@ -599,7 +613,19 @@
   }
 }
 
+@media (orientation: landscape) and (max-height: 560px) {
+  .top-actions .btn-icon {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+}
+
 @media (max-width: 420px) {
+  .status-dot {
+    display: none;
+  }
+
   .summary-modal {
     padding: 22px 18px;
   }

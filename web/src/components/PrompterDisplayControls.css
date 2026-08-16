@@ -1,9 +1,9 @@
 .prompter-display-controls {
-  position: fixed;
-  top: max(13px, env(safe-area-inset-top));
-  right: 108px;
-  z-index: 120;
+  position: relative;
+  z-index: 3;
+  order: 1;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
 }
@@ -16,13 +16,11 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
   border-radius: 11px;
   color: var(--text-secondary);
-  background: rgba(15, 15, 20, 0.58);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  background: var(--bg-elevated);
+  box-shadow: 0 8px 24px var(--accent-glow);
   font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
@@ -32,9 +30,9 @@
 .prompter-display-button:hover,
 .prompter-display-button.active {
   transform: translateY(-1px);
-  border-color: rgba(167, 139, 250, 0.28);
+  border-color: var(--glass-highlight);
   color: var(--text-primary);
-  background: rgba(35, 31, 52, 0.78);
+  background: var(--bg-panel-hover);
 }
 
 .orientation-button span {
@@ -51,20 +49,18 @@
   grid-template-columns: 42px minmax(88px, 1fr) 42px;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-border);
   border-radius: 14px;
-  background: rgba(13, 13, 18, 0.9);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(18px) saturate(125%);
-  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  background: var(--bg-elevated);
+  box-shadow: var(--glass-shadow);
 }
 
 .prompter-font-menu button {
-  height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  height: 40px;
+  border: 1px solid var(--glass-border);
   border-radius: 10px;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--bg-panel-hover);
   font-size: 0.76rem;
   font-weight: 760;
   cursor: pointer;
@@ -85,7 +81,7 @@
 
 .prompter-font-menu span {
   color: var(--text-muted);
-  font-size: 0.59rem;
+  font-size: 0.63rem;
 }
 
 .prompter-font-menu strong {
@@ -98,12 +94,12 @@
   right: 0;
   width: min(270px, calc(100vw - 24px));
   padding: 10px 12px;
-  border: 1px solid rgba(251, 191, 36, 0.22);
+  border: 1px solid color-mix(in srgb, var(--status-fast) 35%, transparent);
   border-radius: 11px;
-  color: #fde68a;
-  background: rgba(31, 25, 12, 0.92);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
-  font-size: 0.66rem;
+  color: var(--status-fast);
+  background: var(--bg-elevated);
+  box-shadow: var(--glass-shadow);
+  font-size: 0.7rem;
   line-height: 1.5;
 }
 
@@ -121,16 +117,15 @@ html[data-prompter-font-size='large'] .prompter-text {
 
 @media (max-width: 760px) {
   .prompter-display-controls {
-    top: max(11px, env(safe-area-inset-top));
-    right: 94px;
     gap: 5px;
   }
 
   .prompter-display-button {
-    width: 35px;
-    min-width: 35px;
-    height: 35px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     padding: 0;
+    border-radius: 12px;
   }
 
   .prompter-display-button > span {
@@ -142,13 +137,18 @@ html[data-prompter-font-size='large'] .prompter-text {
   }
 
   .prompter-font-menu {
-    top: 43px;
-    right: -41px;
+    top: 50px;
+    right: -49px;
+    grid-template-columns: 44px minmax(88px, 1fr) 44px;
+  }
+
+  .prompter-font-menu button {
+    height: 44px;
   }
 
   .prompter-orientation-message {
-    top: 43px;
-    right: -82px;
+    top: 50px;
+    right: -94px;
   }
 
   html[data-prompter-font-size='small'] .prompter-text {
@@ -179,7 +179,7 @@ html[data-prompter-font-size='large'] .prompter-text {
 
 @media (orientation: landscape) and (max-height: 560px) {
   .prompter-topbar {
-    min-height: 50px;
+    min-height: 58px;
     padding-top: max(7px, env(safe-area-inset-top));
     padding-bottom: 7px;
   }
@@ -189,7 +189,36 @@ html[data-prompter-font-size='large'] .prompter-text {
   }
 
   .prompter-display-controls {
-    top: max(7px, env(safe-area-inset-top));
+    gap: 5px;
+  }
+
+  .prompter-display-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
+  }
+
+  .prompter-display-button > span {
+    display: none;
+  }
+
+  .orientation-button {
+    display: inline-flex;
+  }
+
+  .prompter-font-menu {
+    top: 50px;
+    grid-template-columns: 44px minmax(88px, 1fr) 44px;
+  }
+
+  .prompter-font-menu button {
+    height: 44px;
+  }
+
+  .prompter-orientation-message {
+    top: 50px;
   }
 
   .pace-panel {

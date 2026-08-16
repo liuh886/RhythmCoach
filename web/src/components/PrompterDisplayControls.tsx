@@ -8,6 +8,7 @@ import {
 } from '../domain/prompterDisplay';
 import type { Language } from '../types';
 import './PrompterDisplayControls.css';
+import { PrompterTopbarPortal } from './PrompterTopbarPortal';
 
 interface OrientationController {
   type?: string;
@@ -145,55 +146,57 @@ export function PrompterDisplayControls({ lang }: { lang: Language }) {
   const orientationLabel = isLandscape ? text.portrait : text.landscape;
 
   return (
-    <div className="prompter-display-controls" aria-label={lang === 'zh' ? '提词显示设置' : 'Prompter display settings'}>
-      <button
-        type="button"
-        className={`prompter-display-button ${fontMenuOpen ? 'active' : ''}`}
-        onClick={() => setFontMenuOpen((open) => !open)}
-        aria-expanded={fontMenuOpen}
-        title={`${text.fontSize}: ${fontLabel}`}
-      >
-        <Type size={17} />
-        <span>Aa</span>
-      </button>
+    <PrompterTopbarPortal>
+      <div className="prompter-display-controls" aria-label={lang === 'zh' ? '提词显示设置' : 'Prompter display settings'}>
+        <button
+          type="button"
+          className={`prompter-display-button ${fontMenuOpen ? 'active' : ''}`}
+          onClick={() => setFontMenuOpen((open) => !open)}
+          aria-expanded={fontMenuOpen}
+          title={`${text.fontSize}: ${fontLabel}`}
+        >
+          <Type size={17} />
+          <span>Aa</span>
+        </button>
 
-      <button
-        type="button"
-        className={`prompter-display-button orientation-button ${isLandscape ? 'active' : ''}`}
-        onClick={() => void toggleOrientation()}
-        title={orientationLabel}
-        aria-label={orientationLabel}
-      >
-        <RotateCw size={17} />
-        <span>{lang === 'zh' ? (isLandscape ? '竖屏' : '横屏') : (isLandscape ? 'Portrait' : 'Landscape')}</span>
-      </button>
+        <button
+          type="button"
+          className={`prompter-display-button orientation-button ${isLandscape ? 'active' : ''}`}
+          onClick={() => void toggleOrientation()}
+          title={orientationLabel}
+          aria-label={orientationLabel}
+        >
+          <RotateCw size={17} />
+          <span>{lang === 'zh' ? (isLandscape ? '竖屏' : '横屏') : (isLandscape ? 'Portrait' : 'Landscape')}</span>
+        </button>
 
-      {fontMenuOpen && (
-        <div className="prompter-font-menu" role="group" aria-label={text.fontSize}>
-          <button
-            type="button"
-            onClick={() => changeFontSize(-1)}
-            disabled={fontSize === 'small'}
-            aria-label={text.decrease}
-          >
-            A−
-          </button>
-          <div>
-            <span>{text.fontSize}</span>
-            <strong>{fontLabel}</strong>
+        {fontMenuOpen && (
+          <div className="prompter-font-menu" role="group" aria-label={text.fontSize}>
+            <button
+              type="button"
+              onClick={() => changeFontSize(-1)}
+              disabled={fontSize === 'small'}
+              aria-label={text.decrease}
+            >
+              A−
+            </button>
+            <div>
+              <span>{text.fontSize}</span>
+              <strong>{fontLabel}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={() => changeFontSize(1)}
+              disabled={fontSize === 'large'}
+              aria-label={text.increase}
+            >
+              A+
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => changeFontSize(1)}
-            disabled={fontSize === 'large'}
-            aria-label={text.increase}
-          >
-            A+
-          </button>
-        </div>
-      )}
+        )}
 
-      {orientationMessage && <div className="prompter-orientation-message" role="status">{orientationMessage}</div>}
-    </div>
+        {orientationMessage && <div className="prompter-orientation-message" role="status">{orientationMessage}</div>}
+      </div>
+    </PrompterTopbarPortal>
   );
 }
