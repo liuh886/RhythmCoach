@@ -57,7 +57,7 @@ const copy = {
     guide: 'Help',
     lightTheme: 'Switch to light mode',
     darkTheme: 'Switch to dark mode',
-    language: '切换到中文',
+    language: 'Switch to Chinese',
     fullscreen: 'Enter fullscreen',
     exitFullscreen: 'Exit fullscreen',
     more: 'More'
