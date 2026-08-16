@@ -86,6 +86,7 @@ export interface SupabaseClientLike {
     options?: {
       config?: {
         private?: boolean;
+        broadcast?: { ack?: boolean };
         presence?: { key?: string };
       };
     }
