@@ -54,6 +54,11 @@
   -webkit-backdrop-filter: blur(24px) saturate(125%);
 }
 
+.podcast-sync-panel.is-invite {
+  top: 18vh;
+  right: max(24px, calc(50vw - 185px));
+}
+
 .podcast-sync-header {
   position: sticky;
   top: 0;
@@ -98,8 +103,69 @@
 }
 
 .podcast-sync-entry,
-.podcast-sync-room {
+.podcast-sync-room,
+.podcast-sync-invite-entry {
   padding: 16px 18px 18px;
+}
+
+.podcast-sync-invite-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.podcast-sync-invite-mark {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin: 4px 0 14px;
+  border: 1px solid rgba(154, 124, 240, 0.24);
+  border-radius: 17px;
+  place-items: center;
+  color: #ddd4ff;
+  background: linear-gradient(180deg, rgba(111, 82, 190, 0.32), rgba(80, 56, 145, 0.2));
+  box-shadow: 0 14px 34px rgba(65, 43, 125, 0.2);
+}
+
+.podcast-sync-invite-entry > strong {
+  font-size: 1.02rem;
+  letter-spacing: -0.015em;
+}
+
+.podcast-sync-invite-entry > p {
+  max-width: 290px;
+  margin: 7px 0 15px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.podcast-sync-invite-code {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+}
+
+.podcast-sync-invite-code span {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 650;
+}
+
+.podcast-sync-invite-code strong {
+  color: #e8e0ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.96rem;
+  letter-spacing: 0.12em;
 }
 
 .podcast-sync-signin {
@@ -168,7 +234,21 @@
   cursor: pointer;
 }
 
+.podcast-sync-secondary {
+  margin-top: 9px;
+  padding: 8px 12px;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .podcast-sync-primary:disabled,
+.podcast-sync-secondary:disabled,
+.podcast-sync-invite-button:disabled,
 .podcast-sync-join-row button:disabled,
 .podcast-sync-leave:disabled,
 .podcast-sync-switch:disabled {
@@ -222,6 +302,54 @@
 
 .podcast-sync-join-row button {
   padding: 0 15px;
+}
+
+.podcast-sync-invite-button {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 11px;
+  padding: 10px 13px;
+  border: 1px solid rgba(154, 124, 240, 0.24);
+  border-radius: 13px;
+  color: #f7f4ff;
+  background: linear-gradient(180deg, rgba(104, 76, 183, 0.42), rgba(76, 53, 139, 0.32));
+  box-shadow: 0 12px 30px rgba(51, 34, 102, 0.17);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.podcast-sync-invite-button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.podcast-sync-invite-button strong {
+  font-size: 0.78rem;
+  font-weight: 790;
+}
+
+.podcast-sync-invite-button small {
+  color: #b8add7;
+  font-size: 0.64rem;
+  font-weight: 650;
+}
+
+.podcast-sync-invite-button > svg {
+  flex: 0 0 auto;
+  color: #d9ceff;
+}
+
+.podcast-sync-invite-button.is-full {
+  border-color: rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
 }
 
 .podcast-sync-room-id {
@@ -435,7 +563,8 @@
     padding: 0 10px;
   }
 
-  .podcast-sync-panel {
+  .podcast-sync-panel,
+  .podcast-sync-panel.is-invite {
     top: auto;
     right: 10px;
     bottom: max(10px, env(safe-area-inset-bottom));
