@@ -441,7 +441,7 @@
 @media (orientation: landscape) and (max-height: 560px) {
   .podcast-sync-trigger { height: 44px; }
   .podcast-sync-panel,
-  .podcast-sync-panel.is-entry { right: 8px; bottom: 8px; left: auto; width: min(390px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); }
+  .podcast-sync-panel.is-entry { top: auto; right: 8px; bottom: 8px; left: auto; width: min(390px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
