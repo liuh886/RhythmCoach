@@ -8,96 +8,12 @@ import {
   useState,
   type ReactNode
 } from 'react';
+import { getSupabaseClient, type SupabaseClientLike, type SupabaseUser } from '../supabase/client';
 import { membershipConfig } from './config';
 import { didMembershipUserChange, type OAuthProvider } from './policy';
 
-interface SupabaseErrorLike {
-  message: string;
-}
-
-interface MembershipUser {
-  id: string;
-  email?: string | null;
-  user_metadata?: Record<string, unknown>;
-}
-
-interface MembershipSession {
-  user: MembershipUser;
-  access_token?: string;
-}
-
-interface AuthSubscription {
-  unsubscribe: () => void;
-}
-
+type MembershipUser = SupabaseUser;
 type BillingReturn = 'success' | 'cancelled' | null;
-
-interface AuthApi {
-  getSession: () => Promise<{
-    data: { session: MembershipSession | null };
-    error: SupabaseErrorLike | null;
-  }>;
-  onAuthStateChange: (
-    callback: (event: string, session: MembershipSession | null) => void
-  ) => { data: { subscription: AuthSubscription } };
-  signInWithOAuth: (input: {
-    provider: OAuthProvider;
-    options: { redirectTo: string };
-  }) => Promise<{ error: SupabaseErrorLike | null }>;
-  signInWithOtp: (input: {
-    email: string;
-    options: { emailRedirectTo: string; shouldCreateUser: boolean; captchaToken: string };
-  }) => Promise<{ error: SupabaseErrorLike | null }>;
-  signOut: () => Promise<{ error: SupabaseErrorLike | null }>;
-}
-
-interface QueryResult<T> {
-  data: T | null;
-  error: SupabaseErrorLike | null;
-}
-
-interface FilterBuilder<T> extends PromiseLike<QueryResult<T[]>> {
-  eq: (column: string, value: string) => FilterBuilder<T>;
-  select: (columns: string) => FilterBuilder<T>;
-  maybeSingle: () => Promise<QueryResult<T>>;
-  single: () => Promise<QueryResult<T>>;
-}
-
-interface TableBuilder<T> {
-  select: (columns: string) => FilterBuilder<T>;
-  insert: (values: Record<string, unknown>) => FilterBuilder<T>;
-  update: (values: Record<string, unknown>) => FilterBuilder<T>;
-  upsert: (
-    values: Record<string, unknown>,
-    options?: { onConflict?: string }
-  ) => FilterBuilder<T>;
-}
-
-interface SupabaseClientLike {
-  auth: AuthApi;
-  from: <T>(table: string) => TableBuilder<T>;
-}
-
-interface SupabaseBrowserSdk {
-  createClient: (
-    url: string,
-    key: string,
-    options: {
-      auth: {
-        persistSession: boolean;
-        autoRefreshToken: boolean;
-        detectSessionInUrl: boolean;
-        flowType: 'pkce';
-      };
-    }
-  ) => SupabaseClientLike;
-}
-
-declare global {
-  interface Window {
-    supabase?: SupabaseBrowserSdk;
-  }
-}
 
 interface EntitlementRow {
   entitlement_code: string;
@@ -323,25 +239,13 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const sdk = window.supabase;
-    if (!sdk) {
+    const client = getSupabaseClient();
+    if (!client) {
       setError('Membership service failed to load. Training remains available.');
       setLoading(false);
       return;
     }
 
-    const client = sdk.createClient(
-      membershipConfig.supabaseUrl,
-      membershipConfig.supabasePublishableKey,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          flowType: 'pkce'
-        }
-      }
-    );
     clientRef.current = client;
     let active = true;
 
