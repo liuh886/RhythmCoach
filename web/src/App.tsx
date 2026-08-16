@@ -8,7 +8,6 @@ import { PodcastSyncRoom, type PodcastSyncContent } from './components/PodcastSy
 import './components/ProductExperience.css';
 import { toHtmlLanguage } from './domain/language';
 import {
-  hashForPodcastSyncInvite,
   hashForProductSurface,
   readPodcastSyncInvite,
   resolveProductSurface,
@@ -49,37 +48,12 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const GUIDE_KEY = 'rhythmcoach_product_guide_v1';
-const PENDING_PODCAST_INVITE_KEY = 'rhythmcoach_pending_podcast_invite_v1';
 
 function getInitialTheme(): AppTheme {
   try {
     return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
   } catch {
     return 'dark';
-  }
-}
-
-function readPendingPodcastInvite(): string | null {
-  try {
-    return readPodcastSyncInvite(`#/app?sync=${localStorage.getItem(PENDING_PODCAST_INVITE_KEY) ?? ''}`);
-  } catch {
-    return null;
-  }
-}
-
-function rememberPendingPodcastInvite(roomCode: string): void {
-  try {
-    localStorage.setItem(PENDING_PODCAST_INVITE_KEY, roomCode);
-  } catch {
-    // Invite links still work for the current page when storage is unavailable.
-  }
-}
-
-function clearPendingPodcastInvite(): void {
-  try {
-    localStorage.removeItem(PENDING_PODCAST_INVITE_KEY);
-  } catch {
-    // Nothing else is required when storage is unavailable.
   }
 }
 
@@ -102,6 +76,7 @@ export default function App() {
     sessions,
     loadPersistedData
   } = useAppStore();
+  const initialInvite = readPodcastSyncInvite(window.location.hash);
   const [surface, setSurface] = useState<ProductSurface>(() => resolveProductSurface(window.location.hash));
   const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -109,9 +84,8 @@ export default function App() {
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [podcastSyncContent, setPodcastSyncContent] = useState<PodcastSyncContent | null>(null);
-  const [inviteRoomCode, setInviteRoomCode] = useState<string | null>(() => (
-    readPodcastSyncInvite(window.location.hash) ?? readPendingPodcastInvite()
-  ));
+  const [inviteRoomCode, setInviteRoomCode] = useState<string | null>(initialInvite);
+  const [podcastRoomEntryOpen, setPodcastRoomEntryOpen] = useState(Boolean(initialInvite));
 
   useEffect(() => {
     void loadPersistedData();
@@ -119,15 +93,10 @@ export default function App() {
 
   useEffect(() => {
     const syncRoute = () => {
-      const hashInvite = readPodcastSyncInvite(window.location.hash);
-      const pendingInvite = readPendingPodcastInvite();
-      if (!hashInvite && pendingInvite) {
-        window.location.hash = hashForPodcastSyncInvite(pendingInvite);
-        return;
-      }
-      if (hashInvite) rememberPendingPodcastInvite(hashInvite);
-      setInviteRoomCode(hashInvite);
+      const invite = readPodcastSyncInvite(window.location.hash);
+      setInviteRoomCode(invite);
       setSurface(resolveProductSurface(window.location.hash));
+      if (invite) setPodcastRoomEntryOpen(true);
     };
     syncRoute();
     window.addEventListener('hashchange', syncRoute);
@@ -137,13 +106,10 @@ export default function App() {
   useEffect(() => {
     if (surface !== 'app' || !inviteRoomCode) return;
     setPrompterMode('free');
-    setPodcastSyncContent((current) => current ?? {
-      title: globalLang === 'zh' ? '同步播客邀请' : 'Podcast sync invite',
-      script: '',
-      deliveryMarkup: ''
-    });
-    setMode('teleprompter');
-  }, [globalLang, inviteRoomCode, setMode, setPrompterMode, surface]);
+    setMode('editor');
+    setPodcastSyncContent(null);
+    setPodcastRoomEntryOpen(true);
+  }, [inviteRoomCode, setMode, setPrompterMode, surface]);
 
   useEffect(() => {
     document.body.dataset.surface = surface;
@@ -220,6 +186,13 @@ export default function App() {
     window.location.hash = nextHash;
   };
 
+  const clearInviteRoute = () => {
+    setInviteRoomCode(null);
+    if (readPodcastSyncInvite(window.location.hash)) {
+      window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${hashForProductSurface('app')}`);
+    }
+  };
+
   const startSession = (
     title: string,
     script: string,
@@ -233,8 +206,8 @@ export default function App() {
         // Installed PWAs remain immersive even when the browser Fullscreen API is unavailable.
       });
     }
-    clearPendingPodcastInvite();
-    setInviteRoomCode(null);
+    clearInviteRoute();
+    setPodcastRoomEntryOpen(false);
     setPodcastSyncContent(null);
     setActiveTitle(title);
     setActiveScript(script);
@@ -243,6 +216,31 @@ export default function App() {
     setGlobalLang(lang);
     setPrompterMode(sessionMode);
     setMode('teleprompter');
+  };
+
+  const openPodcastRoomEntry = () => {
+    clearInviteRoute();
+    setPrompterMode('free');
+    setPodcastRoomEntryOpen(true);
+  };
+
+  const dismissPodcastRoomEntry = () => {
+    setPodcastRoomEntryOpen(false);
+    clearInviteRoute();
+  };
+
+  const enterJoinedPodcastRoom = () => {
+    setPodcastRoomEntryOpen(false);
+    clearInviteRoute();
+    setPrompterMode('free');
+    setMode('teleprompter');
+  };
+
+  const exitPodcastRoom = () => {
+    setPodcastRoomEntryOpen(false);
+    clearInviteRoute();
+    setPodcastSyncContent(null);
+    setMode('editor');
   };
 
   const toggleFullscreen = async () => {
@@ -271,34 +269,15 @@ export default function App() {
   };
 
   const closeTeleprompter = () => {
-    clearPendingPodcastInvite();
-    setInviteRoomCode(null);
-    if (readPodcastSyncInvite(window.location.hash)) window.location.hash = hashForProductSurface('app');
+    clearInviteRoute();
     setPodcastSyncContent(null);
     setMode('editor');
-  };
-
-  const dismissPodcastInvite = () => {
-    clearPendingPodcastInvite();
-    setInviteRoomCode(null);
-    setPodcastSyncContent(null);
-    setMode('editor');
-    if (window.location.hash !== hashForProductSurface('app')) {
-      window.location.hash = hashForProductSurface('app');
-    }
-  };
-
-  const markPodcastInviteJoined = () => {
-    clearPendingPodcastInvite();
-    setInviteRoomCode(null);
-    if (readPodcastSyncInvite(window.location.hash)) {
-      window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${hashForProductSurface('app')}`);
-    }
   };
 
   const teleprompterTitle = podcastSyncContent?.title ?? activeTitle;
   const teleprompterScript = podcastSyncContent?.script ?? activeScript;
   const teleprompterDeliveryMarkup = podcastSyncContent?.deliveryMarkup ?? activeDeliveryMarkup;
+  const podcastPrompterActive = mode === 'teleprompter' && prompterMode === 'free';
 
   if (surface === 'landing') {
     return (
@@ -336,7 +315,7 @@ export default function App() {
         {mode === 'teleprompter' && <PrompterDisplayControls lang={globalLang} />}
         <AnimatePresence mode="wait">
           {mode === 'editor' ? (
-            <ScriptEditor key="editor" onStart={startSession} />
+            <ScriptEditor key="editor" onStart={startSession} onJoinRoom={openPodcastRoomEntry} />
           ) : (
             <Teleprompter
               key="teleprompter"
@@ -351,18 +330,20 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {mode === 'teleprompter' && prompterMode === 'free' && (
-          <PodcastSyncRoom
-            title={activeTitle}
-            script={activeScript}
-            deliveryMarkup={activeDeliveryMarkup}
-            lang={globalLang}
-            inviteRoomCode={inviteRoomCode}
-            onInviteDismiss={dismissPodcastInvite}
-            onInviteJoined={markPodcastInviteJoined}
-            onRoomContentChange={setPodcastSyncContent}
-          />
-        )}
+        <PodcastSyncRoom
+          title={activeTitle}
+          script={activeScript}
+          deliveryMarkup={activeDeliveryMarkup}
+          lang={globalLang}
+          prompterActive={podcastPrompterActive}
+          entryOpen={podcastRoomEntryOpen}
+          entryRoomCode={inviteRoomCode}
+          entrySource={inviteRoomCode ? 'invite' : 'home'}
+          onEntryDismiss={dismissPodcastRoomEntry}
+          onEntryJoined={enterJoinedPodcastRoom}
+          onRoomExit={exitPodcastRoom}
+          onRoomContentChange={setPodcastSyncContent}
+        />
 
         {mode === 'editor' && (
           <footer className="app-footer">
