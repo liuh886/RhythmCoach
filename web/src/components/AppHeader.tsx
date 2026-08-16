@@ -2,7 +2,6 @@ import './AppHeader.css';
 import { useEffect, useRef, useState } from 'react';
 import {
   Download,
-  Heart,
   HelpCircle,
   Languages,
   Library,
@@ -47,7 +46,6 @@ const copy = {
     language: 'Switch to English',
     fullscreen: '进入全屏',
     exitFullscreen: '退出全屏',
-    support: '支持 RhythmCoach',
     more: '更多'
   },
   en: {
@@ -62,7 +60,6 @@ const copy = {
     language: '切换到中文',
     fullscreen: 'Enter fullscreen',
     exitFullscreen: 'Exit fullscreen',
-    support: 'Support RhythmCoach',
     more: 'More'
   }
 } as const;
@@ -182,17 +179,6 @@ export function AppHeader({
                   {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
                   <span>{isFullscreen ? text.exitFullscreen : text.fullscreen}</span>
                 </button>
-                <a
-                  className="header-menu-action"
-                  role="menuitem"
-                  href="https://ko-fi.com/zhihao"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMoreOpen(false)}
-                >
-                  <Heart size={17} />
-                  <span>{text.support}</span>
-                </a>
               </div>
             )}
           </div>
