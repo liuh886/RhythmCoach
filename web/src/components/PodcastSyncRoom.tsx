@@ -395,6 +395,7 @@ export function PodcastSyncRoom({
     setBusy(true);
     setError('');
     joinedFromEntryRef.current = false;
+    entryTransitionRef.current = false;
     try {
       const result = await client.rpc<RoomRpcResult>('rhythmcoach_create_sync_room', {
         p_title: title.trim() || (lang === 'zh' ? '同步播客' : 'Podcast sync'),
@@ -430,6 +431,11 @@ export function PodcastSyncRoom({
     }
     const client = getSupabaseClient();
     if (!client) return;
+    const joiningFromEntry = entryOpen;
+    if (joiningFromEntry) {
+      joinedFromEntryRef.current = true;
+      entryTransitionRef.current = true;
+    }
     setBusy(true);
     setError('');
     try {
@@ -440,14 +446,16 @@ export function PodcastSyncRoom({
       await loadRoom(result.data.room_id, identity);
       setRoomCodeInput('');
       resetGuestVerification();
-      if (entryOpen) {
-        joinedFromEntryRef.current = true;
-        entryTransitionRef.current = true;
+      if (joiningFromEntry) {
         onEntryJoined();
       } else {
         setPanelOpen(true);
       }
     } catch (requestError) {
+      if (joiningFromEntry) {
+        joinedFromEntryRef.current = false;
+        entryTransitionRef.current = false;
+      }
       const message = requestError instanceof Error ? requestError.message : '';
       if (needsGuestVerification) resetGuestVerification();
       setError(roomErrorMessage(message, lang));
@@ -470,6 +478,7 @@ export function PodcastSyncRoom({
       else await broadcast('room-state-changed', { sender_id: identity.id });
       await client.rpc<void>('rhythmcoach_leave_sync_room', { p_room_id: activeRoom.id });
       joinedFromEntryRef.current = false;
+      entryTransitionRef.current = false;
       await clearRoom();
       setPanelOpen(false);
       if (exitToEditor) onRoomExit();
