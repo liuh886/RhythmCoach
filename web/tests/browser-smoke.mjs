@@ -39,6 +39,27 @@ try {
   const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!fitsViewport) throw new Error('Mobile app surface overflows horizontally.');
 
+  const moreButton = page.getByRole('button', { name: /^(更多|More)$/ });
+  await moreButton.waitFor({ state: 'visible' });
+  await moreButton.click();
+  const moreMenu = page.getByRole('menu', { name: /^(更多|More)$/ });
+  await moreMenu.waitFor({ state: 'visible' });
+  await moreMenu.getByRole('menuitem', { name: /^(切换到白色模式|Switch to light mode)$/ }).click();
+  await page.locator("html[data-theme='light']").waitFor({ state: 'attached' });
+
+  const accountButton = page.getByRole('button', { name: /^(账户|Account)$/ });
+  await accountButton.click();
+  const membershipDialog = page.locator('.membership-dialog');
+  await membershipDialog.waitFor({ state: 'visible' });
+  const dialogBackground = await membershipDialog.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const dialogChannels = dialogBackground.match(/[\d.]+/g)?.map(Number) ?? [];
+  if (dialogChannels.length < 3 || dialogChannels[0] < 220 || dialogChannels[1] < 220 || dialogChannels[2] < 220) {
+    throw new Error(`Light account surface did not adopt a light background: ${dialogBackground}`);
+  }
+
+  const accountFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  if (!accountFitsViewport) throw new Error('Mobile account surface overflows horizontally.');
+
   if (runtimeErrors.length) {
     throw new Error(`Browser runtime errors: ${runtimeErrors.join(' | ')}`);
   }
