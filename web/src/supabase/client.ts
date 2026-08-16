@@ -7,6 +7,7 @@ export interface SupabaseErrorLike {
 export interface SupabaseUser {
   id: string;
   email?: string | null;
+  is_anonymous?: boolean;
   user_metadata?: Record<string, unknown>;
 }
 
@@ -27,6 +28,12 @@ interface AuthApi {
   onAuthStateChange: (
     callback: (event: string, session: SupabaseSession | null) => void
   ) => { data: { subscription: AuthSubscription } };
+  signInAnonymously: (input?: {
+    options?: { data?: Record<string, unknown>; captchaToken?: string };
+  }) => Promise<{
+    data: { user: SupabaseUser | null; session: SupabaseSession | null };
+    error: SupabaseErrorLike | null;
+  }>;
   signInWithOAuth: (input: {
     provider: 'google' | 'github' | 'x';
     options: { redirectTo: string };

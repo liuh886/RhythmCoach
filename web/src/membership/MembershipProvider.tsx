@@ -116,7 +116,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<SupabaseClientLike | null>(null);
   const entitlementUserIdRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(membershipConfig.enabled);
-  const [user, setUser] = useState<MembershipUser | null>(null);
+  const [sessionUser, setSessionUser] = useState<MembershipUser | null>(null);
   const [profile, setProfile] = useState<MembershipProfile | null>(null);
   const [productAccount, setProductAccount] = useState<ProductAccountRow | null>(null);
   const [entitlements, setEntitlements] = useState<Set<string>>(() => new Set());
@@ -124,6 +124,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   const [billingReturn] = useState<BillingReturn>(readBillingReturn);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(Boolean(billingReturn));
+  const user = useMemo(
+    () => sessionUser && !sessionUser.is_anonymous ? sessionUser : null,
+    [sessionUser]
+  );
 
   const refreshEntitlements = useCallback(async () => {
     const client = clientRef.current;
@@ -252,14 +256,14 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     void client.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active) return;
       if (sessionError) setError(sessionError.message);
-      setUser(data.session?.user ?? null);
+      setSessionUser(data.session?.user ?? null);
       setLoading(false);
     });
 
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       setError('');
-      setUser(session?.user ?? null);
+      setSessionUser(session?.user ?? null);
     });
 
     return () => {

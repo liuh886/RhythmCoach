@@ -1,6 +1,6 @@
 import './ScriptEditor.css';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Activity, CheckCircle2, ChevronRight, Cloud, Download, FileText, Library, Play, RefreshCw, Save, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { Activity, CheckCircle2, ChevronRight, Cloud, Download, FileText, Library, Play, RefreshCw, Save, Sparkles, Trash2, Upload, UsersRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isDeliveryMarkupAligned } from '../domain/deliveryMarkup';
 import { getStarterScript, shouldSeedPodcastTemplate } from '../domain/podcastMode';
@@ -15,6 +15,7 @@ import { usePersonalLibrary } from './usePersonalLibrary';
 
 interface ScriptEditorProps {
   onStart: (title: string, script: string, pace: number, lang: Language, mode: PrompterMode, deliveryMarkup: string) => void;
+  onJoinRoom: () => void;
 }
 
 const modeCopy: Record<PrompterMode, { zh: string; en: string }> = {
@@ -47,7 +48,7 @@ const audioProfileCopy = {
   }
 } as const;
 
-export function ScriptEditor({ onStart }: ScriptEditorProps) {
+export function ScriptEditor({ onStart, onJoinRoom }: ScriptEditorProps) {
   const membership = useMembership();
   const globalLang = useAppStore((state) => state.globalLang);
   const storedPace = useAppStore((state) => state.targetPace);
@@ -464,6 +465,14 @@ export function ScriptEditor({ onStart }: ScriptEditorProps) {
               <button type="button" className="btn" onClick={start} disabled={!content.trim()}>
                 <Play size={18} fill="currentColor" /> {globalLang === 'zh' ? '开始训练' : 'Start rehearsal'}
               </button>
+              {isPodcastMode && (
+                <button type="button" className="btn btn-secondary podcast-room-entry-action" onClick={onJoinRoom}>
+                  <UsersRound size={18} />
+                  <span>{globalLang === 'zh' ? '加入房间' : 'Join room'}</span>
+                  <small>{globalLang === 'zh' ? '无需登录' : 'No sign-in'}</small>
+                  <ChevronRight size={16} />
+                </button>
+              )}
             </div>
           </section>
         </div>
