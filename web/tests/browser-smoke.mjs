@@ -6,8 +6,6 @@ if (!executablePath) throw new Error('CHROME_BIN is required for browser smoke.'
 
 const browser = await chromium.launch({ headless: true, executablePath, args: ['--no-sandbox'] });
 const runtimeErrors = [];
-const SUPABASE_URL = 'https://blgwlycfcwvsupmqyqwn.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_n1Va-c_alpkQ0zNuJYUaxA_J0u68RVW';
 
 async function preparePage(page, theme = 'dark') {
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
@@ -20,6 +18,14 @@ async function preparePage(page, theme = 'dark') {
 async function prepareRoomMock(page, { userId = 'host-1', signedIn = true } = {}) {
   await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0', (route) => route.abort());
   await page.addInitScript(({ activeUserId, hasPermanentSession }) => {
+    window.turnstile = {
+      render(_container, options) {
+        window.setTimeout(() => options.callback('mock-turnstile-token'), 0);
+        return 'mock-turnstile';
+      },
+      remove() {}
+    };
+
     const room = {
       id: 'room-1', room_code: 'A3F82C', host_user_id: 'host-1',
       title: 'Shared podcast rehearsal',
@@ -82,7 +88,8 @@ async function prepareRoomMock(page, { userId = 'host-1', signedIn = true } = {}
       auth: {
         getSession: async () => ({ data: { session: currentSession }, error: null }),
         onAuthStateChange: (callback) => { authListeners.push(callback); return { data: { subscription: { unsubscribe() {} } } }; },
-        signInAnonymously: async () => {
+        signInAnonymously: async (input) => {
+          if (!input?.options?.captchaToken) return { data: { user: null, session: null }, error: { message: 'captcha_required' } };
           currentSession = { user: anonymousUser, access_token: 'guest-token' };
           authListeners.forEach((callback) => callback('SIGNED_IN', currentSession));
           return { data: { user: anonymousUser, session: currentSession }, error: null };
@@ -152,22 +159,6 @@ async function openMockedRoom(viewport, options = {}) {
 await mkdir('../visual-evidence', { recursive: true });
 
 try {
-  // One live canary proves the hosted Supabase project actually has Anonymous Sign-Ins enabled.
-  const canaryPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await canaryPage.goto('about:blank');
-  await canaryPage.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0' });
-  const canary = await canaryPage.evaluate(async ({ url, key }) => {
-    const client = window.supabase.createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const result = await client.auth.signInAnonymously({ options: { data: { rhythmcoach_canary: true } } });
-    if (result.error) return { error: result.error.message, id: null };
-    const id = result.data.user?.id ?? null;
-    await client.auth.signOut();
-    return { error: null, id };
-  }, { url: SUPABASE_URL, key: SUPABASE_KEY });
-  if (canary.error || !canary.id) throw new Error(`Live anonymous auth canary failed: ${canary.error ?? 'missing user id'}`);
-  console.log(`Anonymous auth canary user: ${canary.id}`);
-  await canaryPage.close();
-
   const basePage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await preparePage(basePage);
   await basePage.goto('http://127.0.0.1:4173/#/', { waitUntil: 'networkidle' });
@@ -194,6 +185,7 @@ try {
   const homeEntry = homeGuest.locator('.podcast-sync-panel.is-entry');
   await homeEntry.waitFor({ state: 'visible' });
   await homeEntry.getByText(/无需登录账号|no account required/i).first().waitFor({ state: 'visible' });
+  await homeEntry.getByText(/首次加入完成一次安全验证|one security check on first join/i).waitFor({ state: 'visible' });
   await homeEntry.locator('input').fill('A3F82C');
   await homeEntry.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
   await homeGuest.locator('.prompter-shell').waitFor({ state: 'visible' });
@@ -213,6 +205,7 @@ try {
   await invitePanel.waitFor({ state: 'visible' });
   if ((await invitePanel.locator('.podcast-sync-invite-code strong').textContent())?.trim() !== 'A3F82C') throw new Error('Invite room ID mismatch.');
   if (await invitePanel.getByText(/登录后加入|Sign in to join/i).count()) throw new Error('Invite still requires sign-in.');
+  await invitePanel.getByText(/首次加入完成一次安全验证|one security check on first join/i).waitFor({ state: 'visible' });
   await assertFitsViewport(inviteGuest, '390x844 guest invite');
   await inviteGuest.screenshot({ path: '../visual-evidence/room-invite-guest-mobile.png', fullPage: false });
   await invitePanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
@@ -312,7 +305,11 @@ try {
   await menu.getByRole('menuitem', { name: /^(切换到白色模式|Switch to light mode)$/ }).click();
   await header.locator("html[data-theme='light']").waitFor({ state: 'attached' });
   await header.getByRole('button', { name: /^(账户|Account)$/ }).click();
-  await header.locator('.membership-dialog').waitFor({ state: 'visible' });
+  const membershipDialog = header.locator('.membership-dialog');
+  await membershipDialog.waitFor({ state: 'visible' });
+  const dialogBackground = await membershipDialog.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const dialogChannels = dialogBackground.match(/[\d.]+/g)?.map(Number) ?? [];
+  if (dialogChannels.length < 3 || dialogChannels.slice(0, 3).some((value) => value < 220)) throw new Error(`Light account surface did not adopt a light background: ${dialogBackground}`);
   await assertFitsViewport(header, 'mobile account');
   await header.close();
 
