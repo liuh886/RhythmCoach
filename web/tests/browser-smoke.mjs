@@ -25,9 +25,10 @@ try {
 
   await page.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
   await page.locator('.prompter-shell').waitFor({ state: 'visible' });
-  await page.locator('.podcast-sync-panel.is-invite').waitFor({ state: 'visible' });
-  await page.getByText(/^(同步播客邀请|Podcast sync invite)$/).waitFor({ state: 'visible' });
-  const inviteCode = await page.locator('.podcast-sync-invite-code strong').textContent();
+  const invitePanel = page.locator('.podcast-sync-panel.is-invite');
+  await invitePanel.waitFor({ state: 'visible' });
+  await invitePanel.getByText(/^(同步播客邀请|Podcast sync invite)$/).first().waitFor({ state: 'visible' });
+  const inviteCode = await invitePanel.locator('.podcast-sync-invite-code strong').textContent();
   if (inviteCode?.trim() !== 'A3F82C') throw new Error(`Podcast invite room ID mismatch: ${inviteCode}`);
 
   await page.setViewportSize({ width: 390, height: 844 });
