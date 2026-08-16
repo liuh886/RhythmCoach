@@ -56,8 +56,8 @@
   box-shadow: var(--glass-shadow);
 }
 
-.podcast-sync-panel.is-invite {
-  top: 18dvh;
+.podcast-sync-panel.is-entry {
+  top: 16dvh;
   right: max(24px, calc(50vw - 185px));
 }
 
@@ -137,7 +137,7 @@
 }
 
 .podcast-sync-invite-entry > p {
-  max-width: 290px;
+  max-width: 300px;
   margin: 7px 0 15px;
   color: var(--text-muted);
   font-size: 0.76rem;
@@ -180,7 +180,7 @@
   font-size: 0.96rem;
 }
 
-.podcast-sync-signin {
+.podcast-sync-account-note {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -192,28 +192,28 @@
   background: var(--accent-glow);
 }
 
-.podcast-sync-signin > svg {
+.podcast-sync-account-note > svg {
   color: var(--accent-primary);
 }
 
-.podcast-sync-signin div {
+.podcast-sync-account-note div {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
-.podcast-sync-signin strong {
+.podcast-sync-account-note strong {
   font-size: 0.76rem;
 }
 
-.podcast-sync-signin span {
+.podcast-sync-account-note span {
   color: var(--text-muted);
   font-size: 0.68rem;
   line-height: 1.4;
 }
 
-.podcast-sync-signin button,
+.podcast-sync-account-note button,
 .podcast-sync-join-row button {
   min-height: 40px;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 24%, transparent);
@@ -226,7 +226,7 @@
   cursor: pointer;
 }
 
-.podcast-sync-signin button {
+.podcast-sync-account-note button {
   padding: 0 11px;
 }
 
@@ -294,6 +294,12 @@
   gap: 8px;
 }
 
+.podcast-sync-entry-code {
+  width: 100%;
+  grid-template-columns: 1fr;
+  margin-bottom: 12px;
+}
+
 .podcast-sync-join-row input {
   min-width: 0;
   height: 44px;
@@ -308,6 +314,11 @@
   font-weight: 760;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.podcast-sync-entry-code input {
+  height: 48px;
+  text-align: center;
 }
 
 .podcast-sync-join-row input:focus {
@@ -614,7 +625,7 @@
   }
 
   .podcast-sync-panel,
-  .podcast-sync-panel.is-invite {
+  .podcast-sync-panel.is-entry {
     top: auto;
     right: 8px;
     bottom: max(8px, env(safe-area-inset-bottom));
@@ -661,7 +672,7 @@
 
   .podcast-sync-primary,
   .podcast-sync-secondary,
-  .podcast-sync-signin button,
+  .podcast-sync-account-note button,
   .podcast-sync-join-row input,
   .podcast-sync-join-row button,
   .podcast-sync-room-id button,
@@ -679,19 +690,19 @@
     font-size: 0.78rem;
   }
 
-  .podcast-sync-signin {
+  .podcast-sync-account-note {
     grid-template-columns: auto 1fr;
   }
 
-  .podcast-sync-signin strong {
+  .podcast-sync-account-note strong {
     font-size: 0.8rem;
   }
 
-  .podcast-sync-signin span {
+  .podcast-sync-account-note span {
     font-size: 0.74rem;
   }
 
-  .podcast-sync-signin button {
+  .podcast-sync-account-note button {
     grid-column: 1 / -1;
     width: 100%;
   }
@@ -714,7 +725,7 @@
   }
 
   .podcast-sync-panel,
-  .podcast-sync-panel.is-invite {
+  .podcast-sync-panel.is-entry {
     right: 8px;
     bottom: 8px;
     left: auto;
