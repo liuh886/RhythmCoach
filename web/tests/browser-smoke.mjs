@@ -10,8 +10,8 @@ const browser = await chromium.launch({
 });
 
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const runtimeErrors = [];
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
   await page.addInitScript(() => {
     localStorage.setItem('rhythmcoach_product_guide_v1', 'complete');
@@ -34,23 +34,29 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   const inviteFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!inviteFitsViewport) throw new Error('Mobile podcast invite surface overflows horizontally.');
+  await page.close();
 
-  await page.goto('http://127.0.0.1:4173/?smoke=header#/app', { waitUntil: 'networkidle' });
-  await page.locator('.app-shell').waitFor({ state: 'visible' });
-  const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  const headerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  headerPage.on('pageerror', (error) => runtimeErrors.push(error.message));
+  await headerPage.addInitScript(() => {
+    localStorage.setItem('rhythmcoach_product_guide_v1', 'complete');
+  });
+  await headerPage.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
+  await headerPage.locator('.app-shell').waitFor({ state: 'visible' });
+  const fitsViewport = await headerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!fitsViewport) throw new Error('Mobile app surface overflows horizontally.');
 
-  const moreButton = page.getByRole('button', { name: /^(更多|More)$/ });
+  const moreButton = headerPage.getByRole('button', { name: /^(更多|More)$/ });
   await moreButton.waitFor({ state: 'visible' });
   await moreButton.click();
-  const moreMenu = page.getByRole('menu', { name: /^(更多|More)$/ });
+  const moreMenu = headerPage.getByRole('menu', { name: /^(更多|More)$/ });
   await moreMenu.waitFor({ state: 'visible' });
   await moreMenu.getByRole('menuitem', { name: /^(切换到白色模式|Switch to light mode)$/ }).click();
-  await page.locator("html[data-theme='light']").waitFor({ state: 'attached' });
+  await headerPage.locator("html[data-theme='light']").waitFor({ state: 'attached' });
 
-  const accountButton = page.getByRole('button', { name: /^(账户|Account)$/ });
+  const accountButton = headerPage.getByRole('button', { name: /^(账户|Account)$/ });
   await accountButton.click();
-  const membershipDialog = page.locator('.membership-dialog');
+  const membershipDialog = headerPage.locator('.membership-dialog');
   await membershipDialog.waitFor({ state: 'visible' });
   const dialogBackground = await membershipDialog.evaluate((element) => getComputedStyle(element).backgroundColor);
   const dialogChannels = dialogBackground.match(/[\d.]+/g)?.map(Number) ?? [];
@@ -58,8 +64,9 @@ try {
     throw new Error(`Light account surface did not adopt a light background: ${dialogBackground}`);
   }
 
-  const accountFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  const accountFitsViewport = await headerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!accountFitsViewport) throw new Error('Mobile account surface overflows horizontally.');
+  await headerPage.close();
 
   if (runtimeErrors.length) {
     throw new Error(`Browser runtime errors: ${runtimeErrors.join(' | ')}`);
