@@ -1,3 +1,4 @@
+import './ProductGuideSupport.css';
 import { BarChart3, Download, FileText, Heart, Mic2, ShieldCheck, X } from 'lucide-react';
 import packageJson from '../../package.json';
 import type { Language } from '../types';
