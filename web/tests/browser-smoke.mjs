@@ -23,7 +23,18 @@ try {
   await page.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
   await page.locator('.prompter-shell').waitFor({ state: 'visible' });
 
+  await page.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  await page.locator('.prompter-shell').waitFor({ state: 'visible' });
+  const invitePanel = page.locator('.podcast-sync-panel.is-invite');
+  await invitePanel.waitFor({ state: 'visible' });
+  await invitePanel.getByText(/^(同步播客邀请|Podcast sync invite)$/).first().waitFor({ state: 'visible' });
+  const inviteCode = await invitePanel.locator('.podcast-sync-invite-code strong').textContent();
+  if (inviteCode?.trim() !== 'A3F82C') throw new Error(`Podcast invite room ID mismatch: ${inviteCode}`);
+
   await page.setViewportSize({ width: 390, height: 844 });
+  const inviteFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  if (!inviteFitsViewport) throw new Error('Mobile podcast invite surface overflows horizontally.');
+
   await page.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
   const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!fitsViewport) throw new Error('Mobile app surface overflows horizontally.');
