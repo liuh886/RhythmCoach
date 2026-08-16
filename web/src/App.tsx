@@ -8,7 +8,9 @@ import { PodcastSyncRoom, type PodcastSyncContent } from './components/PodcastSy
 import './components/ProductExperience.css';
 import { toHtmlLanguage } from './domain/language';
 import {
+  hashForPodcastSyncInvite,
   hashForProductSurface,
+  readPodcastSyncInvite,
   resolveProductSurface,
   type ProductSurface
 } from './domain/productSurface';
@@ -47,12 +49,37 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const GUIDE_KEY = 'rhythmcoach_product_guide_v1';
+const PENDING_PODCAST_INVITE_KEY = 'rhythmcoach_pending_podcast_invite_v1';
 
 function getInitialTheme(): AppTheme {
   try {
     return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
   } catch {
     return 'dark';
+  }
+}
+
+function readPendingPodcastInvite(): string | null {
+  try {
+    return readPodcastSyncInvite(`#/app?sync=${localStorage.getItem(PENDING_PODCAST_INVITE_KEY) ?? ''}`);
+  } catch {
+    return null;
+  }
+}
+
+function rememberPendingPodcastInvite(roomCode: string): void {
+  try {
+    localStorage.setItem(PENDING_PODCAST_INVITE_KEY, roomCode);
+  } catch {
+    // Invite links still work for the current page when storage is unavailable.
+  }
+}
+
+function clearPendingPodcastInvite(): void {
+  try {
+    localStorage.removeItem(PENDING_PODCAST_INVITE_KEY);
+  } catch {
+    // Nothing else is required when storage is unavailable.
   }
 }
 
@@ -82,17 +109,41 @@ export default function App() {
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [podcastSyncContent, setPodcastSyncContent] = useState<PodcastSyncContent | null>(null);
+  const [inviteRoomCode, setInviteRoomCode] = useState<string | null>(() => (
+    readPodcastSyncInvite(window.location.hash) ?? readPendingPodcastInvite()
+  ));
 
   useEffect(() => {
     void loadPersistedData();
   }, [loadPersistedData]);
 
   useEffect(() => {
-    const syncSurface = () => setSurface(resolveProductSurface(window.location.hash));
-    syncSurface();
-    window.addEventListener('hashchange', syncSurface);
-    return () => window.removeEventListener('hashchange', syncSurface);
+    const syncRoute = () => {
+      const hashInvite = readPodcastSyncInvite(window.location.hash);
+      const pendingInvite = readPendingPodcastInvite();
+      if (!hashInvite && pendingInvite) {
+        window.location.hash = hashForPodcastSyncInvite(pendingInvite);
+        return;
+      }
+      if (hashInvite) rememberPendingPodcastInvite(hashInvite);
+      setInviteRoomCode(hashInvite);
+      setSurface(resolveProductSurface(window.location.hash));
+    };
+    syncRoute();
+    window.addEventListener('hashchange', syncRoute);
+    return () => window.removeEventListener('hashchange', syncRoute);
   }, []);
+
+  useEffect(() => {
+    if (surface !== 'app' || !inviteRoomCode) return;
+    setPrompterMode('free');
+    setPodcastSyncContent((current) => current ?? {
+      title: globalLang === 'zh' ? '同步播客邀请' : 'Podcast sync invite',
+      script: '',
+      deliveryMarkup: ''
+    });
+    setMode('teleprompter');
+  }, [globalLang, inviteRoomCode, setMode, setPrompterMode, surface]);
 
   useEffect(() => {
     document.body.dataset.surface = surface;
@@ -182,6 +233,8 @@ export default function App() {
         // Installed PWAs remain immersive even when the browser Fullscreen API is unavailable.
       });
     }
+    clearPendingPodcastInvite();
+    setInviteRoomCode(null);
     setPodcastSyncContent(null);
     setActiveTitle(title);
     setActiveScript(script);
@@ -218,8 +271,29 @@ export default function App() {
   };
 
   const closeTeleprompter = () => {
+    clearPendingPodcastInvite();
+    setInviteRoomCode(null);
+    if (readPodcastSyncInvite(window.location.hash)) window.location.hash = hashForProductSurface('app');
     setPodcastSyncContent(null);
     setMode('editor');
+  };
+
+  const dismissPodcastInvite = () => {
+    clearPendingPodcastInvite();
+    setInviteRoomCode(null);
+    setPodcastSyncContent(null);
+    setMode('editor');
+    if (window.location.hash !== hashForProductSurface('app')) {
+      window.location.hash = hashForProductSurface('app');
+    }
+  };
+
+  const markPodcastInviteJoined = () => {
+    clearPendingPodcastInvite();
+    setInviteRoomCode(null);
+    if (readPodcastSyncInvite(window.location.hash)) {
+      window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${hashForProductSurface('app')}`);
+    }
   };
 
   const teleprompterTitle = podcastSyncContent?.title ?? activeTitle;
@@ -283,6 +357,9 @@ export default function App() {
             script={activeScript}
             deliveryMarkup={activeDeliveryMarkup}
             lang={globalLang}
+            inviteRoomCode={inviteRoomCode}
+            onInviteDismiss={dismissPodcastInvite}
+            onInviteJoined={markPodcastInviteJoined}
             onRoomContentChange={setPodcastSyncContent}
           />
         )}
