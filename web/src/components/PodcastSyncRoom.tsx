@@ -1,11 +1,12 @@
 import './PodcastSyncRoom.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Copy, Link2, LogOut, RadioTower, Share2, UsersRound, X } from 'lucide-react';
+import { Check, Copy, Link2, LogIn, LogOut, Share2, UsersRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ensurePodcastSyncIdentity, roomIdentityDisplayName } from '../domain/podcastSyncIdentity';
 import { hashForPodcastSyncInvite, normalizePodcastSyncRoomCode } from '../domain/productSurface';
 import { useMembership } from '../membership/MembershipProvider';
-import { getSupabaseClient, type RealtimeChannelLike } from '../supabase/client';
+import { getSupabaseClient, type RealtimeChannelLike, type SupabaseUser } from '../supabase/client';
 import type { Language } from '../types';
 import { PrompterTopbarPortal } from './PrompterTopbarPortal';
 
@@ -35,14 +36,20 @@ export interface PodcastSyncContent {
   deliveryMarkup: string;
 }
 
+export type PodcastRoomEntrySource = 'home' | 'invite';
+
 interface PodcastSyncRoomProps {
   title: string;
   script: string;
   deliveryMarkup: string;
   lang: Language;
-  inviteRoomCode?: string | null;
-  onInviteDismiss?: () => void;
-  onInviteJoined?: () => void;
+  prompterActive: boolean;
+  entryOpen: boolean;
+  entryRoomCode?: string | null;
+  entrySource?: PodcastRoomEntrySource;
+  onEntryDismiss: () => void;
+  onEntryJoined: () => void;
+  onRoomExit: () => void;
   onRoomContentChange: (content: PodcastSyncContent | null) => void;
 }
 
@@ -67,7 +74,9 @@ function clampProgress(value: number): number {
 function roomErrorMessage(message: string, lang: Language): string {
   if (message.includes('room_full')) return lang === 'zh' ? '房间已满，最多 4 人。' : 'This room is full (4 people maximum).';
   if (message.includes('room_not_found')) return lang === 'zh' ? '没有找到这个房间，或房间已经过期。' : 'Room not found or expired.';
-  if (message.includes('authentication_required')) return lang === 'zh' ? '请先登录后再使用同步播客。' : 'Sign in to use podcast sync.';
+  if (message.includes('account_required')) return lang === 'zh' ? '创建房间需要登录账号。' : 'Sign in with an account to create a room.';
+  if (message.includes('authentication_required')) return lang === 'zh' ? '无法建立房间身份，请重试。' : 'Could not establish a room identity. Please try again.';
+  if (message.includes('Anonymous sign-ins are disabled')) return lang === 'zh' ? '游客加入暂不可用，请稍后重试。' : 'Guest joining is temporarily unavailable.';
   return lang === 'zh' ? '同步房间操作失败，请重试。' : 'Podcast sync failed. Please try again.';
 }
 
@@ -93,15 +102,20 @@ export function PodcastSyncRoom({
   script,
   deliveryMarkup,
   lang,
-  inviteRoomCode = null,
-  onInviteDismiss,
-  onInviteJoined,
+  prompterActive,
+  entryOpen,
+  entryRoomCode = null,
+  entrySource = 'home',
+  onEntryDismiss,
+  onEntryJoined,
+  onRoomExit,
   onRoomContentChange
 }: PodcastSyncRoomProps) {
-  const { user, profile, openDialog } = useMembership();
-  const [panelOpen, setPanelOpen] = useState(Boolean(inviteRoomCode));
-  const [roomCodeInput, setRoomCodeInput] = useState(inviteRoomCode ?? '');
+  const { user: accountUser, profile, openDialog } = useMembership();
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [roomCodeInput, setRoomCodeInput] = useState(entryRoomCode ?? '');
   const [room, setRoom] = useState<RoomRecord | null>(null);
+  const [roomUser, setRoomUser] = useState<SupabaseUser | null>(null);
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
@@ -119,31 +133,42 @@ export function PodcastSyncRoom({
   const broadcastTimerRef = useRef<number | null>(null);
   const seqRef = useRef(0);
   const roomRef = useRef<RoomRecord | null>(null);
+  const roomUserRef = useRef<SupabaseUser | null>(null);
   const membersRef = useRef<MemberRecord[]>([]);
-  const joinedFromInviteRef = useRef(Boolean(inviteRoomCode));
+  const joinedFromEntryRef = useRef(false);
+  const entryTransitionRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const panelWasOpenRef = useRef(false);
 
   roomRef.current = room;
+  roomUserRef.current = roomUser;
   membersRef.current = members;
 
+  const panelVisible = entryOpen || panelOpen;
+  const isExternalEntry = entryOpen && !room;
   const currentMember = useMemo(
-    () => members.find((member) => member.user_id === user?.id) ?? null,
-    [members, user?.id]
+    () => members.find((member) => member.user_id === roomUser?.id) ?? null,
+    [members, roomUser?.id]
   );
-  const isHost = Boolean(room && user && room.host_user_id === user.id);
+  const isHost = Boolean(room && roomUser && room.host_user_id === roomUser.id);
   const canScroll = Boolean(currentMember?.can_scroll);
   const remainingSlots = Math.max(0, MAX_MEMBERS - members.length);
-  const isInviteEntry = Boolean(inviteRoomCode && !room);
+
+  useEffect(() => {
+    if (!entryOpen || room) return;
+    const normalized = normalizePodcastSyncRoomCode(entryRoomCode ?? '');
+    setRoomCodeInput(normalized ?? '');
+    setError('');
+  }, [entryOpen, entryRoomCode, room]);
 
   const closePanel = useCallback(() => {
-    if (isInviteEntry) {
-      onInviteDismiss?.();
+    if (isExternalEntry) {
+      onEntryDismiss();
       return;
     }
     setPanelOpen(false);
-  }, [isInviteEntry, onInviteDismiss]);
+  }, [isExternalEntry, onEntryDismiss]);
 
   const connectionLabel = room
     ? connectionState === 'connected'
@@ -154,20 +179,10 @@ export function PodcastSyncRoom({
     : '';
 
   useEffect(() => {
-    if (!inviteRoomCode || room) return;
-    const normalized = normalizePodcastSyncRoomCode(inviteRoomCode);
-    if (!normalized) return;
-    joinedFromInviteRef.current = true;
-    setRoomCodeInput(normalized);
-    setPanelOpen(true);
-    setError('');
-  }, [inviteRoomCode, room]);
-
-  useEffect(() => {
-    if (!panelOpen) return;
-
+    if (!panelVisible) return;
     const frame = window.requestAnimationFrame(() => {
-      const firstControl = panelRef.current?.querySelector<HTMLElement>(
+      const preferred = panelRef.current?.querySelector<HTMLElement>('[data-autofocus="true"]');
+      const firstControl = preferred ?? panelRef.current?.querySelector<HTMLElement>(
         'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
       firstControl?.focus();
@@ -186,17 +201,17 @@ export function PodcastSyncRoom({
       window.cancelAnimationFrame(frame);
       window.removeEventListener('keydown', handleEscape, true);
     };
-  }, [closePanel, panelOpen]);
+  }, [closePanel, panelVisible]);
 
   useEffect(() => {
-    if (panelOpen) {
+    if (panelVisible) {
       panelWasOpenRef.current = true;
       return;
     }
     if (!panelWasOpenRef.current) return;
     panelWasOpenRef.current = false;
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
-  }, [panelOpen]);
+    if (prompterActive) window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, [panelVisible, prompterActive]);
 
   const applyRemoteProgress = useCallback((progress: number) => {
     const normalized = clampProgress(progress);
@@ -236,8 +251,10 @@ export function PodcastSyncRoom({
 
   const clearRoom = useCallback(async (message = '') => {
     roomRef.current = null;
+    roomUserRef.current = null;
     await disconnectChannel();
     setRoom(null);
+    setRoomUser(null);
     setMembers([]);
     onRoomContentChange(null);
     if (message) setError(message);
@@ -249,56 +266,71 @@ export function PodcastSyncRoom({
     await channel.send({ type: 'broadcast', event, payload }).catch(() => undefined);
   }, []);
 
-  const connectRoom = useCallback(async (nextRoom: RoomRecord) => {
+  const loadRoom = useCallback(async (roomId: string, identity: SupabaseUser) => {
     const client = getSupabaseClient();
-    if (!client || !user) return;
-    await disconnectChannel();
+    if (!client) throw new Error('sync_unavailable');
+    const result = await client
+      .from<RoomRecord>('rhythmcoach_sync_rooms')
+      .select('id,room_code,host_user_id,title,script,delivery_markup,expires_at')
+      .eq('id', roomId)
+      .single();
+    if (result.error || !result.data) throw new Error(result.error?.message ?? 'room_not_found');
 
-    roomRef.current = nextRoom;
-    setRoom(nextRoom);
-    setConnectionState('connecting');
+    roomRef.current = result.data;
+    roomUserRef.current = identity;
+    setRoom(result.data);
+    setRoomUser(identity);
     setError('');
     onRoomContentChange({
-      title: nextRoom.title,
-      script: nextRoom.script,
-      deliveryMarkup: nextRoom.delivery_markup ?? nextRoom.script
+      title: result.data.title,
+      script: result.data.script,
+      deliveryMarkup: result.data.delivery_markup ?? result.data.script
     });
-    await refreshMembers(nextRoom.id);
+    await refreshMembers(result.data.id);
+  }, [onRoomContentChange, refreshMembers]);
 
-    const channel = client.channel(`rhythmcoach:podcast:${nextRoom.id}`, {
+  useEffect(() => {
+    if (!prompterActive || !room || !roomUser || channelRef.current) return;
+    const client = getSupabaseClient();
+    if (!client) return;
+    let active = true;
+    setConnectionState('connecting');
+
+    const channel = client.channel(`rhythmcoach:podcast:${room.id}`, {
       config: {
         private: true,
-        presence: { key: user.id }
+        presence: { key: roomUser.id }
       }
     });
     channelRef.current = channel;
 
     channel
       .on('broadcast', { event: 'scroll' }, ({ payload }) => {
-        if (!payload || payload.sender_id === user.id) return;
+        if (!payload || payload.sender_id === roomUser.id) return;
         const progress = Number(payload.progress);
         if (!Number.isFinite(progress)) return;
         applyRemoteProgress(progress);
       })
       .on('broadcast', { event: 'sync-request' }, ({ payload }) => {
-        if (nextRoom.host_user_id !== user.id || payload?.sender_id === user.id) return;
+        if (room.host_user_id !== roomUser.id || payload?.sender_id === roomUser.id) return;
         void channel.send({
           type: 'broadcast',
           event: 'snapshot',
-          payload: { sender_id: user.id, progress: readScrollProgress() }
+          payload: { sender_id: roomUser.id, progress: readScrollProgress() }
         });
       })
       .on('broadcast', { event: 'snapshot' }, ({ payload }) => {
-        if (!payload || payload.sender_id === user.id) return;
+        if (!payload || payload.sender_id === roomUser.id) return;
         const progress = Number(payload.progress);
         if (Number.isFinite(progress)) applyRemoteProgress(progress);
       })
       .on('broadcast', { event: 'room-state-changed' }, () => {
-        void refreshMembers(nextRoom.id);
+        void refreshMembers(room.id);
       })
       .on('broadcast', { event: 'room-closed' }, ({ payload }) => {
-        if (payload?.sender_id === user.id) return;
+        if (payload?.sender_id === roomUser.id) return;
         void clearRoom(lang === 'zh' ? '房主已结束同步房间。' : 'The host ended this sync room.');
+        onRoomExit();
       })
       .on('presence', { event: 'sync' }, () => {
         const nextOnline = new Set<string>();
@@ -309,50 +341,45 @@ export function PodcastSyncRoom({
         setOnlineUserIds(nextOnline);
       })
       .subscribe((status) => {
+        if (!active) return;
         if (status === 'SUBSCRIBED') {
           setConnectionState('connected');
           sharedProgressRef.current = readScrollProgress();
           void channel.track({
-            user_id: user.id,
-            display_name: profile?.display_name ?? user.email?.split('@')[0] ?? 'Member'
+            user_id: roomUser.id,
+            display_name: profile?.id === roomUser.id && profile.display_name
+              ? profile.display_name
+              : roomIdentityDisplayName(roomUser, lang)
           });
-          void client.rpc<void>('rhythmcoach_touch_sync_room', { p_room_id: nextRoom.id });
+          void client.rpc<void>('rhythmcoach_touch_sync_room', { p_room_id: room.id });
           void channel.send({
             type: 'broadcast',
             event: 'sync-request',
-            payload: { sender_id: user.id }
+            payload: { sender_id: roomUser.id }
           });
           void channel.send({
             type: 'broadcast',
             event: 'room-state-changed',
-            payload: { sender_id: user.id }
+            payload: { sender_id: roomUser.id }
           });
           return;
         }
-
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          if (roomRef.current?.id === nextRoom.id) setConnectionState('disconnected');
+          if (roomRef.current?.id === room.id) setConnectionState('disconnected');
           return;
         }
-
-        if (roomRef.current?.id === nextRoom.id) setConnectionState('connecting');
+        if (roomRef.current?.id === room.id) setConnectionState('connecting');
       });
-  }, [applyRemoteProgress, clearRoom, disconnectChannel, lang, onRoomContentChange, profile?.display_name, refreshMembers, user]);
 
-  const loadAndConnectRoom = useCallback(async (roomId: string) => {
-    const client = getSupabaseClient();
-    if (!client) return;
-    const result = await client
-      .from<RoomRecord>('rhythmcoach_sync_rooms')
-      .select('id,room_code,host_user_id,title,script,delivery_markup,expires_at')
-      .eq('id', roomId)
-      .single();
-    if (result.error || !result.data) throw new Error(result.error?.message ?? 'room_not_found');
-    await connectRoom(result.data);
-  }, [connectRoom]);
+    return () => {
+      active = false;
+      if (channelRef.current === channel) channelRef.current = null;
+      void client.removeChannel(channel).catch(() => undefined);
+    };
+  }, [applyRemoteProgress, clearRoom, lang, onRoomExit, profile?.display_name, profile?.id, prompterActive, refreshMembers, room, roomUser]);
 
   const createRoom = useCallback(async () => {
-    if (!user) {
+    if (!accountUser) {
       openDialog();
       return;
     }
@@ -360,7 +387,7 @@ export function PodcastSyncRoom({
     if (!client) return;
     setBusy(true);
     setError('');
-    joinedFromInviteRef.current = false;
+    joinedFromEntryRef.current = false;
     try {
       const result = await client.rpc<RoomRpcResult>('rhythmcoach_create_sync_room', {
         p_title: title.trim() || (lang === 'zh' ? '同步播客' : 'Podcast sync'),
@@ -368,70 +395,82 @@ export function PodcastSyncRoom({
         p_delivery_markup: deliveryMarkup || script
       });
       if (result.error || !result.data) throw new Error(result.error?.message ?? 'create_failed');
-      await loadAndConnectRoom(result.data.room_id);
+      await loadRoom(result.data.room_id, accountUser);
       setPanelOpen(true);
     } catch (requestError) {
-      setError(roomErrorMessage(requestError instanceof Error ? requestError.message : '', lang));
+      const message = requestError instanceof Error ? requestError.message : '';
+      if (message.includes('account_required')) openDialog();
+      setError(roomErrorMessage(message, lang));
     } finally {
       setBusy(false);
     }
-  }, [deliveryMarkup, lang, loadAndConnectRoom, openDialog, script, title, user]);
+  }, [accountUser, deliveryMarkup, lang, loadRoom, openDialog, script, title]);
 
   const joinRoom = useCallback(async () => {
-    const normalizedCode = normalizePodcastSyncRoomCode(inviteRoomCode ?? roomCodeInput);
+    const normalizedCode = normalizePodcastSyncRoomCode(entryOpen ? (entryRoomCode ?? roomCodeInput) : roomCodeInput);
     if (!normalizedCode) {
       setError(lang === 'zh' ? '请输入 6 位房间 ID。' : 'Enter the 6-character room ID.');
       return;
     }
-    if (!user) {
-      openDialog();
-      return;
-    }
     const client = getSupabaseClient();
     if (!client) return;
     setBusy(true);
     setError('');
     try {
+      const identity = await ensurePodcastSyncIdentity(lang);
       const result = await client.rpc<RoomRpcResult>('rhythmcoach_join_sync_room', { p_room_code: normalizedCode });
       if (result.error || !result.data) throw new Error(result.error?.message ?? 'join_failed');
-      await loadAndConnectRoom(result.data.room_id);
+      await loadRoom(result.data.room_id, identity);
       setRoomCodeInput('');
-      setPanelOpen(true);
-      if (inviteRoomCode) onInviteJoined?.();
+      if (entryOpen) {
+        joinedFromEntryRef.current = true;
+        entryTransitionRef.current = true;
+        onEntryJoined();
+      } else {
+        setPanelOpen(true);
+      }
     } catch (requestError) {
       setError(roomErrorMessage(requestError instanceof Error ? requestError.message : '', lang));
     } finally {
       setBusy(false);
     }
-  }, [inviteRoomCode, lang, loadAndConnectRoom, onInviteJoined, openDialog, roomCodeInput, user]);
+  }, [entryOpen, entryRoomCode, lang, loadRoom, onEntryJoined, roomCodeInput]);
 
-  const leaveRoom = useCallback(async () => {
-    if (!room || !user) return;
+  const leaveRoom = useCallback(async (exitToEditor = joinedFromEntryRef.current) => {
+    const activeRoom = roomRef.current;
+    const identity = roomUserRef.current;
+    if (!activeRoom || !identity) return;
     const client = getSupabaseClient();
     if (!client) return;
     setBusy(true);
     setError('');
     try {
-      if (isHost) {
-        await broadcast('room-closed', { sender_id: user.id });
-      } else {
-        await broadcast('room-state-changed', { sender_id: user.id });
-      }
-      await client.rpc<void>('rhythmcoach_leave_sync_room', { p_room_id: room.id });
+      const host = activeRoom.host_user_id === identity.id;
+      if (host) await broadcast('room-closed', { sender_id: identity.id });
+      else await broadcast('room-state-changed', { sender_id: identity.id });
+      await client.rpc<void>('rhythmcoach_leave_sync_room', { p_room_id: activeRoom.id });
+      joinedFromEntryRef.current = false;
       await clearRoom();
-      if (joinedFromInviteRef.current) {
-        joinedFromInviteRef.current = false;
-        onInviteDismiss?.();
-      }
+      setPanelOpen(false);
+      if (exitToEditor) onRoomExit();
     } catch (requestError) {
       setError(roomErrorMessage(requestError instanceof Error ? requestError.message : '', lang));
     } finally {
       setBusy(false);
     }
-  }, [broadcast, clearRoom, isHost, lang, onInviteDismiss, room, user]);
+  }, [broadcast, clearRoom, lang, onRoomExit]);
+
+  useEffect(() => {
+    if (prompterActive) {
+      entryTransitionRef.current = false;
+      return;
+    }
+    if (!room || entryTransitionRef.current) return;
+    void leaveRoom(false);
+  }, [leaveRoom, prompterActive, room]);
 
   const setScrollPermission = useCallback(async (member: MemberRecord, nextValue: boolean) => {
-    if (!room || !isHost) return;
+    if (!room || !isHost || !roomUser) return;
     const client = getSupabaseClient();
     if (!client) return;
     setBusy(true);
@@ -444,26 +483,26 @@ export function PodcastSyncRoom({
       });
       if (result.error) throw new Error(result.error.message);
       await refreshMembers(room.id);
-      await broadcast('room-state-changed', { sender_id: user?.id ?? '' });
+      await broadcast('room-state-changed', { sender_id: roomUser.id });
     } catch (requestError) {
       setError(roomErrorMessage(requestError instanceof Error ? requestError.message : '', lang));
     } finally {
       setBusy(false);
     }
-  }, [broadcast, isHost, lang, refreshMembers, room, user?.id]);
+  }, [broadcast, isHost, lang, refreshMembers, room, roomUser]);
 
   useEffect(() => {
-    if (!room) return;
+    if (!room || !prompterActive) return;
     const client = getSupabaseClient();
     if (!client) return;
     const interval = window.setInterval(() => {
       void client.rpc<void>('rhythmcoach_touch_sync_room', { p_room_id: room.id });
     }, 60_000);
     return () => window.clearInterval(interval);
-  }, [room]);
+  }, [prompterActive, room]);
 
   useEffect(() => {
-    if (!room || !user) return;
+    if (!room || !roomUser || !prompterActive) return;
     const element = getPrompterScroll();
     if (!element) return;
 
@@ -483,7 +522,7 @@ export function PodcastSyncRoom({
       void channel.send({
         type: 'broadcast',
         event: 'scroll',
-        payload: { sender_id: user.id, seq: seqRef.current, progress }
+        payload: { sender_id: roomUser.id, seq: seqRef.current, progress }
       });
     };
     const queueProgress = (progress: number) => {
@@ -507,7 +546,7 @@ export function PodcastSyncRoom({
       if (now < applyingRemoteUntilRef.current) return;
       if (now > localIntentUntilRef.current) return;
       const progress = readScrollProgress();
-      const activeMember = membersRef.current.find((member) => member.user_id === user.id);
+      const activeMember = membersRef.current.find((member) => member.user_id === roomUser.id);
       if (!activeMember?.can_scroll) {
         applyRemoteProgress(sharedProgressRef.current);
         return;
@@ -528,7 +567,7 @@ export function PodcastSyncRoom({
       element.removeEventListener('scroll', handleScroll);
       window.removeEventListener('keydown', handleKey);
     };
-  }, [applyRemoteProgress, room, user]);
+  }, [applyRemoteProgress, prompterActive, room, roomUser]);
 
   useEffect(() => () => {
     void disconnectChannel();
@@ -572,7 +611,7 @@ export function PodcastSyncRoom({
 
   const panel = (
     <AnimatePresence>
-      {panelOpen && (
+      {panelVisible && (
         <>
           <motion.div
             className="podcast-sync-backdrop"
@@ -588,7 +627,7 @@ export function PodcastSyncRoom({
             ref={panelRef}
             role="dialog"
             aria-labelledby={PANEL_TITLE_ID}
-            className={`podcast-sync-panel ${isInviteEntry ? 'is-invite' : ''}`}
+            className={`podcast-sync-panel ${isExternalEntry ? 'is-entry' : ''}`}
             initial={{ opacity: 0, y: 16, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.99 }}
@@ -596,52 +635,77 @@ export function PodcastSyncRoom({
           >
             <div className="podcast-sync-header">
               <div>
-                <strong id={PANEL_TITLE_ID}>{isInviteEntry
-                  ? (lang === 'zh' ? '同步播客邀请' : 'Podcast sync invite')
+                <strong id={PANEL_TITLE_ID}>{isExternalEntry
+                  ? entrySource === 'invite'
+                    ? (lang === 'zh' ? '同步播客邀请' : 'Podcast sync invite')
+                    : (lang === 'zh' ? '加入同步房间' : 'Join a sync room')
                   : (lang === 'zh' ? '同步播客' : 'Podcast sync')}</strong>
                 <span aria-live="polite">{room
                   ? connectionLabel
-                  : isInviteEntry
-                    ? (lang === 'zh' ? '房主邀请你一起排练' : 'The host invited you to rehearse')
+                  : isExternalEntry
+                    ? entrySource === 'invite'
+                      ? (lang === 'zh' ? '房主邀请你一起排练' : 'The host invited you to rehearse')
+                      : (lang === 'zh' ? '输入房间 ID，无需登录账号' : 'Enter a room ID — no account required')
                     : (lang === 'zh' ? '最多 4 人，同看同一份稿件' : 'Up to 4 people on the same script')}</span>
               </div>
               <button type="button" className="podcast-sync-icon" onClick={closePanel} aria-label={lang === 'zh' ? '关闭' : 'Close'}><X size={18} /></button>
             </div>
 
             {!room ? (
-              isInviteEntry ? (
+              isExternalEntry ? (
                 <div className="podcast-sync-invite-entry">
                   <div className="podcast-sync-invite-mark"><UsersRound size={24} /></div>
-                  <strong>{lang === 'zh' ? '一起排练这期播客' : 'Rehearse this podcast together'}</strong>
+                  <strong>{entrySource === 'invite'
+                    ? (lang === 'zh' ? '一起排练这期播客' : 'Rehearse this podcast together')
+                    : (lang === 'zh' ? '加入房主的实时排练' : 'Join the host’s live rehearsal')}</strong>
                   <p>{lang === 'zh'
-                    ? '加入后你会直接看到房主共享的稿件和实时滚动位置。'
-                    : 'Join to see the host’s shared script and live scroll position.'}</p>
-                  <div className="podcast-sync-invite-code">
-                    <span>{lang === 'zh' ? '房间 ID' : 'Room ID'}</span>
-                    <strong>{inviteRoomCode}</strong>
-                  </div>
-                  <button type="button" className="podcast-sync-primary" onClick={() => void joinRoom()} disabled={busy}>
-                    <Link2 size={18} /> {user
-                      ? (lang === 'zh' ? '加入房间' : 'Join room')
-                      : (lang === 'zh' ? '登录后加入' : 'Sign in to join')}
+                    ? '加入后会直接载入房主共享的稿件和实时滚动位置。无需注册或登录。'
+                    : 'The host’s shared script and live scroll position load immediately. No sign-up or sign-in required.'}</p>
+                  {entrySource === 'invite' && entryRoomCode ? (
+                    <div className="podcast-sync-invite-code">
+                      <span>{lang === 'zh' ? '房间 ID' : 'Room ID'}</span>
+                      <strong>{entryRoomCode}</strong>
+                    </div>
+                  ) : (
+                    <div className="podcast-sync-join-row podcast-sync-entry-code">
+                      <input
+                        data-autofocus="true"
+                        value={roomCodeInput}
+                        onChange={(event) => setRoomCodeInput(event.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase().slice(0, 6))}
+                        onKeyDown={(event) => { if (event.key === 'Enter') void joinRoom(); }}
+                        placeholder={lang === 'zh' ? '6 位房间 ID' : '6-character room ID'}
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        maxLength={6}
+                        aria-label={lang === 'zh' ? '房间 ID' : 'Room ID'}
+                      />
+                    </div>
+                  )}
+                  <button type="button" className="podcast-sync-primary" onClick={() => void joinRoom()} disabled={busy} data-autofocus={entrySource === 'invite' ? 'true' : undefined}>
+                    <Link2 size={18} /> {busy
+                      ? (lang === 'zh' ? '正在加入…' : 'Joining…')
+                      : (lang === 'zh' ? '加入房间' : 'Join room')}
                   </button>
-                  <button type="button" className="podcast-sync-secondary" onClick={onInviteDismiss} disabled={busy}>
-                    {lang === 'zh' ? '暂不加入' : 'Not now'}
+                  <button type="button" className="podcast-sync-secondary" onClick={onEntryDismiss} disabled={busy}>
+                    {lang === 'zh' ? '取消' : 'Cancel'}
                   </button>
                 </div>
               ) : (
                 <div className="podcast-sync-entry">
-                  {!user && (
-                    <div className="podcast-sync-signin">
-                      <RadioTower size={18} />
-                      <div><strong>{lang === 'zh' ? '在线同步需要登录' : 'Sign in for live sync'}</strong><span>{lang === 'zh' ? '本地训练仍然不需要账户。' : 'Local rehearsal still works without an account.'}</span></div>
+                  {!accountUser && (
+                    <div className="podcast-sync-account-note">
+                      <LogIn size={18} />
+                      <div>
+                        <strong>{lang === 'zh' ? '创建房间需要账号' : 'An account is required to create'}</strong>
+                        <span>{lang === 'zh' ? '用于识别房主和管理成员权限；加入房间不需要登录。' : 'This identifies the host and protects room controls. Joining does not require sign-in.'}</span>
+                      </div>
                       <button type="button" onClick={openDialog}>{lang === 'zh' ? '登录' : 'Sign in'}</button>
                     </div>
                   )}
                   <button type="button" className="podcast-sync-primary" onClick={() => void createRoom()} disabled={busy}>
                     <Link2 size={18} /> {lang === 'zh' ? '创建房间' : 'Create room'}
                   </button>
-                  <div className="podcast-sync-divider"><span>{lang === 'zh' ? '或加入已有房间' : 'or join a room'}</span></div>
+                  <div className="podcast-sync-divider"><span>{lang === 'zh' ? '加入已有房间 · 无需登录' : 'Join an existing room · no account required'}</span></div>
                   <div className="podcast-sync-join-row">
                     <input
                       value={roomCodeInput}
@@ -695,7 +759,7 @@ export function PodcastSyncRoom({
                 <div className="podcast-sync-members">
                   {members.map((member) => {
                     const memberIsHost = member.user_id === room.host_user_id;
-                    const memberIsSelf = member.user_id === user?.id;
+                    const memberIsSelf = member.user_id === roomUser?.id;
                     const online = onlineUserIds.has(member.user_id);
                     return (
                       <div className="podcast-sync-member" key={member.user_id}>
@@ -747,22 +811,24 @@ export function PodcastSyncRoom({
 
   return (
     <>
-      <PrompterTopbarPortal>
-        <button
-          ref={triggerRef}
-          type="button"
-          className={`podcast-sync-trigger ${room ? 'is-live' : ''}`}
-          onClick={() => setPanelOpen((current) => !current)}
-          aria-expanded={panelOpen}
-          aria-controls={PANEL_ID}
-          aria-label={triggerLabel}
-          title={triggerLabel}
-          data-member-count={room ? members.length : undefined}
-        >
-          <UsersRound size={17} />
-          <span className="podcast-sync-trigger-label">{room ? `${members.length}/${MAX_MEMBERS}` : (lang === 'zh' ? '同步' : 'Sync')}</span>
-        </button>
-      </PrompterTopbarPortal>
+      {prompterActive && (
+        <PrompterTopbarPortal>
+          <button
+            ref={triggerRef}
+            type="button"
+            className={`podcast-sync-trigger ${room ? 'is-live' : ''}`}
+            onClick={() => setPanelOpen((current) => !current)}
+            aria-expanded={panelVisible}
+            aria-controls={PANEL_ID}
+            aria-label={triggerLabel}
+            title={triggerLabel}
+            data-member-count={room ? members.length : undefined}
+          >
+            <UsersRound size={17} />
+            <span className="podcast-sync-trigger-label">{room ? `${members.length}/${MAX_MEMBERS}` : (lang === 'zh' ? '同步' : 'Sync')}</span>
+          </button>
+        </PrompterTopbarPortal>
+      )}
       {createPortal(panel, document.body)}
     </>
   );
