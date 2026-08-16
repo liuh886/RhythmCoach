@@ -574,10 +574,10 @@
 
 @media (max-width: 760px) {
   .podcast-sync-trigger {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
-    border-radius: 11px;
+    border-radius: 12px;
   }
 
   .podcast-sync-trigger-label {
