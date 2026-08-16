@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import { chromium } from '@playwright/test';
 
 const executablePath = process.env.CHROME_BIN;
@@ -46,11 +47,15 @@ try {
   const fitsViewport = await headerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!fitsViewport) throw new Error('Mobile app surface overflows horizontally.');
 
+  await mkdir('../visual-evidence', { recursive: true });
+  await headerPage.screenshot({ path: '../visual-evidence/app-mobile-header.png', fullPage: false });
+
   const moreButton = headerPage.getByRole('button', { name: /^(更多|More)$/ });
   await moreButton.waitFor({ state: 'visible' });
   await moreButton.click();
   const moreMenu = headerPage.getByRole('menu', { name: /^(更多|More)$/ });
   await moreMenu.waitFor({ state: 'visible' });
+  await headerPage.screenshot({ path: '../visual-evidence/app-mobile-more.png', fullPage: false });
   await moreMenu.getByRole('menuitem', { name: /^(切换到白色模式|Switch to light mode)$/ }).click();
   await headerPage.locator("html[data-theme='light']").waitFor({ state: 'attached' });
 
@@ -66,6 +71,7 @@ try {
 
   const accountFitsViewport = await headerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   if (!accountFitsViewport) throw new Error('Mobile account surface overflows horizontally.');
+  await headerPage.screenshot({ path: '../visual-evidence/account-light-mobile.png', fullPage: false });
   await headerPage.close();
 
   if (runtimeErrors.length) {
