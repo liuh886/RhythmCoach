@@ -505,7 +505,7 @@
 @media (max-width: 760px) {
   .prompter-topbar {
     gap: 5px;
-    min-height: 64px;
+    min-height: 68px;
     padding: max(10px, env(safe-area-inset-top)) 10px 10px;
   }
 
@@ -527,9 +527,9 @@
   }
 
   .top-actions .btn-icon {
-    width: 40px;
-    height: 40px;
-    padding: 8px;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
   }
 
   .pace-panel {
