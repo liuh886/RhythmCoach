@@ -47,8 +47,6 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-const GUIDE_KEY = 'rhythmcoach_product_guide_v1';
-
 function getInitialTheme(): AppTheme {
   try {
     return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
@@ -80,7 +78,7 @@ export default function App() {
   const [surface, setSurface] = useState<ProductSurface>(() => resolveProductSurface(window.location.hash));
   const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem(GUIDE_KEY) !== 'complete');
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [podcastSyncContent, setPodcastSyncContent] = useState<PodcastSyncContent | null>(null);
@@ -253,7 +251,6 @@ export default function App() {
   };
 
   const closeGuide = () => {
-    localStorage.setItem(GUIDE_KEY, 'complete');
     setIsGuideOpen(false);
   };
 
