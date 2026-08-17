@@ -68,7 +68,7 @@ function ensureSharedAssets(): Promise<void> {
     }
 
     script.id = REFERRAL_SCRIPT_ID;
-    script.src = `${SHARED_ROOT}/product-referral.js?v=4`;
+    script.src = `${SHARED_ROOT}/product-referral.js?v=5`;
     script.async = true;
     script.addEventListener('load', finish, { once: true });
     script.addEventListener('error', () => reject(new Error('Shared referral surface failed to load.')), { once: true });
