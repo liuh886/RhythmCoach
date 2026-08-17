@@ -44,7 +44,7 @@
   border: 1px solid var(--glass-border);
   border-radius: 19px;
   color: var(--text-primary);
-  background: var(--bg-elevated);
+  background: var(--bg-base);
   box-shadow: var(--glass-shadow);
 }
 
@@ -63,7 +63,7 @@
   gap: 16px;
   padding: 18px 18px 14px;
   border-bottom: 1px solid var(--glass-border);
-  background: var(--bg-elevated);
+  background: var(--bg-base);
 }
 
 .podcast-sync-header > div {

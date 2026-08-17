@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react';
+import './TurnstileWidget.css';
+import { useEffect, useRef, useState } from 'react';
 
 const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+type VerificationState = 'loading' | 'challenge' | 'verified' | 'error';
 
 interface TurnstileApi {
   render: (container: HTMLElement, options: {
@@ -66,27 +69,45 @@ export function TurnstileWidget({
   const hostRef = useRef<HTMLDivElement>(null);
   const onTokenRef = useRef(onToken);
   const onUnavailableRef = useRef(onUnavailable);
+  const [state, setState] = useState<VerificationState>('loading');
+  const [attempt, setAttempt] = useState(0);
   onTokenRef.current = onToken;
   onUnavailableRef.current = onUnavailable;
 
   useEffect(() => {
     let active = true;
     let widgetId: string | null = null;
+    setState('loading');
 
     void loadTurnstile()
       .then((turnstile) => {
         if (!active || !hostRef.current) return;
+        setState('challenge');
         widgetId = turnstile.render(hostRef.current, {
           sitekey: siteKey,
           theme: 'auto',
-          callback: (token) => onTokenRef.current(token),
-          'expired-callback': () => onTokenRef.current(''),
-          'error-callback': () => onTokenRef.current('')
+          callback: (token) => {
+            if (!active) return;
+            setState(token ? 'verified' : 'challenge');
+            onTokenRef.current(token);
+          },
+          'expired-callback': () => {
+            if (!active) return;
+            setState('challenge');
+            onTokenRef.current('');
+          },
+          'error-callback': () => {
+            if (!active) return;
+            setState('error');
+            onTokenRef.current('');
+            onUnavailableRef.current('Turnstile verification failed.');
+          }
         });
       })
       .catch((error: unknown) => {
         if (!active) return;
         const message = error instanceof Error ? error.message : 'Turnstile unavailable.';
+        setState('error');
         onTokenRef.current('');
         onUnavailableRef.current(message);
       });
@@ -102,7 +123,28 @@ export function TurnstileWidget({
         }
       }
     };
-  }, [siteKey]);
+  }, [attempt, siteKey]);
 
-  return <div ref={hostRef} className="membership-turnstile" aria-label="Security verification" />;
+  const isChinese = document.documentElement.lang.toLowerCase().startsWith('zh');
+  const loadingLabel = isChinese ? '正在完成安全验证…' : 'Completing security verification…';
+  const verifiedLabel = isChinese ? '安全验证已完成' : 'Security verification complete';
+  const retryLabel = isChinese ? '重试安全验证' : 'Retry security verification';
+
+  return (
+    <div
+      className={`membership-turnstile is-${state}`}
+      aria-label={isChinese ? '安全验证' : 'Security verification'}
+      aria-live="polite"
+      aria-busy={state === 'loading'}
+    >
+      <div ref={hostRef} className="turnstile-host" />
+      {state === 'loading' && <span className="turnstile-status">{loadingLabel}</span>}
+      {state === 'verified' && <span className="turnstile-status is-verified">✓ {verifiedLabel}</span>}
+      {state === 'error' && (
+        <button type="button" className="turnstile-retry" onClick={() => setAttempt((value) => value + 1)}>
+          {retryLabel}
+        </button>
+      )}
+    </div>
+  );
 }

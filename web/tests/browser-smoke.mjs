@@ -10,18 +10,22 @@ const runtimeErrors = [];
 async function preparePage(page, theme = 'dark') {
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
   await page.addInitScript((selectedTheme) => {
-    localStorage.setItem('rhythmcoach_product_guide_v1', 'complete');
     localStorage.setItem('rhythmcoach_theme_v1', selectedTheme);
   }, theme);
 }
 
-async function prepareRoomMock(page, { userId = 'host-1', signedIn = true } = {}) {
+async function prepareRoomMock(page, { userId = 'host-1', signedIn = true, turnstileFailsOnce = false } = {}) {
   await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0', (route) => route.abort());
-  await page.addInitScript(({ activeUserId, hasPermanentSession }) => {
+  await page.addInitScript(({ activeUserId, hasPermanentSession, failFirstChallenge }) => {
+    let turnstileAttempts = 0;
     window.turnstile = {
       render(_container, options) {
-        window.setTimeout(() => options.callback('mock-turnstile-token'), 0);
-        return 'mock-turnstile';
+        turnstileAttempts += 1;
+        window.setTimeout(() => {
+          if (failFirstChallenge && turnstileAttempts === 1) options['error-callback']?.();
+          else options.callback('mock-turnstile-token');
+        }, 0);
+        return `mock-turnstile-${turnstileAttempts}`;
       },
       remove() {}
     };
@@ -108,7 +112,7 @@ async function prepareRoomMock(page, { userId = 'host-1', signedIn = true } = {}
       channel: () => channelFor(), removeChannel: async () => 'ok'
     };
     window.supabase = { createClient: () => client };
-  }, { activeUserId: userId, hasPermanentSession: signedIn });
+  }, { activeUserId: userId, hasPermanentSession: signedIn, failFirstChallenge: turnstileFailsOnce });
 }
 
 function overlaps(a, b) {
@@ -164,6 +168,12 @@ try {
   await basePage.goto('http://127.0.0.1:4173/#/', { waitUntil: 'networkidle' });
   await basePage.getByRole('button', { name: /^(Open app|打开应用)$/ }).first().click();
   await basePage.locator('.app-shell').waitFor({ state: 'visible' });
+  if (await basePage.locator('.guide-dialog:visible').count()) throw new Error('Quick Start still blocks first app activation.');
+  await basePage.getByRole('button', { name: /^(更多|More)$/ }).click();
+  const baseMenu = basePage.getByRole('menu', { name: /^(更多|More)$/ });
+  await baseMenu.getByRole('menuitem', { name: /^(帮助|Help)$/ }).click();
+  await basePage.locator('.guide-dialog').waitFor({ state: 'visible' });
+  await basePage.getByRole('button', { name: /^(开始使用|Start using)$/ }).click();
   await basePage.getByRole('button', { name: /^(Start rehearsal|开始训练)$/ }).last().click();
   await basePage.locator('.prompter-shell').waitFor({ state: 'visible' });
   await basePage.close();
@@ -186,6 +196,7 @@ try {
   await homeEntry.waitFor({ state: 'visible' });
   await homeEntry.getByText(/无需登录账号|no account required/i).first().waitFor({ state: 'visible' });
   await homeEntry.getByText(/首次加入完成一次安全验证|one security check on first join/i).waitFor({ state: 'visible' });
+  await homeEntry.locator('.turnstile-status.is-verified').waitFor({ state: 'visible' });
   await homeEntry.locator('input').fill('A3F82C');
   await homeEntry.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
   await homeGuest.locator('.prompter-shell').waitFor({ state: 'visible' });
@@ -206,6 +217,7 @@ try {
   if ((await invitePanel.locator('.podcast-sync-invite-code strong').textContent())?.trim() !== 'A3F82C') throw new Error('Invite room ID mismatch.');
   if (await invitePanel.getByText(/登录后加入|Sign in to join/i).count()) throw new Error('Invite still requires sign-in.');
   await invitePanel.getByText(/首次加入完成一次安全验证|one security check on first join/i).waitFor({ state: 'visible' });
+  await invitePanel.locator('.turnstile-status.is-verified').waitFor({ state: 'visible' });
   await assertFitsViewport(inviteGuest, '390x844 guest invite');
   await inviteGuest.screenshot({ path: '../visual-evidence/room-invite-guest-mobile.png', fullPage: false });
   await invitePanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
@@ -213,6 +225,19 @@ try {
   await assertSharedScript(inviteGuest);
   if (new URL(inviteGuest.url()).hash.includes('sync=')) throw new Error('Invite route was not consumed.');
   await inviteGuest.close();
+
+  const retryGuest = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await preparePage(retryGuest);
+  await prepareRoomMock(retryGuest, { userId: 'member-3', signedIn: false, turnstileFailsOnce: true });
+  await retryGuest.goto('http://127.0.0.1:4173/#/app?sync=A3F82C', { waitUntil: 'networkidle' });
+  const retryPanel = retryGuest.locator('.podcast-sync-panel.is-entry');
+  const retryVerification = retryPanel.getByRole('button', { name: /^(重试安全验证|Retry security verification)$/ });
+  await retryVerification.waitFor({ state: 'visible' });
+  await retryVerification.click();
+  await retryPanel.locator('.turnstile-status.is-verified').waitFor({ state: 'visible' });
+  await retryPanel.getByRole('button', { name: /^(加入房间|Join room)$/ }).click();
+  await retryGuest.locator('.prompter-shell').waitFor({ state: 'visible' });
+  await retryGuest.close();
 
   const lightInvite = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await preparePage(lightInvite, 'light');
@@ -298,6 +323,7 @@ try {
   await preparePage(header);
   await header.goto('http://127.0.0.1:4173/#/app', { waitUntil: 'networkidle' });
   await header.locator('.app-shell').waitFor({ state: 'visible' });
+  if (await header.locator('.guide-dialog:visible').count()) throw new Error('Fresh mobile app is still blocked by Quick Start.');
   await assertFitsViewport(header, 'mobile app');
   const more = header.getByRole('button', { name: /^(更多|More)$/ });
   await more.click();
