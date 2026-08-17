@@ -655,9 +655,9 @@ export function PodcastSyncRoom({
             role="dialog"
             aria-labelledby={PANEL_TITLE_ID}
             className={`podcast-sync-panel ${isExternalEntry ? 'is-entry' : ''}`}
-            initial={{ opacity: 0, y: 16, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.99 }}
+            initial={{ y: 16, scale: 0.99 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 12, scale: 0.99 }}
             transition={{ duration: 0.16 }}
           >
             <div className="podcast-sync-header">
