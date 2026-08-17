@@ -82,6 +82,7 @@ export function TurnstileWidget({
     void loadTurnstile()
       .then((turnstile) => {
         if (!active || !hostRef.current) return;
+        setState('challenge');
         widgetId = turnstile.render(hostRef.current, {
           sitekey: siteKey,
           theme: 'auto',
@@ -102,7 +103,6 @@ export function TurnstileWidget({
             onUnavailableRef.current('Turnstile verification failed.');
           }
         });
-        setState('challenge');
       })
       .catch((error: unknown) => {
         if (!active) return;
